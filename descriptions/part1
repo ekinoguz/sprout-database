@@ -1,0 +1,97 @@
+Introduction
+In this project, you will implement a paged file system. The PF component provides facilities for higher-level client components to perform file I/O in terms of pages. In the PF component, methods are provided to create, destroy, open, and close paged files, to read and write a specific page of a given file, and to add pages to a given file.
+
+The name of each class begins with the prefix PF -- you will follow a similar naming convention for your components of the system. Each method in the PF component except constructors and destructors returns an integer code; the same will be true of all of the methods you will write. A return code of 0 indicates normal completion. A nonzero return code indicates that an exception condition or error has occurred.
+
+PF Interface
+The PF interface consists of two classes: the PF_Manager class and the PF_FileHandle class.
+
+PF_Manager Class
+
+The PF_Manager class handles the creation, deletion, opening, and closing of paged files. Your program should create exactly one instance of this class, and all requests for PF component file management should be directed to that instance. Below, the public methods of the class declaration are shown first, followed by descriptions of the methods. The first two methods in the class declaration are the constructor and destructor methods for the class; they are not explained further. Each method except the constructor and destructor methods returns a value of type RC (for "return code" -- actually an integer). A return code of 0 indicates normal completion. A nonzero return code indicates that an exception condition or error has occurred.
+
+class PF_Manager {
+
+public:
+    // Access to the _pf_manager instance
+    static PF_Manager* Instance();                                      
+
+    // Create a new file
+    RC CreateFile    (const char *fileName);                            
+    
+    // Destroy a file
+    RC DestroyFile   (const char *fileName);                            
+
+    // Open a file
+    RC OpenFile      (const char *fileName, PF_FileHandle &fileHandle);
+
+    // Close a file
+    RC CloseFile     (PF_FileHandle &fileHandle);
+
+protected:    
+    // Constructor
+    PF_Manager();
+
+    // Destructor
+    ~PF_Manager();
+
+private:
+    static PF_Manager* _pf_manager;
+}
+RC CreateFile (const char *fileName)
+
+This method creates a paged file called fileName. The file should not already exist.
+
+RC DestroyFile (const char *fileName)
+
+This method destroys the paged file whose name is fileName. The file should exist.
+
+RC OpenFile (const char *fileName, PF_FileHandle &fileHandle)
+
+This method opens the paged file whose name is fileName. The file must already exist and it must have been created using the CreateFile method. If the method is successful, the fileHandle object whose address is passed as a parameter becomes a "handle" for the open file. The file handle is used to manipulate the pages of the file (see the PF_FileHandle class description below). It is an error if fileHandle is already a handle for an open file when it is passed to the OpenFile method. It is not an error to open the same file more than once if desired, using a different fileHandle object each time. Each call to the OpenFile method creates a new "instance" of the open file. Warning: Opening a file more than once for data modification is not prevented by the PF component, but doing so is likely to corrupt the file structure and may crash the PF component. Opening a file more than once for reading is no problem.
+
+RC CloseFile (PF_FileHandle &fileHandle)
+
+This method closes the open file instance referred to by fileHandle. The file must have been opened using the OpenFile method. All of the file's pages are flushed to disk when the file is closed.
+
+
+PF_FileHandle Class
+
+The PF_FileHandle class provides access to the pages of an open file. To access the pages of a file, a client first creates an instance of this class and passes it to the PF_Manager::OpenFile method described above. As before, the public methods of the class declaration are shown first, followed by descriptions of the methods. The first two methods in the class declaration are the constructor and destructor methods and are not explained further.
+
+class PF_FileHandle {
+
+public:
+    // Constructor
+    PF_FileHandle();
+
+    // Destructor
+    ~PF_FileHandle();
+
+    // Get a specific page
+    RC ReadPage(PageNum pageNum, void *data);
+
+    // Write a specific page
+    RC WritePage(PageNum pageNum, const void *data);
+
+    // Append a specific page
+    RC AppendPage(const void *data);
+
+    // Get the number of pages in the file
+    unsigned GetNumberOfPages();
+}
+RC ReadPage(PageNum pageNum, void *data)
+
+This method reads the page into the memory block pointed by data. The page should exist. Note the page number starts from 0.
+
+RC WritePage(PageNum pageNum, const void *data)
+
+This method writes the data into a page specified by the pageNum. The page should exist. Note the page number starts from 0.
+
+RC AppendPage(const void *data)
+
+This method appends a new page to the file, and writes the data into the new allocated page.
+
+unsigned GetNumberOfPages()
+
+This method returns the total number of pages in the file.
