@@ -288,7 +288,7 @@ int PFTest_4(PF_Manager *pf)
     PF_FileHandle fileHandle;
 	if (FileExists(fileName.c_str()))
 		rc = pf->DestroyFile(fileName.c_str());
-    pf->CreateFile(fileName.c_str());
+    rc = pf->CreateFile(fileName.c_str());
     assert(rc == success);
 
     // Open the file
@@ -337,6 +337,11 @@ int PFTest_4(PF_Manager *pf)
 
     rc = fileHandle.ReadPage(5, data);
     assert (((string)((char *)data)).length() == 376);
+
+    rc = fileHandle.ReadPage(14, data);
+    assert (rc == success);
+    rc = fileHandle.ReadPage(fileHandle.GetNumberOfPages(), data);
+    assert (rc != success);
     cout << "****PF Test Case 4 Finishes****" << endl;
 	return 0;
 }

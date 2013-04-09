@@ -37,7 +37,7 @@ public:
 
 protected:    
     PF_Manager();                                                       // Constructor
-    ~PF_Manager   ();                                                   // Destructor
+    ~PF_Manager();	                                                    // Destructor
 
 private:
     static PF_Manager *_pf_manager;
