@@ -1,8 +1,6 @@
-#include "pf.h"
-
-PF_Manager* PF_Manager::_pf_manager = 0;
-
 /*
+ * ekinoguz
+ *
  * Errors:
  *
  * -1: filestr error
@@ -14,6 +12,11 @@ PF_Manager* PF_Manager::_pf_manager = 0;
  * -4: fileHandle does not have open file instance to close
  * 5: page number does not exist error
  */
+
+#include "pf.h"
+
+PF_Manager* PF_Manager::_pf_manager = 0;
+
 
 // Access to the _pf_manager instance
 PF_Manager* PF_Manager::Instance()
@@ -129,9 +132,9 @@ RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)
 	{
 		filestr.seekg((int)(pageNum * PF_PAGE_SIZE));
 		filestr.read((char *)data, PF_PAGE_SIZE);
-		if (filestr == false)
-			return -1;
-		return 0;
+		if (filestr)
+			return 0;
+		return -1;
 	}
 	else
 		return -1;
@@ -149,9 +152,9 @@ RC PF_FileHandle::WritePage(PageNum pageNum, const void *data)
 		filestr.seekp((int)(pageNum * PF_PAGE_SIZE));
 		filestr.write((char *)data, PF_PAGE_SIZE);
 		filestr.flush();
-		if (filestr == false)
-			return -1;
-		return 0;
+		if (filestr)
+			return 0;
+		return -1;
 	}
 	return -1;
 }
@@ -164,9 +167,9 @@ RC PF_FileHandle::AppendPage(const void *data)
 	{
 		filestr.seekp((int)(GetNumberOfPages() * PF_PAGE_SIZE));
 		filestr.write((char *)data, PF_PAGE_SIZE);
-		if (filestr == false)
-			return -1;
-		return 0;
+		if (filestr)
+			return 0;
+		return -1;
 	}
 	return -1;
 }

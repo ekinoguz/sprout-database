@@ -342,6 +342,14 @@ int PFTest_4(PF_Manager *pf)
     assert (rc == success);
     rc = fileHandle.ReadPage(fileHandle.GetNumberOfPages(), data);
     assert (rc != success);
+
+    // destroy all the files
+    rc = pf->DestroyFile("test");
+    assert(rc == success);
+    rc = pf->DestroyFile("test3");
+    assert(rc == success);
+    rc = pf->DestroyFile("test4");
+    assert(rc == success);
     cout << "****PF Test Case 4 Finishes****" << endl;
 	return 0;
 }
