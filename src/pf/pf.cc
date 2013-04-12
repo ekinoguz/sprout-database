@@ -3,14 +3,9 @@
  *
  * Errors:
  *
- * -1: filestr error
- * 1: filestr is_open() error
- * 2: file already exists
+ * -1: filestr errors
+ *  2: file already exists
  * -2: file does not exist
- * 3: remove file error
- * 4: fileHandle is already a handle for an another open file
- * -4: fileHandle does not have open file instance to close
- * 5: page number does not exist error
  */
 
 #include "pf.h"
@@ -62,7 +57,7 @@ RC PF_Manager::CreateFile(const char *fileName)
 		filestr.close();
 		return 0;
 	}
-	return 1;
+	return -1;
 }
 
 // This method destroys the paged file whose name is fileName.
@@ -74,7 +69,7 @@ RC PF_Manager::DestroyFile(const char *fileName)
 		return -2;
 	if (remove(fileName) == 0)
 		return 0;
-	return 3;
+	return -1;
 }
 
 // This method opens the paged file whose name is fileName. The file must
@@ -86,12 +81,12 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
 	if (FileExists(fileName) == false)
 		return -2;
 	else if (fileHandle.filestr.is_open())
-		return 4;
+		return -1;
 	else
 	{
 		fileHandle.filestr.open(fileName, ios::in | ios::out | ios::binary);
 		if (fileHandle.filestr.is_open() == false)
-			return 1;
+			return -1;
 		return 0;
 	}
 }
@@ -108,7 +103,10 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 		return 0;
 	}
 	else
-		return -4;
+	{
+		cout << "fileHandle does not have open file instance to close" << endl;
+		return -1;
+	}
 }
 
 
@@ -127,17 +125,19 @@ RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)
 {
 	// if page number does not exist
 	if (pageNum >= GetNumberOfPages())
-		return 5;
+	{
+		cout << "page number does not exist" << endl;
+		return -1;
+	}
 	if (filestr)
 	{
 		filestr.seekg((int)(pageNum * PF_PAGE_SIZE));
 		filestr.read((char *)data, PF_PAGE_SIZE);
 		if (filestr)
 			return 0;
-		return -1;
 	}
-	else
-		return -1;
+	cout << "filestr error" << endl;
+	return -1;
 }
 
 // This method writes the data into a page specified by the pageNum.
@@ -146,7 +146,10 @@ RC PF_FileHandle::WritePage(PageNum pageNum, const void *data)
 {
 	// if page number does not exist
 	if (pageNum > GetNumberOfPages())
-		return 5;
+	{
+		cout << "page number does not exist" << endl;
+		return -1;
+	}
 	if (filestr)
 	{
 		filestr.seekp((int)(pageNum * PF_PAGE_SIZE));
@@ -154,8 +157,8 @@ RC PF_FileHandle::WritePage(PageNum pageNum, const void *data)
 		filestr.flush();
 		if (filestr)
 			return 0;
-		return -1;
 	}
+	cout << "filestr error" << endl;
 	return -1;
 }
 
@@ -169,8 +172,8 @@ RC PF_FileHandle::AppendPage(const void *data)
 		filestr.write((char *)data, PF_PAGE_SIZE);
 		if (filestr)
 			return 0;
-		return -1;
 	}
+	cout << "filestr error" << endl;
 	return -1;
 }
 
@@ -183,8 +186,8 @@ unsigned PF_FileHandle::GetNumberOfPages()
 		int length = filestr.tellg();
 		return length / PF_PAGE_SIZE;
 	}
-	else
-		return -1;
+	cout << "filestr error" << endl;
+	return -1;
 }
 
 
