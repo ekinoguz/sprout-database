@@ -1,0 +1,34 @@
+variable character strings
+	 - no '*' must supply a maximum length
+	 - We only support maximum lengths up to size PF_PAGE_SIZE
+description of record format
+	 - must be documented in the code
+
+File organization
+         - First page of the file contains information about the total free space in each other page in the file. The first two bytes of this page contains the number of pages in the file.
+
+Page organization
+         - At the end of the page, a fixed size list of free spaces is kept.
+	 - Each element in the free space list contains the beginning and the end of the free space offsets, so we can calculate the size of this space. If both offsets are 0, then this
+	 - element is not used.
+	 - The total free space of the page is calculate by traversing the whole free space list.
+	 - Right before the free space list, we keep the record directory which is a variable length sized list.
+
+Record directory organization
+         - 1 bit for deleted, 1 bit for forward pointer, 6 bits for version, 12 bits for offset, 12 bits for the length = 4 bytes
+	 - Offset and length are reused for forward pointers as PID and RID respectively.
+
+Functions
+       	 1. Catalog functionalities that will handle initializing the catalog table if not present, and reading it if it is. If the catalog exists it will read it otherwise it will call 2.
+	 2. Add tuples to the catalog tables and create a table file.
+	 3. Remove tuples from the catalog tables and delete the table file.
+	 4. Read tuples from the catalog that corresponds to the table in question.
+	 5. Search for a first page with free space (using the first page) and then insert the new tuple. Reorganize the page as necessary.
+	 6. Delete the file and create it again.
+	 7. TID = <PID, RID>, load the page, navigate to RID and mark the tuple as deleted.
+	 8. When a record cannot fit on is position in the page, move it somewhere else (could be on this page). Update the free space directories.
+	 9. Locate the tuple and cast it to the most recent record version (info about record versions can be found on the catalog).
+	 10. Locate the tuple and then locate that attribute. Make sure that it is compatible with the most recent record version.
+	 11. Rebuild the free space directory for the page.
+	 12. 
+
