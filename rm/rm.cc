@@ -23,7 +23,7 @@ RM::~RM()
 RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
 {
 
-  return 0;
+  return -1;
 }
 
 RC RM::deleteTable(const string tableName)

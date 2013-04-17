@@ -1,5 +1,4 @@
 ## For students: change this path to the root of your code
-//CODEROOT = "/media/cesar/work/Universities/UCI/Courses/CS 222 - Principles of Data Management/Project/cs222-database/"
 CODEROOT = $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 #CC = gcc
 CC = g++

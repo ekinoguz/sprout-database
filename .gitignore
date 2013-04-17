@@ -20,3 +20,5 @@ rm/rmtest
 
 #makefiles
 makefile.inc
+
+*\#*
