@@ -4,10 +4,11 @@ include ../makefile.inc
 all: libpf.a pftest
 
 # lib file dependencies
-libpf.a: libpf.a(pf.o)  # and possibly other .o files
+libpf.a: libpf.a(pf.o cache.o)  # and possibly other .o files
 
 # c file dependencies
 pf.o: pf.h cache.h
+cache.o: cache.h
 
 pftest.o: pf.h cache.h
 

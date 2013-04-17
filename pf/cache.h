@@ -15,7 +15,7 @@ class Cache
   ~Cache();
 
  private:
-  static Cache* cache;
+  static Cache* _cache;
   int numCachePages;
   uint8_t *buffer;  
 };

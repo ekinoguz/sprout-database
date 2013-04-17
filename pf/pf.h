@@ -25,7 +25,7 @@ typedef unsigned PageNum;
 #define PF_PAGE_SIZE 4096
 
 class PF_FileHandle;
-
+class Cache;
 
 class PF_Manager
 {

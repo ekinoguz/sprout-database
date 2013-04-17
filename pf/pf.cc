@@ -35,14 +35,7 @@ PF_Manager::~PF_Manager()
 bool PF_Manager::FileExists(string fileName)
 {
   struct stat stFileInfo;
-  if(stat(fileName.c_str(), &stFileInfo) == 0)
-    {
-      return true;
-    }
-  else
-    {
-      return false;
-    }
+  return (stat(fileName.c_str(), &stFileInfo) == 0);
 }
 
 // This method creates a paged file called fileName.
@@ -51,9 +44,7 @@ RC PF_Manager::CreateFile(const char *fileName)
 {
   // if fileName already exists, print and return error
   if (FileExists(fileName))
-    {
       return 2;
-    }
   
   // create paged file called fileName
   fstream filestr;
@@ -72,13 +63,9 @@ RC PF_Manager::DestroyFile(const char *fileName)
 {
   // if fileName does not exist
   if (FileExists(fileName) == false)
-    {
       return -2;
-    }
   if (remove(fileName) == 0)
-    {
       return 0;
-    }
   
   return -1;
 }
@@ -90,13 +77,9 @@ RC PF_Manager::DestroyFile(const char *fileName)
 RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
 {
   if (FileExists(fileName) == false)
-    {
       return -2;
-    }
   else if (fileHandle.filestr.is_open())
-    {
       return -1;
-    }
   else
     {
       fileHandle.filestr.open(fileName, ios::in | ios::out | ios::binary);
