@@ -22,3 +22,4 @@ rm/rmtest
 makefile.inc
 
 *\#*
+.project
