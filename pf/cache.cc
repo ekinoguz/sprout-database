@@ -12,7 +12,7 @@ Cache* Cache::Instance(int numCachePages)
 
 Cache::Cache(int cacheNumPages)
 {
-  cacheNumPages = cacheNumPages;
+  this->numCachePages = cacheNumPages;
   //buffer = ((uint8_t*)(malloc(PF_PAGE_SIZE * cacheNumPages)));
 }
 Cache::~Cache()
