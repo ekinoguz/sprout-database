@@ -17,3 +17,6 @@ pf/pftest
 rm/rmtest
 
 .DS_Store
+
+#makefiles
+makefile.inc

@@ -7,9 +7,9 @@ all: libpf.a pftest
 libpf.a: libpf.a(pf.o)  # and possibly other .o files
 
 # c file dependencies
-pf.o: pf.h
+pf.o: pf.h cache.h
 
-pftest.o: pf.h
+pftest.o: pf.h cache.h
 
 # binary dependencies
 pftest: pftest.o libpf.a $(CODEROOT)/pf/libpf.a
