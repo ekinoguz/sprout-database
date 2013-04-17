@@ -356,7 +356,7 @@ int PFTest_4(PF_Manager *pf)
 
 int main()
 {
-    PF_Manager *pf = PF_Manager::Instance();
+    PF_Manager *pf = PF_Manager::Instance(10);
     remove("test");
     PFTest_1(pf);
     PFTest_2(pf);

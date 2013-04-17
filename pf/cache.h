@@ -8,7 +8,7 @@
 class Cache
 {
  public:
-  static Cache* Instance(numCachePages);
+  static Cache* Instance(int numCachePages);
 
  protected:
   Cache(int numCachePages);
