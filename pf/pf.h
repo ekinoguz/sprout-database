@@ -31,19 +31,28 @@ class PF_Manager
 {
  public:
   static PF_Manager* Instance(int cacheNumPages);                     // Access to the _pf_manager instance
-  
+
+  RC CreateFile    (const string);
+  RC DestroyFile   (const string);
+  RC OpenFile      (const string);
+  RC CloseFile     (const string);
+
   RC CreateFile    (const char *fileName);                            // Create a new file
   RC DestroyFile   (const char *fileName);                            // Destroy a file
   RC OpenFile      (const char *fileName, PF_FileHandle &fileHandle); // Open a file
   RC CloseFile     (PF_FileHandle &fileHandle);                       // Close a file 
   
+  RC CreateDirectory(string directory);
+  bool	FileExists(string filename);
+  
  protected:    
   PF_Manager(int cacheNumPages);                                            // Constructor
   ~PF_Manager();	                                                    // Destructor
+
+  
   
  private:
   static PF_Manager *_pf_manager;
-  bool	FileExists(string filename);
   Cache* cache;
 };
 

@@ -13,6 +13,15 @@ RM* RM::Instance()
 
 RM::RM()
 {
+  pfm = PF_Manager::Instance(10);
+  this->database_folder = DATABASE_FOLDER;
+
+  // We may need to add this in if we think that every time the RM is initialized it should be on a 
+  //    "clean" database.
+  //system("rm -r "DATABASE_FOLDER);
+
+  // Create the database 'somewhere on disk'
+  pfm->CreateDirectory(database_folder);
 }
 
 RM::~RM()
@@ -22,7 +31,7 @@ RM::~RM()
 
 RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
 {
-
+  RC ret = pfm->CreateFile(database_folder + '/' + tableName);
   return -1;
 }
 

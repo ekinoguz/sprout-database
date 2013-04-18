@@ -38,6 +38,12 @@ bool PF_Manager::FileExists(string fileName)
   return (stat(fileName.c_str(), &stFileInfo) == 0);
 }
 
+RC PF_Manager::CreateDirectory(string directory)
+{
+  mkdir(directory.c_str(), 0777);
+  return 0;
+}
+
 // This method creates a paged file called fileName.
 // The file should not already exist.
 RC PF_Manager::CreateFile(const char *fileName)
@@ -108,6 +114,23 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
       cout << "fileHandle does not have open file instance to close" << endl;
       return -1;
     }
+}
+
+RC PF_Manager::CreateFile(const string name)
+{
+  return PF_Manager::CreateFile(name.c_str());
+}
+RC PF_Manager::DestroyFile(const string name)
+{
+  return PF_Manager::DestroyFile(name.c_str());
+}
+RC PF_Manager::OpenFile(const string name)
+{
+  return PF_Manager::OpenFile(name.c_str());
+}
+RC PF_Manager::CloseFile(const string name)
+{
+  return PF_Manager::CloseFile(name.c_str());
 }
 
 

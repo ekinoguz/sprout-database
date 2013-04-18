@@ -124,6 +124,8 @@ protected:
   ~RM();
 
 private:
+  PF_Manager * pfm;
+  string database_folder;
   static RM *_rm;
 };
 
