@@ -4,4 +4,4 @@ CODEROOT = "$(realpath $(dir $(lastword $(MAKEFILE_LIST))))"
 CC = g++
 
 #CPPFLAGS = -Wall -I$(CODEROOT) -O3  # maximal optimization
-CPPFLAGS = -Wall -I$(CODEROOT) -DDATABASE_FOLDER=\"$(CODEROOT)/db\" -g     # with debugging info
+CPPFLAGS = -std=c++0x -Wall -I$(CODEROOT) -DDATABASE_FOLDER=\"$(CODEROOT)/db\"  -g     # with debugging info
