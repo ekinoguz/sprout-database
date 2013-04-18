@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <ostream>
+#include <unordered_map>
 
 #include "../pf/pf.h"
 
@@ -127,6 +128,10 @@ protected:
 private:
   RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
+
+  PF_FileHandle * getFileHandle(const string tableName);
+
+  unordered_map<string,PF_FileHandle *> fileHandles;
 
   PF_Manager * pfm;
   string database_folder;

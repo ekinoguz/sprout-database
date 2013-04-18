@@ -474,6 +474,6 @@ int main()
 
   Tests();
 
-  system("rm -r "DATABASE_FOLDER" 2> /dev/null");
+  //  system("rm -r "DATABASE_FOLDER" 2> /dev/null");
   return 0;
 }

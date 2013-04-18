@@ -1,10 +1,14 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+
 #include "rm.h"
+
 
 #define TABLES_TABLE "tables"
 #define COLUMNS_TABLE "columns"
+
+#define FREE_LIST_LENGTH 30
 
 RM* RM::_rm = 0;
 
@@ -97,6 +101,10 @@ RM::RM()
 
 RM::~RM()
 {
+  // Close the file handles
+  for (unordered_map<string,PF_FileHandle *>::iterator it = fileHandles.begin(); it != fileHandles.end(); ++it) {
+    pfm->CloseFile(*it->second);
+  }
 }
 
 RC RM::addAttributeToCatalog(const string tableName, uint position, const Attribute &attr)
@@ -127,7 +135,10 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
   *((char*)buffer + offset) = attr.nullable;
   offset += 1;  
   
-  return insertTuple(COLUMNS_TABLE, buffer, rid);
+  RC ret = insertTuple(COLUMNS_TABLE, buffer, rid);
+  
+  free(buffer);
+  return ret;
 }
 
 RC RM::addTableToCatalog(const string tableName, const string file_url, const string type)
@@ -149,7 +160,10 @@ RC RM::addTableToCatalog(const string tableName, const string file_url, const st
   memcpy((char *)buffer + offset, type.c_str(), type.size());
   offset += type.size();
 
-  return insertTuple(TABLES_TABLE, buffer, rid);
+  RC ret = insertTuple(TABLES_TABLE, buffer, rid);
+  
+  free(buffer);
+  return ret;
 }
 
 RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
@@ -160,14 +174,29 @@ RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
   if(ret != 0)
     return ret;
 
+  PF_FileHandle * fh = getFileHandle(tableName);
+  
+  // Add the free space page
+  void *data = malloc(PF_PAGE_SIZE);
+  memset((char *)data, 0, PF_PAGE_SIZE);
+  memcpy((char *)data, 1, 2);
+  memcpy((char *)data + 2, PF_PAGE_SIZE,2);
+  fh->AppendPage(data);
 
-  this->addTableToCatalog(tableName, file_url, "heap"); 
+  memset((char *)data, 0, PF_PAGE_SIZE);
+  memcpy((char *)data + PF_PAGE_SIZE - 2,  PF_PAGE_SIZE, 2);
+  fh->AppendPage(data);
+  free(data);
+
+  ret = this->addTableToCatalog(tableName, file_url, "heap"); 
+  if(ret!=0)
+    return ret;
   
   for(uint i=0; i < attrs.size(); i ++) {
     this->addAttributeToCatalog(tableName,i,attrs[i]);
   }
   
-  return -1;
+  return 0;
 }
 
 RC RM::deleteTable(const string tableName)
@@ -181,6 +210,22 @@ RC RM::getAttributes(const string tableName, vector<Attribute> &attrs)
 }
 RC RM::insertTuple(const string tableName, const void *data, RID &rid)
 {
+  PF_FileHandle * fh = this->getFileHandle(tableName);
+  
+  void *page = malloc(PF_PAGE_SIZE);
+  fh->ReadPage(0, data);
+  
+  bool found = false;
+  int num_pages;
+  int freespace = 0;
+
+  memcpy(&num_pages, page, 2);
+  for(int i = 1; i < num_pages && !found; i++) {
+    memcpy(&freespace, page+(i*2), 2);
+
+    if(freespace 
+  }
+  free(page);
   
   return 0;
 }
@@ -219,4 +264,17 @@ RC RM::scan(const string tableName,
       RM_ScanIterator &rm_ScanIterator)
 {
   return 0;
+}
+
+PF_FileHandle * RM::getFileHandle(const string tableName) 
+{
+  unordered_map<string,PF_FileHandle *>::const_iterator got = fileHandles.find (tableName);
+
+  if ( got == fileHandles.end() )
+    {
+      fileHandles[tableName] = new PF_FileHandle();
+      pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fileHandles[tableName]);
+    }
+
+  return fileHandles[tableName];
 }
