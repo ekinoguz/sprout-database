@@ -3,6 +3,9 @@
 #include <cstdlib>
 #include "rm.h"
 
+#define TABLES_TABLE "tables"
+#define COLUMNS_TABLE "columns"
+
 RM* RM::_rm = 0;
 
 RM* RM::Instance()
@@ -45,11 +48,11 @@ RM::RM()
   table_attrs.push_back(attr);
 
   // Ensure the columns table exists
-  string file_url = database_folder + '/' + "columns_table";
+  string file_url = database_folder + '/' + COLUMNS_TABLE;
   if( pfm->CreateFile(file_url) != 0)
     return;
   
-  if( this->createTable("tables", table_attrs) != 0)
+  if( this->createTable(TABLES_TABLE, table_attrs) != 0)
     return;
 
   // Create the columns table
@@ -85,10 +88,10 @@ RM::RM()
   column_attrs.push_back(attr);
 
   // Finish creating the columns table, by filling in the columns table
-  this->addTableToCatalog("columns_table", file_url, "heap"); 
+  this->addTableToCatalog(COLUMNS_TABLE, file_url, "heap"); 
   
   for(uint i=0; i < column_attrs.size(); i ++) {
-    this->addAttributeToCatalog("columns_table",i,column_attrs[i]);
+    this->addAttributeToCatalog(COLUMNS_TABLE,i,column_attrs[i]);
   }
 }
 
@@ -96,9 +99,35 @@ RM::~RM()
 {
 }
 
-RC RM::addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr)
+RC RM::addAttributeToCatalog(const string tableName, uint position, const Attribute &attr)
 {
-  return -1;
+  RID rid;
+
+  int offset = 0;
+  void *buffer = malloc(100);
+  *((char*)buffer + offset) = attr.name.size();
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, attr.name.c_str(), attr.name.size());
+  offset += attr.name.size();
+
+  *((char*)buffer + offset) = tableName.size();
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
+  offset += tableName.size();
+
+  *((char*)buffer + offset) = position;
+  offset += sizeof(int);
+
+  *((char*)buffer + offset) = attr.type;
+  offset += sizeof(int);
+
+  *((char*)buffer + offset) = attr.length;
+  offset += sizeof(int);
+
+  *((char*)buffer + offset) = attr.nullable;
+  offset += 1;  
+  
+  return insertTuple(COLUMNS_TABLE, buffer, rid);
 }
 
 RC RM::addTableToCatalog(const string tableName, const string file_url, const string type)
@@ -120,7 +149,7 @@ RC RM::addTableToCatalog(const string tableName, const string file_url, const st
   memcpy((char *)buffer + offset, type.c_str(), type.size());
   offset += type.size();
 
-  return insertTuple("tables", buffer, rid);
+  return insertTuple(TABLES_TABLE, buffer, rid);
 }
 
 RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
@@ -152,6 +181,7 @@ RC RM::getAttributes(const string tableName, vector<Attribute> &attrs)
 }
 RC RM::insertTuple(const string tableName, const void *data, RID &rid)
 {
+  
   return 0;
 }
 
