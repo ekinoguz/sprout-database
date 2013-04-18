@@ -1,5 +1,5 @@
 ## For students: change this path to the root of your code
-CODEROOT = $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+CODEROOT = "$(realpath $(dir $(lastword $(MAKEFILE_LIST))))"
 #CC = gcc
 CC = g++
 
