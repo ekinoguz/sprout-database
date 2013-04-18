@@ -1,4 +1,6 @@
-
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
 #include "rm.h"
 
 RM* RM::_rm = 0;
@@ -22,16 +24,120 @@ RM::RM()
 
   // Create the database 'somewhere on disk'
   pfm->CreateDirectory(database_folder);
+
+  
+  // Create the tables table
+  Attribute attr;
+  vector<Attribute> table_attrs;
+  attr.name = "table_name";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  table_attrs.push_back(attr);
+  
+  attr.name = "file_location";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  table_attrs.push_back(attr);
+
+  attr.name = "type";
+  attr.type = TypeVarChar;
+  attr.length = 20;
+  table_attrs.push_back(attr);
+
+  // Ensure the columns table exists
+  string file_url = database_folder + '/' + "columns_table";
+  if( pfm->CreateFile(file_url) != 0)
+    return;
+  
+  if( this->createTable("tables", table_attrs) != 0)
+    return;
+
+  // Create the columns table
+  vector<Attribute> column_attrs;
+  attr.name = "column_name";
+  attr.type = TypeVarChar;
+  attr.length = 30;
+  column_attrs.push_back(attr);
+
+  attr.name = "table_name";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  column_attrs.push_back(attr);
+
+  attr.name = "position";
+  attr.type = TypeInt;
+  attr.length = 4;
+  column_attrs.push_back(attr);
+  
+  attr.name = "type";
+  attr.type = TypeInt;
+  attr.length = 4;
+  column_attrs.push_back(attr);
+  
+  attr.name = "length";
+  attr.type = TypeInt;
+  attr.length = 4;
+  column_attrs.push_back(attr);
+
+  attr.name = "nullable";
+  attr.type = TypeBoolean;
+  attr.length = 1;
+  column_attrs.push_back(attr);
+
+  // Finish creating the columns table, by filling in the columns table
+  this->addTableToCatalog("columns_table", file_url, "heap"); 
+  
+  for(uint i=0; i < column_attrs.size(); i ++) {
+    this->addAttributeToCatalog("columns_table",i,column_attrs[i]);
+  }
 }
 
 RM::~RM()
 {
 }
 
+RC RM::addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr)
+{
+  return -1;
+}
+
+RC RM::addTableToCatalog(const string tableName, const string file_url, const string type)
+{
+  RID rid;
+
+  int offset = 0;
+  void *buffer = malloc(100);
+  *((char*)buffer + offset) = tableName.size();
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
+  offset += tableName.size();
+  *((char*)buffer + offset) =file_url.size();
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, file_url.c_str(), file_url.size());
+  offset += file_url.size();
+  *((char*)buffer + offset) =type.size();
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, type.c_str(), type.size());
+  offset += type.size();
+
+  return insertTuple("tables", buffer, rid);
+}
 
 RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
 {
-  RC ret = pfm->CreateFile(database_folder + '/' + tableName);
+  string file_url = database_folder + '/' + tableName;
+  RC ret = pfm->CreateFile(file_url);
+  
+  if(ret != 0)
+    return ret;
+
+
+  this->addTableToCatalog(tableName, file_url, "heap"); 
+  
+  for(uint i=0; i < attrs.size(); i ++) {
+    this->addAttributeToCatalog(tableName,i,attrs[i]);
+  }
+  
   return -1;
 }
 

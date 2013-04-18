@@ -24,7 +24,7 @@ typedef struct
 
 
 // Attribute
-typedef enum { TypeInt = 0, TypeReal, TypeVarChar } AttrType;
+typedef enum { TypeInt = 0, TypeReal, TypeVarChar, TypeBoolean } AttrType;
 
 typedef unsigned AttrLength;
 
@@ -124,6 +124,9 @@ protected:
   ~RM();
 
 private:
+  RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr);
+  RC addTableToCatalog(const string tableName, const string file_url, const string type);
+
   PF_Manager * pfm;
   string database_folder;
   static RM *_rm;
