@@ -16,6 +16,9 @@
 pf/pftest
 rm/rmtest
 
+#db files
+db/
+
 .DS_Store
 
 #makefiles
