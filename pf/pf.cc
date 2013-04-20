@@ -93,7 +93,8 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
 	{
 	  return -1;
 	}
-      
+      fileHandle.fileName.assign(fileName);
+      fileHandle.cache = cache;
       return 0;
     }
 }
@@ -142,9 +143,25 @@ PF_FileHandle::~PF_FileHandle()
 {
 }
 
+RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)
+{
+  return cache->ReadPage(this, pageNum, data);
+}
+
+RC PF_FileHandle::WritePage(PageNum pageNum, const void *data)
+{
+  return cache->WritePage(this, pageNum, data);
+}
+
+RC PF_FileHandle::AppendPage(const void *data)
+{
+  return cache->AppendPage(this, data);
+}
+
+
 // This method reads the page into the memory block pointed by data.
 // The page should exist. Note the page number starts from 0.
-RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)
+RC PF_FileHandle::ReadPageFromDisk(PageNum pageNum, void *data)
 {
   // if page number does not exist
   if (pageNum >= GetNumberOfPages())
@@ -167,7 +184,7 @@ RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)
 
 // This method writes the data into a page specified by the pageNum.
 // The page should exist. Note the page number starts from 0.
-RC PF_FileHandle::WritePage(PageNum pageNum, const void *data)
+RC PF_FileHandle::WritePageToDisk(PageNum pageNum, const void *data)
 {
   // if page number does not exist
   if (pageNum > GetNumberOfPages())
@@ -191,7 +208,7 @@ RC PF_FileHandle::WritePage(PageNum pageNum, const void *data)
 
 // This method appends a new page to the file,
 // and writes the data into the new allocated page.
-RC PF_FileHandle::AppendPage(const void *data)
+RC PF_FileHandle::AppendPageToDisk(const void *data)
 {
   if (filestr)
     {
