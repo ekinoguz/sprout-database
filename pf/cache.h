@@ -2,7 +2,6 @@
 #define _cache_h_
 
 #include <stdint.h>
-#include <malloc.h>
 #include <unordered_map>
 #include <string.h>
 #include <sstream>
