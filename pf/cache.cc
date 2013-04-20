@@ -103,10 +103,12 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
   convert << pageNum;
   std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());
   int frameNum;
+
   if (element == existingPages.end())
     {
       // Locate a page to flush
       int frameToFlush = GetFrameWithLowestUsage();
+
       // If frame is dirty write it to disk
       if (*(dirtyFlag + frameToFlush) == true)
 	{
@@ -144,17 +146,22 @@ int Cache::GetFrameWithLowestUsage()
 {
   int minUsage = -1;
   int minUsageIndex = -1;
-  while (minUsageIndex == -1)
+  
+  for (int i = 0; i < numCachePages; i++)
     {
-      for (int i = 0; i < numCachePages; i++)
+      if ((*(pinnedFrames + i) == 0) && (*(frameUsage + i) < minUsage))
 	{
-	  if ((*(pinnedFrames + i) == 0) && (*(frameUsage + i) < minUsage))
-	    {
-	      minUsage = *(frameUsage + i);
-	      minUsageIndex = 0;
-	    }
+	  minUsage = *(frameUsage + i);
+	  minUsageIndex = 0;
 	}
     }
+
+  //TODO: Cesar please look over this
+  // To me it looks like the for loop will always return 0, but that doesn't sound right to me.
+  // I do however, believe 0 shoudl be returned in this conext, do any of the other data structures need to be udpated?
+  if(minUsageIndex == -1){
+    minUsageIndex = 0;
+  }
 
   return minUsageIndex;
 }
