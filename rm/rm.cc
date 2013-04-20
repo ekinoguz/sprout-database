@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
 
 #include "rm.h"
 
@@ -55,9 +56,24 @@ RM::RM()
   string file_url = database_folder + '/' + COLUMNS_TABLE;
   if( pfm->CreateFile(file_url) != 0)
     return;
+
+  PF_FileHandle * fh = getFileHandle(COLUMNS_TABLE);
   
+  // Add the free space page to the newly created file
+  void *data = malloc(PF_PAGE_SIZE);
+  memset((char *)data, 0, PF_PAGE_SIZE);
+  *(uint16_t *)data = 1;
+  ((uint16_t *)data)[1] = PF_PAGE_SIZE - 2;
+  fh->AppendPage(data);
+  // When the page is first created the free block starts at 0
+  memset((char *)data, 0, PF_PAGE_SIZE);
+  fh->AppendPage(data);
+  free(data);
+  
+  // Now that the columns table exists create the tables table
   if( this->createTable(TABLES_TABLE, table_attrs) != 0)
     return;
+
 
   // Create the columns table
   vector<Attribute> column_attrs;
@@ -135,7 +151,7 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
   *((char*)buffer + offset) = attr.nullable;
   offset += 1;  
   
-  RC ret = insertTuple(COLUMNS_TABLE, buffer, rid);
+  RC ret = insertFormattedTuple(COLUMNS_TABLE, buffer, offset, rid);
   
   free(buffer);
   return ret;
@@ -160,7 +176,7 @@ RC RM::addTableToCatalog(const string tableName, const string file_url, const st
   memcpy((char *)buffer + offset, type.c_str(), type.size());
   offset += type.size();
 
-  RC ret = insertTuple(TABLES_TABLE, buffer, rid);
+  RC ret = insertFormattedTuple(TABLES_TABLE, buffer, offset, rid);
   
   free(buffer);
   return ret;
@@ -179,12 +195,12 @@ RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
   // Add the free space page
   void *data = malloc(PF_PAGE_SIZE);
   memset((char *)data, 0, PF_PAGE_SIZE);
-  memcpy((char *)data, 1, 2);
-  memcpy((char *)data + 2, PF_PAGE_SIZE,2);
+  *(uint16_t *)data = 1;
+  ((uint16_t *)data)[1] = PF_PAGE_SIZE - 2;
   fh->AppendPage(data);
 
+  // When the page is first created the free block starts at 0
   memset((char *)data, 0, PF_PAGE_SIZE);
-  memcpy((char *)data + PF_PAGE_SIZE - 2,  PF_PAGE_SIZE, 2);
   fh->AppendPage(data);
   free(data);
 
@@ -208,26 +224,100 @@ RC RM::getAttributes(const string tableName, vector<Attribute> &attrs)
 {
   return 0;
 }
-RC RM::insertTuple(const string tableName, const void *data, RID &rid)
+RC RM::insertTuple(const string tableName, const void *data, RID &rid){
+  
+  // Get the length from the catalog
+  int length = 4;
+  // Process data to be in directory format
+
+  return insertFormattedTuple(tableName, data, length, rid);
+  
+}
+RC RM::insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid)
 {
   PF_FileHandle * fh = this->getFileHandle(tableName);
   
   void *page = malloc(PF_PAGE_SIZE);
-  fh->ReadPage(0, data);
+  if( fh->ReadPage(0, page) != 0 )
+    return -1;
   
   bool found = false;
-  int num_pages;
-  int freespace = 0;
+  uint16_t num_pages;
+  uint16_t freespace = 0;
+  
+  uint16_t free_page;
 
   memcpy(&num_pages, page, 2);
-  for(int i = 1; i < num_pages && !found; i++) {
-    memcpy(&freespace, page+(i*2), 2);
+  for(uint16_t i = 1; i < num_pages && !found; i++) {
+    memcpy(&freespace, (char *)page+(i*2), 2);
 
-    if(freespace 
+    if(freespace > (uint16_t)length){
+      found = true;
+      free_page = i;
+    }
   }
-  free(page);
+
   
-  return 0;
+  if(!found) {
+    // No page with enough space existed, create a new page
+
+    free_page = num_pages;
+    num_pages += 1;
+
+    // Increment the number of pages and set the free length.
+    memcpy((char *)page,&num_pages,2);
+
+    ((uint16_t *)page)[free_page] = PF_PAGE_SIZE - length - 2;
+    if( fh->WritePage(0,page) != 0 )
+      return -1;
+
+    // Prep page to be written to the next location
+    memset((char *)page, 0, PF_PAGE_SIZE);
+    *((uint16_t *)((char*)page+PF_PAGE_SIZE-2)) = length;
+
+    // Insert the record
+    memcpy((char *)page,data,length);
+    
+    // TODO: Update the directory 
+    // TODO: We also need to modify the free_space information to account for the added size
+
+    RC ret = fh->AppendPage(page);
+    free(page);
+    return ret;
+  }
+  // We have enough space so insert at the correct location
+  else{
+    // First update free_space information on the first page
+    ((uint16_t *)page)[free_page] = ((uint16_t *)page)[free_page] - length;
+    if(fh->WritePage(0, page))
+      return -1;
+    
+    if(fh->ReadPage(free_page,page) != 0)
+      return -1;
+    
+    // Where does the free block begin
+    uint16_t offset;
+    memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
+    
+    //Do we have enough room
+    // TOOD: We need to encorporate the directory size in our calculations
+    if(PF_PAGE_SIZE - offset < length){
+      printf("No Rearrange funciton available");
+      // TODO: Rearrange the page
+      return -1;
+    }
+    
+    // Insert the record
+    memcpy((char *)page+offset,data,length);
+
+    // TODO: Update the directory 
+    // TODO: We also need to modify the free_space information to account for the added size
+
+    RC ret = fh->WritePage(free_page,page);
+    free(page);
+    return ret;
+  }
+  return -1;
 }
 
 

@@ -8,6 +8,9 @@ File organization
          - First page of the file contains information about the total free space in each other page in the file. The first two bytes of this page contains the number of pages in the file.
 
 Page organization
+     *****NEW PAGE ORGINIZATION****
+     - At the end of the page is a 2 byte pointer to the start of the free block.
+     *******************************
          - At the end of the page, a fixed size list of free spaces is kept.
          - Each element in the free space list contains the beginning and the end of the free space offsets, so we can calculate the size of this space. If both offsets are 0, then this
          - element is not used.

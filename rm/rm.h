@@ -88,6 +88,8 @@ public:
   //     For varchar: use 4 bytes to store the length of characters, then store the actual characters.
   //  !!!The same format is used for updateTuple(), the returned data of readTuple(), and readAttribute()
   RC insertTuple(const string tableName, const void *data, RID &rid);
+  // Like insertTuple but data is formated appropriately to be stored on disk.
+  RC insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid);
 
   RC deleteTuples(const string tableName);
 

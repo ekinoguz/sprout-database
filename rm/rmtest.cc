@@ -461,7 +461,7 @@ RC directoryExists(string name)
 
 int main()
 {
-  system("rm -r "DATABASE_FOLDER" 2> /dev/null");
+  system("rm -r " DATABASE_FOLDER " 2> /dev/null");
   rm = RM::Instance();
   // Basic Functions
   cout << endl << "Test Basic Functions..." << endl;
