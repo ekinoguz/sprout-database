@@ -4,12 +4,16 @@
 #include <cstdint>
 
 #include "rm.h"
-
+#include "../shared.h"
 
 #define TABLES_TABLE "tables"
 #define COLUMNS_TABLE "columns"
 
 #define FREE_LIST_LENGTH 30
+
+
+
+
 
 RM* RM::_rm = 0;
 

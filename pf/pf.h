@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include "cache.h"
 
+#include "../shared.h"
+
 using namespace std;
 
 /*
