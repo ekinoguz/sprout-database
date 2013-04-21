@@ -33,8 +33,10 @@ Cache::Cache(int cacheNumPages)
 Cache::~Cache()
 {
   free(buffer);
+  free(framesInfo);
   free(pinnedFrames);
   free(dirtyFlag);
+  free(frameUsage);
 }
 
 bool Cache::Exists(std::string FileName, unsigned pageNum)
@@ -61,18 +63,18 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
       // Read the page from disk because it is not in the cache
       RC result = fileHandle->ReadPageFromDisk(pageNum, data);
       if (result == 0)
-	     {
+	{
     	  // Locate a page to flush
     	  int frameToFlush = GetFrameWithLowestUsage();
     	  // If frame is dirty write it to disk
     	  if (*(dirtyFlag + frameToFlush) == true)
     	    {
-    	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk(pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+    	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
     	      *(dirtyFlag + frameToFlush) = false;
     	    }
-
-    	   // Read the data from disk
-    	   fileHandle->ReadPageFromDisk(pageNum, data);
+	  
+	  // Read the data from disk
+	  fileHandle->ReadPageFromDisk(pageNum, data);
 	  
           // Add the data to the cache and set the forward mapping
       	  memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
@@ -80,13 +82,13 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
       	  (framesInfo + frameToFlush)->pageNum = pageNum;
       	  // Set usage to 1
       	  *(frameUsage + frameToFlush) = 1;
-
+	  
       	  return 0;
-	     }
+	}
       else
-	     {
-	       return result;
-	     }
+	{
+	  return result;
+	}
     }
   else
     {
@@ -112,10 +114,10 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       // If frame is dirty write it to disk
       if (*(dirtyFlag + frameToFlush) == true)
 	{
-	  (framesInfo + frameToFlush)->fileHandle->WritePageToDisk(pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	  (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
 	  *(dirtyFlag + frameToFlush) = false;
 	}
-      
+
       // Add the data to the cache and set the forward mapping
       memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
       (framesInfo + frameToFlush)->fileHandle = fileHandle;
@@ -146,26 +148,26 @@ int Cache::AppendPage(PF_FileHandle *fileHandle, const void *data)
 
 int Cache::GetFrameWithLowestUsage()
 {
-  int minUsage = -1;
-  int minUsageIndex = -1;
-  
-  for (int i = 0; i < numCachePages; i++)
+  // Hold the minimum usage value of all frames
+  int minUsage = *(frameUsage);
+  // Hold the frame number of minUsage
+  int minUsageFrameNum = 0;
+
+  // Since pinning is not implemented, we will look for the page with minumum usage
+  // However, if pinning is implemented, we need to have a while loop around the next if
+  // the reason is because if all the pages are pinned, the while loop will keep trying
+  // to locate a page with the minimum usage and not pinned (it will eventually succeeds
+  // because upper layer will unpin at some point)
+  for (int i = 1; i < numCachePages; i++)
     {
-      if ((*(pinnedFrames + i) == 0) && (*(frameUsage + i) < minUsage))
+      if (*(frameUsage + i) < minUsage)
 	{
 	  minUsage = *(frameUsage + i);
-	  minUsageIndex = 0;
+	  minUsageFrameNum = i;
 	}
     }
 
-  //TODO: Cesar please look over this
-  // To me it looks like the for loop will always return 0, but that doesn't sound right to me.
-  // I do however, believe 0 shoudl be returned in this conext, do any of the other data structures need to be udpated?
-  if(minUsageIndex == -1){
-    minUsageIndex = 0;
-  }
-
-  return minUsageIndex;
+  return minUsageFrameNum;
 }
 
 int Cache::getNumCachePages()
@@ -173,12 +175,31 @@ int Cache::getNumCachePages()
   return numCachePages;
 }
 
-void * Cache::getData(unsigned pageNum)
+uint8_t* Cache::getData(unsigned frameNum)
 {
-  return buffer + (PF_PAGE_SIZE * pageNum);
+  return buffer + (PF_PAGE_SIZE * frameNum);
 }
 
-bool Cache::isDirty(unsigned pageNum)
+bool Cache::isDirty(unsigned frameNum)
 {
-  return *(dirtyFlag+pageNum) == true;
+  return *(dirtyFlag + frameNum) == true;
+}
+
+int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
+{
+  for (int i = 0; i < numCachePages; i++)
+    {
+      // If the fileHandle associated with the frame is the same one passed to this function (same one that is been closed)
+      // and if the page is dirty, write it to disk
+      if (((framesInfo + i)->fileHandle == fileHandle) && (*(dirtyFlag + i) == true))
+	{
+	  int result = (framesInfo + i)->fileHandle->WritePageToDisk((framesInfo + i)->pageNum, getData(i));
+	  if (result != 0)
+	    {
+	      return result;
+	    }
+	}
+    }
+
+  return 0;
 }

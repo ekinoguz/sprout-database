@@ -106,12 +106,12 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 {
   if (fileHandle.filestr.is_open())
     {
-      // write all dirty pages to disk
-      for (int i = 0; i < cache->getNumCachePages(); i++) {
-        if (cache->isDirty(i)) {
-          fileHandle.WritePageToDisk(i, cache->getData(i));
-        }
-      }
+      // Write all dirty pages to disk
+      int result = cache->WriteDirtyPagesToDisk(&fileHandle);
+      if (result != 0)
+	{
+	  return result;
+	}
 
       fileHandle.filestr.flush();
       fileHandle.filestr.close();

@@ -27,8 +27,10 @@ class Cache
   int WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *data);
   int AppendPage(PF_FileHandle *fileHandle, const void *data);
   int getNumCachePages();
-  void * getData(unsigned pageNum);
-  bool isDirty(unsigned pageNum);
+  // Page numbers are per file, while frame numbers are for the cache
+  uint8_t* getData(unsigned frameNum);
+  bool isDirty(unsigned frameNum);
+  int WriteDirtyPagesToDisk(PF_FileHandle *fileHandle);
 
  private:
   int GetFrameWithLowestUsage();
