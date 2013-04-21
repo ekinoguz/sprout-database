@@ -12,8 +12,9 @@
 using namespace std;
 
 const int success = 0;
-const int TEST_MODE = 1;    // 0 = Test PF
+const int TEST_MODE = 0;    // 0 = Test PF
                             // 1 = Test Cache
+                            // 2 = Test Both
 
 // Check if a file exists
 bool FileExists(string fileName)
@@ -180,6 +181,7 @@ int PFTest_5(PF_Manager *pf)
     RC rc;
     string fileName = "test_1";
 
+    // Why do these unit tests interact with eachother??
     // Open the file "test_1"
     PF_FileHandle fileHandle;
     rc = pf->OpenFile(fileName.c_str(), fileHandle);
@@ -187,15 +189,19 @@ int PFTest_5(PF_Manager *pf)
 
     // Read the first page
     void *buffer = malloc(PF_PAGE_SIZE);
+    cout << "Before read" << endl;
     rc = fileHandle.ReadPage(0, buffer);
+    cout<< "After read" << endl;
     assert(rc == success);
   
+    
     // Check the integrity of the page    
     void *data = malloc(PF_PAGE_SIZE);
     for(unsigned i = 0; i < PF_PAGE_SIZE; i++)
     {
         *((char *)data+i) = i % 94 + 32;
     }
+    cout << "Did i make it" << endl;
     rc = memcmp(data, buffer, PF_PAGE_SIZE);
     assert(rc == success);
  
@@ -398,7 +404,7 @@ int CacheTest01(PF_Manager *pf)
 int main()
 {
     PF_Manager *pf = PF_Manager::Instance(10);
-    if (TEST_MODE == 0) {
+    if (TEST_MODE == 0 || TEST_MODE == 2) {
         remove("test");
         remove("test_1");
         remove("test_2");
@@ -411,7 +417,8 @@ int main()
         PFTest_6(pf);
         PFTest_7(pf);
     
-    } else {
+    } 
+    if( TEST_MODE == 1 || TEST_MODE == 2) {
         
         cout << "********************" << endl;
         cout << "BEGINNING CACHE TEST" << endl;
