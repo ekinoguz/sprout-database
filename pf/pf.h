@@ -6,8 +6,6 @@
 #include <sys/stat.h>
 #include "cache.h"
 
-#include "../shared.h"
-
 using namespace std;
 
 /*
@@ -50,10 +48,12 @@ class PF_Manager
  protected:    
   PF_Manager(int cacheNumPages);                                            // Constructor
   ~PF_Manager();	                                                    // Destructor
+
+  
   
  private:
   static PF_Manager *_pf_manager;
-  Cache *cache;
+  Cache* cache;
 };
 
 
@@ -67,14 +67,8 @@ class PF_FileHandle
   RC WritePage(PageNum pageNum, const void *data);                    // Write a specific page
   RC AppendPage(const void *data);                                    // Append a specific page
   unsigned GetNumberOfPages();                                        // Get the number of pages in the file
-
-  RC ReadPageFromDisk(PageNum pageNum, void *data);                           // Get a specific page
-  RC WritePageToDisk(PageNum pageNum, const void *data);                    // Write a specific page
-  RC AppendPageToDisk(const void *data);                                    // Append a specific page
   
   fstream filestr;
-  string fileName;
-  Cache *cache;
 };
 
 #endif
