@@ -90,9 +90,9 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
     {
       fileHandle.filestr.open(fileName, ios::in | ios::out | ios::binary);
       if (fileHandle.filestr.is_open() == false)
-	{
-	  return -1;
-	}
+    	{
+    	  return -1;
+    	}
       fileHandle.fileName.assign(fileName);
       fileHandle.cache = cache;
       return 0;
@@ -106,6 +106,13 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 {
   if (fileHandle.filestr.is_open())
     {
+      // write all dirty pages to disk
+      for (int i = 0; i < cache->getNumCachePages(); i++) {
+        if (cache->isDirty(i)) {
+          fileHandle.WritePageToDisk(i, cache->getData(i));
+        }
+      }
+
       fileHandle.filestr.flush();
       fileHandle.filestr.close();
       return 0;

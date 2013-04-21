@@ -61,32 +61,32 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
       // Read the page from disk because it is not in the cache
       RC result = fileHandle->ReadPageFromDisk(pageNum, data);
       if (result == 0)
-	{
-	  // Locate a page to flush
-	  int frameToFlush = GetFrameWithLowestUsage();
-	  // If frame is dirty write it to disk
-	  if (*(dirtyFlag + frameToFlush) == true)
-	    {
-	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk(pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
-	      *(dirtyFlag + frameToFlush) = false;
-	    }
+	     {
+    	  // Locate a page to flush
+    	  int frameToFlush = GetFrameWithLowestUsage();
+    	  // If frame is dirty write it to disk
+    	  if (*(dirtyFlag + frameToFlush) == true)
+    	    {
+    	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk(pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+    	      *(dirtyFlag + frameToFlush) = false;
+    	    }
 
-	  // Read the data from disk
-	  fileHandle->ReadPageFromDisk(pageNum, data);
+    	   // Read the data from disk
+    	   fileHandle->ReadPageFromDisk(pageNum, data);
 	  
           // Add the data to the cache and set the forward mapping
-	  memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
-	  (framesInfo + frameToFlush)->fileHandle = fileHandle;
-	  (framesInfo + frameToFlush)->pageNum = pageNum;
-	  // Set usage to 1
-	  *(frameUsage + frameToFlush) = 1;
+      	  memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
+      	  (framesInfo + frameToFlush)->fileHandle = fileHandle;
+      	  (framesInfo + frameToFlush)->pageNum = pageNum;
+      	  // Set usage to 1
+      	  *(frameUsage + frameToFlush) = 1;
 
-	  return 0;
-	}
+      	  return 0;
+	     }
       else
-	{
-	  return result;
-	}
+	     {
+	       return result;
+	     }
     }
   else
     {
@@ -122,6 +122,8 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       (framesInfo + frameToFlush)->pageNum = pageNum;
       // Set usage to 1
       *(frameUsage + frameToFlush) = 1;
+      // page will be dirty since it is new
+      *(dirtyFlag + pageNum) = true;
 
       return 0;
     }
@@ -164,4 +166,19 @@ int Cache::GetFrameWithLowestUsage()
   }
 
   return minUsageIndex;
+}
+
+int Cache::getNumCachePages()
+{
+  return numCachePages;
+}
+
+void * Cache::getData(unsigned pageNum)
+{
+  return buffer + (PF_PAGE_SIZE * pageNum);
+}
+
+bool Cache::isDirty(unsigned pageNum)
+{
+  return *(dirtyFlag+pageNum) == true;
 }
