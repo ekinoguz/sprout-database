@@ -67,7 +67,7 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
     	  // Locate a page to flush
     	  int frameToFlush = GetFrameWithLowestUsage();
     	  // If frame is dirty write it to disk
-    	  if (*(dirtyFlag + frameToFlush) == true)
+    	  if (isDirty(frameToFlush))
     	    {
     	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
     	      *(dirtyFlag + frameToFlush) = false;
@@ -121,7 +121,7 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       int frameToFlush = GetFrameWithLowestUsage();
 
       // If frame is dirty write it to disk
-      if (*(dirtyFlag + frameToFlush) == true)
+      if (isDirty(frameToFlush))
 	{
 	  int result = (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
 	  if (result != 0)
@@ -224,9 +224,10 @@ int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
     {
       // If the fileHandle associated with the frame is the same one passed to this function (same one that is been closed)
       // and if the page is dirty, write it to disk
-      if (((framesInfo + i)->fileHandle == fileHandle) && (*(dirtyFlag + i) == true))
+      if (((framesInfo + i)->fileHandle == fileHandle) && isDirty(i))
 	{
 	  int result = (framesInfo + i)->fileHandle->WritePageToDisk((framesInfo + i)->pageNum, getData(i));
+    *(dirtyFlag + i) = false;
 	  if (result != 0)
 	    {
 	      return result;
