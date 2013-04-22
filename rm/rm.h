@@ -7,6 +7,7 @@
 #include <ostream>
 #include <unordered_map>
 
+#include "../shared.h"
 #include "../pf/pf.h"
 
 using namespace std;

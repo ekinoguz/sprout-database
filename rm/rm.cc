@@ -4,7 +4,6 @@
 #include <cstdint>
 
 #include "rm.h"
-#include "../shared.h"
 
 #define TABLES_TABLE "tables"
 #define COLUMNS_TABLE "columns"
@@ -246,18 +245,20 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     return -1;
   
   bool found = false;
-  uint16_t num_pages;
+  uint16_t num_pages; // This will hold the total number of pages. Not counting the first "directory" page
   uint16_t freespace = 0;
   
   uint16_t free_page;
 
   memcpy(&num_pages, page, 2);
-  for(uint16_t i = 1; i < num_pages && !found; i++) {
-    memcpy(&freespace, (char *)page+(i*2), 2);
+  for(uint16_t i = 0; i < num_pages && !found; i++) {
+    
+    // Check the freespace at page i
+    memcpy(&freespace, (char *)page+((i+1)*2), 2);
 
     if(freespace > (uint16_t)length){
       found = true;
-      free_page = i;
+      free_page = i + 1; //this is stored as the actual page index
     }
   }
 
@@ -265,8 +266,9 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
   if(!found) {
     // No page with enough space existed, create a new page
 
-    free_page = num_pages;
     num_pages += 1;
+    free_page = num_pages; 
+    // Again note free_page needs to be in actual pages. (e.g. if we have 2 free pages and want to add a new one free_page should equal 3. page 0 is the directory)
 
     // Increment the number of pages and set the free length.
     memcpy((char *)page,&num_pages,2);
@@ -315,7 +317,10 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     memcpy((char *)page+offset,data,length);
 
     // TODO: Update the directory 
-    // TODO: We also need to modify the free_space information to account for the added size
+    
+    offset += length;
+    memcpy((char *)page+PF_PAGE_SIZE-2,&offset, 2);
+
 
     RC ret = fh->WritePage(free_page,page);
     free(page);
