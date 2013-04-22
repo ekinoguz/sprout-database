@@ -18,6 +18,12 @@ typedef struct FrameInfo
   unsigned pageNum;
 } FrameInfo;
 
+typedef struct FileInfo
+{
+  unsigned numberOfUsers;
+  unsigned numberOfPages;
+} FileInfo;
+
 class Cache
 {
  public:
@@ -31,6 +37,9 @@ class Cache
   uint8_t* getData(unsigned frameNum);
   bool isDirty(unsigned frameNum);
   int WriteDirtyPagesToDisk(PF_FileHandle *fileHandle);
+  void AddFileInfo(PF_FileHandle* fileHandle);
+  void DeleteFileInfo(PF_FileHandle* fileHandle);
+  unsigned GetNumberOfPages(PF_FileHandle* fileHandle);
 
  private:
   int GetFrameWithLowestUsage();
@@ -44,9 +53,10 @@ class Cache
   int numCachePages;
   uint8_t *buffer;
   FrameInfo *framesInfo;
-  unsigned short* pinnedFrames;
+  unsigned short *pinnedFrames;
   bool *dirtyFlag;
   std::unordered_map<std::string, int> existingPages;
+  std::unordered_map<std::string, FileInfo*> filesInfo;
   int *frameUsage;  
 };
 

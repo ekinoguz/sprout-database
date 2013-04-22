@@ -156,7 +156,7 @@ int PFTest_4(PF_Manager *pf)
    
     // Get the number of pages
     unsigned count = fileHandle.GetNumberOfPages();
-    //assert(count == (unsigned)1);
+    assert(count == (unsigned)1);
 
     // Close the file "test_1"
     rc = pf->CloseFile(fileHandle);
@@ -327,7 +327,6 @@ int PFTest_7(PF_Manager *pf)
    
     // Get the number of pages
     unsigned count = fileHandle.GetNumberOfPages();
-    cout << count << endl;
     assert(count == (unsigned)50);
 
     // Read the 25th page and check integrity
@@ -400,6 +399,7 @@ int CacheTest01(PF_Manager *pf)
         assert(rc == success);
     }
     pf->CloseFile(fileHandle);
+    return 0;
 }
 
 int main()

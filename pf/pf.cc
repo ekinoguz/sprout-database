@@ -95,6 +95,9 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
     	}
       fileHandle.fileName.assign(fileName);
       fileHandle.cache = cache;
+
+      // Add the file info to the cache, this helps tracking the number of pages of the file
+      cache->AddFileInfo(&fileHandle);
       return 0;
     }
 }
@@ -115,6 +118,8 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 
       fileHandle.filestr.flush();
       fileHandle.filestr.close();
+
+      cache->DeleteFileInfo(&fileHandle);
       return 0;
     }
   else
@@ -165,13 +170,17 @@ RC PF_FileHandle::AppendPage(const void *data)
   return cache->AppendPage(this, data);
 }
 
+unsigned PF_FileHandle::GetNumberOfPages()
+{
+  return cache->GetNumberOfPages(this);
+}
 
 // This method reads the page into the memory block pointed by data.
 // The page should exist. Note the page number starts from 0.
 RC PF_FileHandle::ReadPageFromDisk(PageNum pageNum, void *data)
 {
   // if page number does not exist
-  if (pageNum >= GetNumberOfPages())
+  if (pageNum >= GetNumberOfPagesFromDisk())
     {
       cout << "page number does not exist" << endl;
       return -1;
@@ -196,7 +205,8 @@ RC PF_FileHandle::WritePageToDisk(PageNum pageNum, const void *data)
   // if page number does not exist
   if (pageNum > GetNumberOfPages())
     {
-      cout << "page number does not exist" << endl;
+      // cout << "page number does not exist" << endl;
+      cout << "[" << GetNumberOfPagesFromDisk() << ", " << pageNum << "] ";
       return -1;
     }
   if (filestr)
@@ -219,8 +229,9 @@ RC PF_FileHandle::AppendPageToDisk(const void *data)
 {
   if (filestr)
     {
-      filestr.seekp((int)(GetNumberOfPages() * PF_PAGE_SIZE));
+      filestr.seekp((int)(GetNumberOfPagesFromDisk() * PF_PAGE_SIZE));
       filestr.write((char *)data, PF_PAGE_SIZE);
+      filestr.flush();
       if (filestr)
 	{
 	  return 0;
@@ -231,7 +242,7 @@ RC PF_FileHandle::AppendPageToDisk(const void *data)
 }
 
 // This method returns the total number of pages in the file.
-unsigned PF_FileHandle::GetNumberOfPages()
+unsigned PF_FileHandle::GetNumberOfPagesFromDisk()
 {
   if (filestr)
     {

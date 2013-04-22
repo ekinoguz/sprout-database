@@ -123,7 +123,11 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       // If frame is dirty write it to disk
       if (*(dirtyFlag + frameToFlush) == true)
 	{
-	  (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	  int result = (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	  if (result != 0)
+	    {
+	      return result;
+	    }
 	  *(dirtyFlag + frameToFlush) = false;
 
 	  // Remove the mapping of evicted page from the existingPage map
@@ -145,7 +149,7 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       *(frameUsage + frameToFlush) = 1;
 
       // page will be dirty since it is new
-      *(dirtyFlag + pageNum) = true;
+      *(dirtyFlag + frameToFlush) = true;
 
       return 0;
     }
@@ -153,7 +157,7 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     {
       frameNum = element->second;
     }
-
+  
   memcpy(buffer + (PF_PAGE_SIZE * frameNum), data, PF_PAGE_SIZE);
   *(frameUsage + frameNum) = *(frameUsage + frameNum) + 1;
   *(dirtyFlag + frameNum) = true;
@@ -162,8 +166,17 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
 
 int Cache::AppendPage(PF_FileHandle *fileHandle, const void *data)
 {
-  int pageNum = fileHandle->GetNumberOfPages();
-  return WritePage(fileHandle, pageNum, data);
+  std::unordered_map<std::string, FileInfo*>::const_iterator element = filesInfo.find(fileHandle->fileName);
+  if (element != filesInfo.end())
+    {
+      int pageNum = element->second->numberOfPages;
+      element->second->numberOfPages++;
+      return WritePage(fileHandle, pageNum, data);
+    }
+  else
+    {
+      return -3;
+    }  
 }
 
 int Cache::GetFrameWithLowestUsage()
@@ -220,6 +233,50 @@ int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
 	    }
 	}
     }
-
+  
   return 0;
+}
+
+void Cache::AddFileInfo(PF_FileHandle* fileHandle)
+{
+  std::unordered_map<std::string, FileInfo*>::const_iterator element = filesInfo.find(fileHandle->fileName);
+  if (element == filesInfo.end())
+    {
+      FileInfo* fileInfo = ((FileInfo*)(malloc(sizeof(FileInfo))));
+      fileInfo->numberOfUsers = 1;
+      fileInfo->numberOfPages = fileHandle->GetNumberOfPagesFromDisk();
+      
+      std::pair<string, FileInfo*> newElement (fileHandle->fileName, fileInfo);
+      filesInfo.insert(newElement);
+    }
+  else
+    {
+      element->second->numberOfUsers++;
+    }
+}
+
+void Cache::DeleteFileInfo(PF_FileHandle* fileHandle)
+{
+  std::unordered_map<std::string, FileInfo*>::const_iterator element = filesInfo.find(fileHandle->fileName);
+  if (element != filesInfo.end())
+    {
+      element->second->numberOfUsers--;
+      if (element->second->numberOfUsers == 0)
+	{
+	  filesInfo.erase(fileHandle->fileName);
+	}
+    }
+}
+
+unsigned Cache::GetNumberOfPages(PF_FileHandle* fileHandle)
+{
+  std::unordered_map<std::string, FileInfo*>::const_iterator element = filesInfo.find(fileHandle->fileName);
+  if (element != filesInfo.end())
+    {
+      return element->second->numberOfPages;
+    }
+  else
+    {
+      return -1;
+    }
 }

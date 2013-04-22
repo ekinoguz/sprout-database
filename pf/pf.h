@@ -68,9 +68,10 @@ class PF_FileHandle
   RC AppendPage(const void *data);                                    // Append a specific page
   unsigned GetNumberOfPages();                                        // Get the number of pages in the file
 
-  RC ReadPageFromDisk(PageNum pageNum, void *data);                           // Get a specific page
-  RC WritePageToDisk(PageNum pageNum, const void *data);                    // Write a specific page
-  RC AppendPageToDisk(const void *data);                                    // Append a specific page
+  RC ReadPageFromDisk(PageNum pageNum, void *data);                   // Get a specific page
+  RC WritePageToDisk(PageNum pageNum, const void *data);              // Write a specific page
+  RC AppendPageToDisk(const void *data);                              // Append a specific page
+  unsigned GetNumberOfPagesFromDisk();                                // Get the number of pages in the file
   
   fstream filestr;
   string fileName;
