@@ -70,7 +70,7 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
     	  if (isDirty(frameToFlush))
     	    {
     	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
-    	      *(dirtyFlag + frameToFlush) = false;
+    	      UnsetDirty(frameToFlush);
 
 	      // Remove the mapping of evicted page from the existingPage map
 	      ostringstream flushedPageNum;
@@ -79,7 +79,8 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
     	    }
 	  
 	  // Read the data from disk
-	  fileHandle->ReadPageFromDisk(pageNum, data);
+	  //cout <<
+	  fileHandle->ReadPageFromDisk(pageNum, data);// << endl;
 	  
           // Add the data to the cache and set the forward mapping
       	  memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
@@ -111,26 +112,39 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
 
 int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *data)
 {
+  if (pageNum > fileHandle->GetNumberOfPages())
+    {
+      return -1;
+    }
+  else if (pageNum == fileHandle->GetNumberOfPages())
+    {
+      return AppendPage(fileHandle, data);
+    }
+
   ostringstream convert;
   convert << pageNum;
   std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());
-  int frameNum;
   if (element == existingPages.end())
     {
+      //cout << "page num: " << pageNum << endl;
       // Locate a page to flush
       int frameToFlush = GetFrameWithLowestUsage();
-
+      //cout << "--- to flush: " << frameToFlush << endl;
       // If frame is dirty write it to disk
       if (isDirty(frameToFlush))
 	{
+	  // cout << "--- is dirty" << endl;
 	  int result = (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
 	  if (result != 0)
 	    {
 	      return result;
 	    }
-	  *(dirtyFlag + frameToFlush) = false;
+	  UnsetDirty(frameToFlush);
+	}
 
-	  // Remove the mapping of evicted page from the existingPage map
+      // Remove the mapping of evicted page from the existingPage map
+      if ((framesInfo + frameToFlush)->fileHandle != NULL)
+	{
 	  ostringstream flushedPageNum;
 	  flushedPageNum << (framesInfo + frameToFlush)->pageNum;
 	  existingPages.erase((framesInfo + frameToFlush)->fileHandle->fileName + flushedPageNum.str());
@@ -148,19 +162,27 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       // Set usage to 1
       *(frameUsage + frameToFlush) = 1;
 
-      // page will be dirty since it is new
-      *(dirtyFlag + frameToFlush) = true;
-
-      return 0;
+      // Page will be dirty since it is new
+      SetDirty(frameToFlush);
     }
   else
     {
-      frameNum = element->second;
+      //cout << "already in buffer" << endl;
+      int frameNum = element->second;
+
+      // Overwrite the cache frame with the new data
+      memcpy(buffer + (PF_PAGE_SIZE * frameNum), data, PF_PAGE_SIZE);
+
+      // Increase the frame usage
+      *(frameUsage + frameNum) = *(frameUsage + frameNum) + 1;
+
+      // Set the page to be dirty
+      SetDirty(frameNum);
     }
-  
-  memcpy(buffer + (PF_PAGE_SIZE * frameNum), data, PF_PAGE_SIZE);
-  *(frameUsage + frameNum) = *(frameUsage + frameNum) + 1;
-  *(dirtyFlag + frameNum) = true;
+
+  // Write the page to disk to comply with the project requirements
+  //fileHandle->WritePageToDisk(pageNum, data);
+
   return 0;
 }
 
@@ -218,6 +240,16 @@ bool Cache::isDirty(unsigned frameNum)
   return *(dirtyFlag + frameNum) == true;
 }
 
+void Cache::SetDirty(unsigned frameNum)
+{
+  *(dirtyFlag + frameNum) = true;
+}
+
+void Cache::UnsetDirty(unsigned frameNum)
+{
+  *(dirtyFlag + frameNum) = false;
+}
+
 int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
 {
   for (int i = 0; i < numCachePages; i++)
@@ -227,7 +259,7 @@ int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
       if (((framesInfo + i)->fileHandle == fileHandle) && isDirty(i))
 	{
 	  int result = (framesInfo + i)->fileHandle->WritePageToDisk((framesInfo + i)->pageNum, getData(i));
-    *(dirtyFlag + i) = false;
+	  UnsetDirty(i);
 	  if (result != 0)
 	    {
 	      return result;
