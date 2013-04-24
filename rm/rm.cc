@@ -390,7 +390,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
   // We have enough space so insert at the correct location
   else{
     // First update free_space information on the first page
-    ((uint16_t *)page)[free_page] = ((uint16_t *)page)[free_page] - length;
+    ((uint16_t *)page)[free_page] = ((uint16_t *)page)[free_page] - length - DIRECTORY_ENTRY_SIZE;
     if(fh->WritePage(0, page))
       return -1;
     
