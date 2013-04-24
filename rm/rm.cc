@@ -369,17 +369,19 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
 
     // Prep page to be written to the next location
     memset((char *)page, 0, PF_PAGE_SIZE);
-    *((uint16_t *)((char*)page+PF_PAGE_SIZE-2)) = length;
+    *((uint16_t *)((char*)page+PF_PAGE_SIZE-2)) = length; // Update the free list pointer
 
     // Insert the record
     memcpy((char *)page,data,length);
-   
-    // TODO: Update the directory 
-    // TODO: We also need to modify the free_space information to account for the added size
-    // TODO: set the RID
 
+    // Set the number of records
+    *((uint16_t *)((char*)page+PF_PAGE_SIZE- DIRECTORY_ENTRY_SIZE - 2)) = 1;
+
+    // Set the first slot to point to the right place
+    *((uint16_t *)((char*)page+PF_PAGE_SIZE- DIRECTORY_ENTRY_SIZE*2 - 2)) = 0;
+   
     rid.pageNum = free_page;
-    // rid.slotNum = ;
+    rid.slotNum = 0; // Slot numbers are zero based, we jsut can't forget about the first two bytes storing length
 
     RC ret = fh->AppendPage(page);
     free(page);
@@ -399,10 +401,11 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     uint16_t offset;
     memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
     
-    //Do we have enough room
-    // TODO: We need to encorporate the directory size in our calculations
-    //  the second byte is the number of directory entries
-    if(PF_PAGE_SIZE - offset < (length + DIRECTORY_ENTRY_SIZE)){
+    uint16_t number_of_records;
+    memcpy(&number_of_records, (char*)page+PF_PAGE_SIZE-4,2);
+  
+    // Do we have enough room as is
+    if(PF_PAGE_SIZE - offset < (length + number_of_records*DIRECTORY_ENTRY_SIZE + 4)){
       printf("No Rearrange function available");
       // TODO: Rearrange the page
       return -1;
@@ -411,14 +414,19 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     // Insert the record
     memcpy((char *)page+offset,data,length);
 
-    // TODO: Update the directory 
+    // Update the directory
+    number_of_records++;
+    memcpy((char*)page+ PF_PAGE_SIZE - 4, &number_of_records,2);
+    
+    // Store the offset pointer in slot number_of_records
+    memcpy((char*)page+PF_PAGE_SIZE-4-number_of_records*DIRECTORY_ENTRY_SIZE, &offset,2);
     
     // Update the free pointer
     offset += length;
     memcpy((char *)page+PF_PAGE_SIZE-2,&offset, 2);
 
     rid.pageNum = free_page;
-    //rid.slotNum = ;
+    rid.slotNum = number_of_records;
 
     RC ret = fh->WritePage(free_page,page);
     free(page);
