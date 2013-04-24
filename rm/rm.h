@@ -129,7 +129,7 @@ protected:
   ~RM();
 
 private:
-  RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr);
+  RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr, char version = 0);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
 
   PF_FileHandle * getFileHandle(const string tableName);
