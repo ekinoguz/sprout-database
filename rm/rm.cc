@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
+#include <algorithm>
 
 #include "rm.h"
 
@@ -10,6 +11,7 @@
 
 #define DIRECTORY_ENTRY_SIZE 2
 #define INITIAL_FREE_MEMORY PF_PAGE_SIZE - 4
+#define COLUMNS_TABLE_RECORD_MAX_LENGTH 112   // It is actually 112
 
 RM* RM::_rm = 0;
 
@@ -50,6 +52,11 @@ RM::RM()
   attr.name = "type";
   attr.type = TypeVarChar;
   attr.length = 20;
+  table_attrs.push_back(attr);
+  
+  attr.name = "version";
+  attr.type = TypeShort;
+  attr.length = 1;
   table_attrs.push_back(attr);
 
   // Ensure the columns table exists
@@ -105,6 +112,11 @@ RM::RM()
   attr.type = TypeBoolean;
   attr.length = 1;
   column_attrs.push_back(attr);
+  
+  attr.name = "version";
+  attr.type = TypeShort;
+  attr.length = 1;
+  column_attrs.push_back(attr);
 
   // Finish creating the columns table, by filling in the columns table
   this->addTableToCatalog(COLUMNS_TABLE, file_url, "heap"); 
@@ -129,7 +141,7 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
   int num_fields = 7;
 
   int offset = 0;
-  void *buffer = malloc(100);
+  void *buffer = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
 
   // Forward pointer
   *((bool *)buffer + offset) = false;
@@ -138,7 +150,6 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
   // Version Info
   *((char *)buffer + offset) = (char)0;
   offset += sizeof(char);
-
   
   // num_fileds+1 pointers + 1 byte for forward ponter + 1 for version
   uint16_t field_offset = (num_fields+1)*2 + 2; 
@@ -244,7 +255,7 @@ RC RM::addTableToCatalog(const string tableName, const string file_url, const st
   offset += 2;
   field_offset += type.size();
 
-  // Pointer to most_recent_version
+  // Pointer to latest_version
   memcpy((char *)buffer + offset, &field_offset, 2);
   offset += 2;
   field_offset += 1;
@@ -271,6 +282,101 @@ RC RM::addTableToCatalog(const string tableName, const string file_url, const st
   
   free(buffer);
   return ret;
+}
+
+char RM::getLatestVersionFromCatalog(const string tableName)
+{
+  int position = 1;
+  AttrType type = TypeVarChar;
+  RM_ScanFormattedIterator rm_ScanIterator;
+  
+  
+  scanFormatted(TABLES_TABLE, position, type, EQ_OP, tableName.c_str(), rm_ScanIterator);
+
+  char latest_version;
+  RID rid;
+  char *data = (char*)(malloc(256)); // Must be more than the actual maximum
+  
+  // Just return the first one we find
+  if(rm_ScanIterator.getNextTuple(rid,data) == RM_EOF)
+    return 255; // 255 is an error
+  
+  int offset = 2 + position*DIRECTORY_ENTRY_SIZE;
+      
+  memcpy(&latest_version, data + *(uint16_t*)(data + offset), (*(uint16_t*)(data + *(uint16_t*)(data + offset + 2)) - *(uint16_t*)(data + *(uint16_t*)(data + offset))));
+
+
+  return latest_version;
+}
+
+RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findLatest)
+{
+  int position = 2;   // the position of the table name
+  AttrType type = TypeVarChar;
+  RM_ScanFormattedIterator rm_ScanIterator;
+  scanFormatted(COLUMNS_TABLE, position, type, EQ_OP, tableName.c_str(), rm_ScanIterator);
+  RID rid;
+  char *data = (char*)(malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH));
+
+  char latest_version = 0;
+  if(findLatest)
+    latest_version = getLatestVersionFromCatalog(tableName);
+
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
+    {
+      // First byte is the forward pointer bit which is 0 when scanning
+      // Second byte is the version which is 1 when reading the catalog
+      int offset = 2;
+
+      Column column;
+      // Copy the column_name
+
+      memcpy(&column.column_name, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      offset += 2;
+      
+      // Copy the table_name
+      memcpy(&column.table_name , data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      offset += 2;
+
+      // Copy the position
+      memcpy(&column.position   , data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      offset += 2;
+
+      // Copy the type
+      memcpy(&column.type, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      offset += 2;
+
+      // Copy the length
+      memcpy(&column.length, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      offset += 2;
+
+      // Copy the nullable attribute
+      memcpy(&column.nullable, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      offset += 2;
+
+      // Copy the version
+      memcpy(&column.version, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+  
+      if(findLatest && column.version != latest_version)
+	continue;
+
+      // Add the read record to the attributes vector
+      columns.push_back(column);
+    }
+
+  struct position_comp {
+    bool operator() (Column a, Column b) {
+      if( a.version < b.version )
+	return true;
+      else if( a.version == b.version ) 
+	return (a.position < b.position);
+      else 
+	return false;
+    }
+  } mycomp;
+  std::sort(columns.begin(), columns.end(), mycomp);
+
+  return 0;
 }
 
 RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
@@ -315,13 +421,78 @@ RC RM::getAttributes(const string tableName, vector<Attribute> &attrs)
 {
   return 0;
 }
-RC RM::insertTuple(const string tableName, const void *data, RID &rid){
+RC RM::insertTuple(const string tableName, const void *data, RID &rid)
+{  
+  // Get information on the latest attributes
+  vector<Column> columns;
+  if( getAttributesFromCatalog(tableName, columns, true) != 0)
+    return -1;
   
-  // Get the length from the catalog
-  int length = 4;
-  // Process data to be in directory format
+  if(columns.size() < 1) {
+    cout << "catalog read error" << endl;
+    return -1;
+  }
 
-  return insertFormattedTuple(tableName, data, length, rid);
+  int max_length = 0;
+  for(uint i=0; i < columns.size(); i++){
+    max_length += columns[i].length;
+  }
+ 
+
+  void *buffer = malloc(max_length);
+  
+  // Forward pointer
+  *((bool *)buffer) = false;
+
+  // Version Info
+  *((char *)buffer + 1) = (char)(columns[0].version);
+
+  int data_offset = 0; // offset into data*
+  int directory_offset = 2; // offset into the start of the directory 
+  uint16_t field_offset = (columns.size()+1)*DIRECTORY_ENTRY_SIZE + 2; // offset to the start of the fields
+  
+  // TODO: Deal with nullable
+  for(uint i=0; i < columns.size(); i++){
+    if(columns[i].type == TypeVarChar){
+      // Set the pointer
+      memcpy((char *)buffer+directory_offset, &field_offset, 2);
+      directory_offset += DIRECTORY_ENTRY_SIZE;
+
+      // Read the length
+      uint variable_length;
+      memcpy(&variable_length, (char*)data+data_offset,4);
+      data_offset+=4;
+
+      if(variable_length > columns[i].length){
+	cout << "VarChar is larger then maximum" << endl;
+	return -1;
+      }
+
+      // Set the data
+      memcpy((char *)buffer+field_offset, (char *)data+data_offset,variable_length);
+      field_offset += variable_length;
+
+      data_offset+=variable_length;
+
+    } else { // We don't have any other variable length fields
+      // Set the pointer
+      memcpy((char *)buffer+directory_offset, &field_offset, 2);
+      directory_offset += DIRECTORY_ENTRY_SIZE;
+
+      // Set the data
+      memcpy((char *)buffer+field_offset, (char *)data+data_offset,columns[i].length);
+      field_offset += columns[i].length;
+
+      data_offset+=columns[i].length;
+    }
+  }
+  
+  // End pointer
+  memcpy((char *)buffer + directory_offset, &field_offset, 2);
+  directory_offset += 2;
+  
+  
+  return insertFormattedTuple(tableName, data, field_offset, rid);
   
 }
 RC RM::insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid)
@@ -451,8 +622,101 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
 }
 RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
 {
+  return -1;
+}
+RC RM::scanFormatted(const string tableName,
+      const int position, 
+      const AttrType type,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      RM_ScanFormattedIterator &rm_ScanIterator)
+{ 
+  rm_ScanIterator.fh = getFileHandle(tableName);
+  rm_ScanIterator.position = position;
+  rm_ScanIterator.compOp = compOp;
+  rm_ScanIterator.type = type;
+  rm_ScanIterator.value = value;
+  rm_ScanIterator.page = malloc(PF_PAGE_SIZE);
+
+  if(rm_ScanIterator.fh == NULL)
+    return -1;
+
   return 0;
 }
+
+// Get next tuple preemptively loads the next page.
+RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
+  bool condition = false;
+  while(!condition) {
+    if(current.pageNum >= fh->GetNumberOfPages())
+      return RM_EOF;
+
+    if(buffered_page != current.pageNum) {
+      if(fh->ReadPage(current.pageNum,page) != 0)
+	return -2;
+    }
+  
+
+    uint16_t offset, first_field, end_offset;
+    memcpy(&offset,(char*)page+PF_PAGE_SIZE-4-(current.slotNum*DIRECTORY_ENTRY_SIZE),2);
+  
+    // Was this record deleted
+    if(offset != (uint16_t)-1) {
+      memcpy(&first_field,(char*)page+offset+2,2);
+      memcpy(&end_offset,(char*)page+first_field-DIRECTORY_ENTRY_SIZE,2);
+
+      // Copy in the data
+      memcpy(data,(char*)page+offset,end_offset);
+    }  
+
+    // increment current
+    uint16_t number_of_records;
+    memcpy(&number_of_records,(char*)page+PF_PAGE_SIZE-4,2);
+    current.slotNum++;
+
+    if(number_of_records <= current.slotNum){
+      current.slotNum = 0;
+      current.pageNum++;
+    }
+    
+    
+    // Grab the field offset at position +1 and then subtract the offset at position
+    uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
+
+    void *lvalue = malloc(length);
+    memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
+    
+    
+    // TODO: Fill out the other operators
+    //   for now we assume everything is an equals
+    switch(type){
+    case TypeInt:
+      condition = ( *(int*)lvalue == *(int*)value );
+      break;
+    case TypeReal:
+      condition = (*(float*)lvalue == *(float*)value); 
+      break;
+    case TypeVarChar:
+      if( strcmp((char *)lvalue,(char *)value ) == 0 )
+	condition = true;
+
+      break;
+    case TypeShort:
+      condition = (*(char*)lvalue == *(char*)value);
+      break;  
+    case TypeBoolean:
+      condition = (*(bool*)lvalue == *(bool*)value);
+      break;  
+    }    
+  }
+
+  return 0;
+}
+
+RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
+  return RM_EOF;
+}
+
 RC RM::scan(const string tableName,
       const string conditionAttribute,
       const CompOp compOp,                  // comparision type such as "<" and "="
@@ -460,7 +724,7 @@ RC RM::scan(const string tableName,
       const vector<string> &attributeNames, // a list of projected attributes
       RM_ScanIterator &rm_ScanIterator)
 {
-  return 0;
+  return -1;
 }
 
 PF_FileHandle * RM::getFileHandle(const string tableName) 
@@ -470,7 +734,8 @@ PF_FileHandle * RM::getFileHandle(const string tableName)
   if ( got == fileHandles.end() )
     {
       fileHandles[tableName] = new PF_FileHandle();
-      pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fileHandles[tableName]);
+      if(pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fileHandles[tableName]) != 0)
+	return NULL;
     }
 
   return fileHandles[tableName];
