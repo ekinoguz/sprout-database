@@ -473,13 +473,12 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid)
   for(uint i=0; i < columns.size(); i++){
     max_length += columns[i].length;
   }
- 
 
   void *buffer = malloc(max_length);
   
   // Forward pointer
   *((bool *)buffer) = false;
-
+  
   // Version Info
   *((char *)buffer + 1) = (char)(columns[0].version);
 
@@ -526,9 +525,8 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid)
   // End pointer
   memcpy((char *)buffer + directory_offset, &field_offset, 2);
   directory_offset += 2;
-  
-  
-  return insertFormattedTuple(tableName, data, field_offset, rid);
+   
+  return insertFormattedTuple(tableName, buffer, field_offset, rid);
   
 }
 RC RM::insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid)
