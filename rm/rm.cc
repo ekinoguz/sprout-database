@@ -290,21 +290,27 @@ char RM::getLatestVersionFromCatalog(const string tableName)
   AttrType type = TypeVarChar;
   RM_ScanFormattedIterator rm_ScanIterator;
   
+  cout << "Table: " << tableName;
   
   scanFormatted(TABLES_TABLE, position, type, EQ_OP, tableName.c_str(), rm_ScanIterator);
 
   char latest_version;
   RID rid;
   char *data = (char*)(malloc(256)); // Must be more than the actual maximum
-  
+ 
+  //memset(data, 0, 256);
+
   // Just return the first one we find
   if(rm_ScanIterator.getNextTuple(rid,data) == RM_EOF)
     return 255; // 255 is an error
   
-  int offset = 2 + position*DIRECTORY_ENTRY_SIZE;
-      
-  memcpy(&latest_version, data + *(uint16_t*)(data + offset), (*(uint16_t*)(data + *(uint16_t*)(data + offset + 2)) - *(uint16_t*)(data + *(uint16_t*)(data + offset))));
+  // Version is the 4th field
+  int offset = 2 + 3*DIRECTORY_ENTRY_SIZE;
 
+  uint16_t field_offset;
+  // Copy the version info
+  memcpy(&field_offset,data+offset,2);
+  memcpy(&latest_version, data+field_offset,1);
 
   return latest_version;
 }
@@ -319,8 +325,14 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
   char *data = (char*)(malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH));
 
   char latest_version = 0;
-  if(findLatest)
+  if(findLatest){
     latest_version = getLatestVersionFromCatalog(tableName);
+    
+    if((int)latest_version == -1){
+      cout << "Latest version cannot be found" << endl;
+      return -1;
+    }
+  }
 
   while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
@@ -329,34 +341,58 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
       int offset = 2;
 
       Column column;
-      // Copy the column_name
-
-      memcpy(&column.column_name, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
-      offset += 2;
       
+      uint16_t field_offset;
+      uint16_t next_field;
+      char * name;
+      // Copy the column_name
+      memcpy(&field_offset,data+offset,2);
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      name = (char *)malloc(next_field-field_offset);
+      memcpy(name, data+field_offset,next_field-field_offset);
+      column.column_name = string(name);
+      free(name);
+      offset += 2;
+
       // Copy the table_name
-      memcpy(&column.table_name , data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      name = (char *)malloc(next_field-field_offset);
+      memcpy(name, data+field_offset,next_field-field_offset);
+      column.table_name = string(name);
+      free(name);
       offset += 2;
 
       // Copy the position
-      memcpy(&column.position   , data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.position, data+field_offset,next_field-field_offset);
       offset += 2;
 
       // Copy the type
-      memcpy(&column.type, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.type, data+field_offset,next_field-field_offset);
       offset += 2;
 
       // Copy the length
-      memcpy(&column.length, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.length, data+field_offset,next_field-field_offset);
       offset += 2;
 
       // Copy the nullable attribute
-      memcpy(&column.nullable, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.nullable, data+field_offset,next_field-field_offset);
       offset += 2;
 
       // Copy the version
-      memcpy(&column.version, data + *(uint16_t *)(data + offset), (*(uint16_t *)(data + *(uint16_t *)(data + offset + 2)) - *(uint16_t *)(data + *(uint16_t *)(data + offset))));
-  
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.version, data+field_offset,next_field-field_offset);
+      offset += 2;
+
       if(findLatest && column.version != latest_version)
 	continue;
 
@@ -656,15 +692,6 @@ RC RM::scanFormatted(const string tableName,
 RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
   bool condition = false;
   while(!condition) {
-    cout << "Begin" << endl;
-    cout << current.pageNum  << endl;
-    cout << current.slotNum << endl;
-    cout << type << endl;
-    cout << compOp << endl;
-    cout << position << endl;
-    cout << buffered_page << endl;
-    cout << "End" << endl;
-
     if(current.pageNum >= fh->GetNumberOfPages())
       return RM_EOF;
 
@@ -683,12 +710,12 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     }
 
     uint16_t offset, first_field, end_offset;
-    memcpy(&offset,(char*)page+PF_PAGE_SIZE-4-(current.slotNum*DIRECTORY_ENTRY_SIZE),2);
+    memcpy(&offset,(char*)page+PF_PAGE_SIZE-4-((current.slotNum+1)*DIRECTORY_ENTRY_SIZE),2);
   
     // Was this record deleted
     if(offset != (uint16_t)-1) {
       memcpy(&first_field,(char*)page+offset+2,2);
-      memcpy(&end_offset,(char*)page+first_field-DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&end_offset,(char*)page+offset+first_field-DIRECTORY_ENTRY_SIZE,2);
 
       // Copy in the data
       memcpy(data,(char*)page+offset,end_offset);
@@ -700,8 +727,6 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     current.slotNum++;
 
     if(number_of_records <= current.slotNum){
-      cout << "Num Records " << number_of_records << endl;
-      cout << "Current Slot " << current.slotNum << endl;
       current.slotNum = 0;
       current.pageNum++;
     }
@@ -710,19 +735,10 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     // Grab the field offset at position +1 and then subtract the offset at position
     uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
 
-    void *lvalue = malloc(length);
+    void *lvalue = malloc(length+1);
+    memset(lvalue,0,length+1); // Make sure strings have a null terminator
+
     memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
-    
-    cout << "1L: " << *((char *)lvalue) << endl;
-    cout << "1R: " << *((char *)value) << endl;
-    cout << "2L: " << *((char *)lvalue+1) << endl;
-    cout << "2R: " << *((char *)value+1) << endl;
-    cout << "3L: " << *((char *)lvalue+2) << endl;
-    cout << "3R: " << *((char *)value+2) << endl;
-    cout << "4L: " << *((char *)lvalue+3) << endl;
-    cout << "4R: " << *((char *)value+3) << endl;
-
-
     
     // TODO: Fill out the other operators
     //   for now we assume everything is an equals
@@ -736,7 +752,6 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     case TypeVarChar:
       if( strcmp((char *)lvalue,(char *)value ) == 0 )
 	condition = true;
-
       break;
     case TypeShort:
       condition = (*(char*)lvalue == *(char*)value);
