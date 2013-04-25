@@ -286,7 +286,7 @@ RC RM::addTableToCatalog(const string tableName, const string file_url, const st
 
 char RM::getLatestVersionFromCatalog(const string tableName)
 {
-  int position = 1;
+  int position = 0;    // the position of the table name (zero based)
   AttrType type = TypeVarChar;
   RM_ScanFormattedIterator rm_ScanIterator;
   
@@ -311,7 +311,7 @@ char RM::getLatestVersionFromCatalog(const string tableName)
 
 RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findLatest)
 {
-  int position = 2;   // the position of the table name
+  int position = 1;   // the position of the table name (zero based)
   AttrType type = TypeVarChar;
   RM_ScanFormattedIterator rm_ScanIterator;
   scanFormatted(COLUMNS_TABLE, position, type, EQ_OP, tableName.c_str(), rm_ScanIterator);
@@ -648,14 +648,31 @@ RC RM::scanFormatted(const string tableName,
 RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
   bool condition = false;
   while(!condition) {
+    cout << "Begin" << endl;
+    cout << current.pageNum  << endl;
+    cout << current.slotNum << endl;
+    cout << type << endl;
+    cout << compOp << endl;
+    cout << position << endl;
+    cout << buffered_page << endl;
+    cout << "End" << endl;
+
     if(current.pageNum >= fh->GetNumberOfPages())
       return RM_EOF;
 
     if(buffered_page != current.pageNum) {
       if(fh->ReadPage(current.pageNum,page) != 0)
 	return -2;
+
+      uint16_t number_of_records;
+      memcpy(&number_of_records,(char*)page+PF_PAGE_SIZE-4,2);
+
+      if(number_of_records == 0){
+	current.pageNum++;
+	continue;       // TODO: Verify this continue works (write a test case for it)
+      }
+
     }
-  
 
     uint16_t offset, first_field, end_offset;
     memcpy(&offset,(char*)page+PF_PAGE_SIZE-4-(current.slotNum*DIRECTORY_ENTRY_SIZE),2);
@@ -675,6 +692,8 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     current.slotNum++;
 
     if(number_of_records <= current.slotNum){
+      cout << "Num Records " << number_of_records << endl;
+      cout << "Current Slot " << current.slotNum << endl;
       current.slotNum = 0;
       current.pageNum++;
     }
@@ -686,6 +705,16 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     void *lvalue = malloc(length);
     memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
     
+    cout << "1L: " << *((char *)lvalue) << endl;
+    cout << "1R: " << *((char *)value) << endl;
+    cout << "2L: " << *((char *)lvalue+1) << endl;
+    cout << "2R: " << *((char *)value+1) << endl;
+    cout << "3L: " << *((char *)lvalue+2) << endl;
+    cout << "3R: " << *((char *)value+2) << endl;
+    cout << "4L: " << *((char *)lvalue+3) << endl;
+    cout << "4R: " << *((char *)value+3) << endl;
+
+
     
     // TODO: Fill out the other operators
     //   for now we assume everything is an equals
