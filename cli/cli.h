@@ -28,12 +28,16 @@ protected:
   ~CLI();
 
 private:
-	RC createTable(const string name, char * tokenizer); // this is how all of them should be
-	RC drop(const string type, const string name);
-	RC load(const string tableName, const string fileName);
-	RC print(const string input);
-	RC help(const string input);
+  RC createTable(const string name, char * tokenizer); // this is how all of them should be
+  RC drop(const string type, const string name);
+  RC load(const string tableName, const string fileName);
+  RC print(const string input);
+  RC help(const string input);
 
+  char *  next(char * tokenizer);
+  RC expect(char * tokenizer, const string expected);
+  void error(const string errorMessage);
+  
   RM * rm;
   static CLI * _cli;
 };

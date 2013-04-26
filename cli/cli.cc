@@ -1,6 +1,6 @@
 #include "cli.h"
 
-#define DELIMITERS " =,()\""
+#define DELIMITERS " =,()\"" // TODO: update delimiters later
 
 CLI * CLI::_cli = 0;
 
@@ -25,6 +25,7 @@ CLI::~CLI()
 RC CLI::process(const string input)
 {
 	// convert input to char *
+	RC code = 0;
 	char *a=new char[input.size()+1];
 	a[input.size()] = 0;
 	memcpy(a,input.c_str(),input.size());
@@ -33,78 +34,77 @@ RC CLI::process(const string input)
 	char * tokenizer = strtok(a, DELIMITERS);
 	if (tokenizer != NULL)
 	{
-		if (string(tokenizer).compare("create") == 0) {
-			tokenizer = strtok (NULL, DELIMITERS);
-			if (tokenizer == 0) {
-				cout << "I expect <table>" << endl;
+		if (expect(tokenizer, "create") == 0) {
+			tokenizer = next(tokenizer);
+			if (tokenizer == NULL) {
+				error ("I expect <table>");
 				return 0;
 			}
 			string type = string(tokenizer);
-			tokenizer = strtok (NULL, DELIMITERS);
-			if (tokenizer == 0) {
-				cout << "I expect <name> to be created" << endl;
+			tokenizer = next(tokenizer);
+			if (tokenizer == NULL) {
+				error ("I expect <name> to be created");
 				return 0;
 			}
 			string name = string(tokenizer);
 			// if type equals table, then create table
 			return createTable(name, tokenizer);
-			// TODO: index
+			// TODO: create index
 		}
-		else if (string(tokenizer).compare("drop") == 0) {
-			tokenizer = strtok (NULL, DELIMITERS);
-			if (tokenizer == 0) {
-				cout << "I expect <table> or <index>" << endl;
+		else if (expect(tokenizer, "drop") == 0) {
+			tokenizer = next(tokenizer);
+			if (tokenizer == NULL) {
+				error ("I expect <table> or <index>");
 				return 0;
 			}
 			string type = string(tokenizer);
-			tokenizer = strtok (NULL, DELIMITERS);
-			if (tokenizer == 0) {
-				cout << "I expect <name> to be dropped" << endl;
+			tokenizer = next(tokenizer);
+			if (tokenizer == NULL) {
+				error ("I expect <name> to be dropped");
 				return 0;
 			}
 			string name = string(tokenizer);
-			return drop(type, name);
+			drop(type, name);
 		}
-		else if (string(tokenizer).compare("load") == 0) {
-			tokenizer = strtok (NULL, DELIMITERS);
+		else if (expect(tokenizer, "load") == 0) {
+			tokenizer = next(tokenizer);
 			
 			if (tokenizer == NULL) {
-				cout << "I expect <tableName>" << endl;
+				error ("I expect <tableName>");
 				return 0;
 			}
 			string name = string(tokenizer);
-			tokenizer = strtok (NULL, DELIMITERS);
+			tokenizer = next(tokenizer);
 			if (tokenizer == NULL) {
-				cout << "I expect <fileName> to be loaded" << endl;
+				error ("I expect <fileName> to be loaded");
 				return 0;
 			}
 			string fileName = string(tokenizer);
-			return load(name, fileName);
+			load(name, fileName);
 		}
-		else if (string(tokenizer).compare("print") == 0) {
-			tokenizer = strtok (NULL, DELIMITERS);
+		else if (expect(tokenizer, "print") == 0) {
+			tokenizer = next(tokenizer);
 			if (tokenizer != NULL)
-				return print(string(tokenizer));
+				print(string(tokenizer));
 			else
-				cout << "I expect \"tableName\"" << endl;
+				error ("I expect \"tableName\"");
 		}
-		else if (string(tokenizer).compare("help") == 0) {
-			tokenizer = strtok (NULL, DELIMITERS);
+		else if (expect(tokenizer, "help") == 0) {
+			tokenizer = next(tokenizer);
 			if (tokenizer != NULL)
-				return help(string(tokenizer));
+				help(string(tokenizer));
 			else
-				return help("all");
+				help("all");
 		}
-		else if (string(tokenizer).compare("quit") == 0) {
-			delete[] a;
-			return -1;
+		else if (expect(tokenizer,"quit") == 0) {
+			code = -1;
 		}
 		else {
-			cout << "i have no idea about this command, sorry" << endl;
+			error ("i have no idea about this command, sorry");
 		}
 	}
 	delete[] a;
-	return 0;
+	return code;
 }
 
 RC CLI::createTable(const string name, char * tokenizer)
@@ -115,14 +115,14 @@ RC CLI::createTable(const string name, char * tokenizer)
 	while (tokenizer != NULL)
 	{
 		// get name if there is
-		tokenizer = strtok (NULL, DELIMITERS);
+		tokenizer = next(tokenizer);
 		if (tokenizer == NULL) {
 			break;
 		}
 		names.push_back(string(tokenizer));
 
 		// get type
-		tokenizer = strtok (NULL, DELIMITERS);
+		tokenizer = next(tokenizer);
 		if (tokenizer == NULL) {
 			cout << "expecting type" << endl;
 			break;
@@ -139,6 +139,7 @@ RC CLI::createTable(const string name, char * tokenizer)
 	return 0;
 }
 
+// check type, it should be either table or index
 RC CLI::drop(const string type, const string name)
 {
 	cout << "we will drop <" << type << "> <" << name << ">" << endl;
@@ -163,8 +164,8 @@ RC CLI::help(const string input)
 		cout << "\tcreate table \"tableName\" (col1=type1, col2=type2, ...): creates table with given properties" << endl;
 	}
 	else if (input.compare("drop") == 0) {
-		cout << "\tdrop \"tableName\": drops given table" << endl;
-		cout << "\tdrop \"indexName\": drops given index" << endl;
+		cout << "\tdrop table \"tableName\": drops given table" << endl;
+		cout << "\tdrop index \"indexName\": drops given index" << endl;
 	}
 	else if (input.compare("load") == 0) {
 		cout << "\tload \"tableName\" \"fileName\"";
@@ -174,7 +175,7 @@ RC CLI::help(const string input)
 		cout << "\tprint \"tableName\"" << endl;
 	}
 	else if (input.compare("help") == 0) {
-		cout << "\thelp \"commandName\": print help for given command" << endl;
+		cout << "\thelp <commandName>: print help for given command" << endl;
 		cout << "\thelp: show help for all commands" << endl;
 	}
 	else if (input.compare("quit") == 0) {
@@ -183,7 +184,7 @@ RC CLI::help(const string input)
 	else if (input.compare("all") == 0) {
 		help("create");
 		help("drop");
-		help("drop");
+		help("load");
 		help("print");
 		help("help");
 	}
@@ -191,4 +192,25 @@ RC CLI::help(const string input)
 		cout << "I dont know how to help you with <" << input << ">" << endl;
 	}
 	return 0;
+}
+
+// advance tokenizer to next token
+char * CLI::next(char * tokenizer)
+{
+	return strtok (NULL, DELIMITERS);
+}
+
+// return 0 if tokenizer is equal to expected string
+RC CLI::expect(char * tokenizer, const string expected)
+{
+	if (tokenizer == NULL) {
+		error ("tokenizer is null, expecting: " + expected);
+		return -1;
+	}
+	return expected.compare(string(tokenizer));
+}
+
+void CLI::error(const string errorMessage)
+{
+	cout << errorMessage << endl;
 }
