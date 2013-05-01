@@ -35,3 +35,6 @@ Functions
          11. Rebuild the free space directory for the page.
          12. 
 
+# Install guard
+gem install guard active_support
+# You may need to also install some os specific dependencies check the guard wiki
