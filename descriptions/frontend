@@ -1,0 +1,22 @@
+DDL capabilities in a command-line interpreter:
+  create table "tablename" (col1=type1, col2=type2, ...)
+  drop table "tablename"
+  create index idxname on tabname (col1)
+  drop index
+  load tabname (textfilename)
+  print tabname
+  help
+  help cmdname
+  quit
+
+QUERY and UPDATE capabilities in a command-line interpreter:
+  insert tabname (col1=val1, col2 =val2, ...)
+  delete tabname [col1 op val1]]
+  select query-expr [col1 op val1]
+  select query-expr [col1 op col2]
+  project query-expr [col1, col2, ...]
+  join (method, query-expr, query-expr, col1 op col2)
+  agg (kind, method, query-expr, groupcol1, groupcol2, ..)
+  /* note: a query-expr would be select, project, join, agg, or tabname */
+
+Something along those lines (but it needs to be backed and sanity-tested against the other parts of the project)....
