@@ -316,7 +316,7 @@ char RM::getLatestVersionFromCatalog(const string tableName)
   return latest_version;
 }
 
-RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findLatest)
+RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll, int version)
 {
   int position = 1;   // the position of the table name (zero based)
   AttrType type = TypeVarChar;
@@ -325,11 +325,10 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
   RID rid;
   char *data = (char*)(malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH));
 
-  char latest_version = 0;
-  if(findLatest){
-    latest_version = getLatestVersionFromCatalog(tableName);
+  if(!findAll && version == -1){
+    version = (int)getLatestVersionFromCatalog(tableName);
     
-    if((int)latest_version == -1){
+    if(version == -1){
       cout << "Latest version cannot be found" << endl;
       return -1;
     }
@@ -394,7 +393,7 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
       memcpy(&column.version, data+field_offset,next_field-field_offset);
       offset += 2;
 
-      if(findLatest && column.version != latest_version)
+      if(!findAll && column.version != version)
 	continue;
 
       // Add the read record to the attributes vector
@@ -530,7 +529,7 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid)
 {  
   // Get information on the latest attributes
   vector<Column> columns;
-  if( getAttributesFromCatalog(tableName, columns, true) != 0)
+  if( getAttributesFromCatalog(tableName, columns, false) != 0)
     return -1;
   
   if(columns.size() < 1) {
@@ -832,6 +831,19 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
 }
 RC RM::readAttribute(const string tableName, const RID &rid, const string attributeName, void *data)
 {
+  // TODO: Read page and version
+  
+  int version = 3;
+  // **** 
+
+  vector<Column> columns;
+  if( getAttributesFromCatalog(tableName, columns, false, version) != 0)
+    return -1;
+
+  // Use columns
+  
+  
+
   return 0;
 }
 RC RM::reorganizePage(const string tableName, const unsigned pageNumber)

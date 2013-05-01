@@ -176,7 +176,7 @@ protected:
 private:
   RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr, char version = 0);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
-  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findLatest = false);
+  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 );
   char getLatestVersionFromCatalog(const string tableName);
   
   PF_FileHandle * getFileHandle(const string tableName);
