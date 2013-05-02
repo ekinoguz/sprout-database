@@ -136,6 +136,7 @@ public:
   RC updateTuple(const string tableName, const void *data, const RID &rid);
 
   RC readTuple(const string tableName, const RID &rid, void *data);
+  RC readFormattedTuple(const string tabkeName, const RID &rid, void *data);
 
   RC readAttribute(const string tableName, const RID &rid, const string attributeName, void *data);
 
