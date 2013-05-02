@@ -113,6 +113,8 @@ public:
 
   RC createTable(const string tableName, const vector<Attribute> &attrs);
 
+  RC createTable(const string tableName);
+
   RC deleteTable(const string tableName);
 
   RC getAttributes(const string tableName, vector<Attribute> &attrs);
@@ -178,6 +180,7 @@ private:
   char getLatestVersionFromCatalog(const string tableName);
   
   PF_FileHandle * getFileHandle(const string tableName);
+  RC closeFileHandle(const string tableName);
 
   unordered_map<string,PF_FileHandle *> fileHandles;
 
