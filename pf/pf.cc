@@ -10,6 +10,8 @@
 
 #include "pf.h"
 
+#include "../shared.h"
+
 PF_Manager* PF_Manager::_pf_manager = 0;
 
 

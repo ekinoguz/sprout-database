@@ -432,7 +432,7 @@ void Tests()
   //secA_0("tbl_employee");
 
   // Insert/Read Tuple
-  //secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
+  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
 
   // Delete Tuple
   //secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);

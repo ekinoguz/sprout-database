@@ -2,18 +2,17 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
+#include <algorithm>
 
 #include "rm.h"
-#include "../shared.h"
 
 #define TABLES_TABLE "tables"
 #define COLUMNS_TABLE "columns"
 
-#define FREE_LIST_LENGTH 30
-
-
-
-
+#define DIRECTORY_ENTRY_SIZE 2
+#define INITIAL_FREE_MEMORY PF_PAGE_SIZE - 4
+#define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
+#define TABLES_TABLE_RECORD_MAX_LENGTH 150   // It is actually 121
 
 RM* RM::_rm = 0;
 
@@ -55,6 +54,11 @@ RM::RM()
   attr.type = TypeVarChar;
   attr.length = 20;
   table_attrs.push_back(attr);
+  
+  attr.name = "version";
+  attr.type = TypeShort;
+  attr.length = 1;
+  table_attrs.push_back(attr);
 
   // Ensure the columns table exists
   string file_url = database_folder + '/' + COLUMNS_TABLE;
@@ -67,7 +71,7 @@ RM::RM()
   void *data = malloc(PF_PAGE_SIZE);
   memset((char *)data, 0, PF_PAGE_SIZE);
   *(uint16_t *)data = 1;
-  ((uint16_t *)data)[1] = PF_PAGE_SIZE - 2;
+  ((uint16_t *)data)[1] = INITIAL_FREE_MEMORY;
   fh->AppendPage(data);
   // When the page is first created the free block starts at 0
   memset((char *)data, 0, PF_PAGE_SIZE);
@@ -77,7 +81,6 @@ RM::RM()
   // Now that the columns table exists create the tables table
   if( this->createTable(TABLES_TABLE, table_attrs) != 0)
     return;
-
 
   // Create the columns table
   vector<Attribute> column_attrs;
@@ -110,6 +113,11 @@ RM::RM()
   attr.type = TypeBoolean;
   attr.length = 1;
   column_attrs.push_back(attr);
+  
+  attr.name = "version";
+  attr.type = TypeShort;
+  attr.length = 1;
+  column_attrs.push_back(attr);
 
   // Finish creating the columns table, by filling in the columns table
   this->addTableToCatalog(COLUMNS_TABLE, file_url, "heap"); 
@@ -127,32 +135,84 @@ RM::~RM()
   }
 }
 
-RC RM::addAttributeToCatalog(const string tableName, uint position, const Attribute &attr)
+RC RM::addAttributeToCatalog(const string tableName, uint position, const Attribute &attr, char version)
 {
   RID rid;
 
+  int num_fields = 7;
+
   int offset = 0;
-  void *buffer = malloc(100);
-  *((char*)buffer + offset) = attr.name.size();
-  offset += sizeof(int);
+  void *buffer = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+
+  // Forward pointer
+  *((bool *)buffer + offset) = false;
+  offset += sizeof(bool);
+
+  // Version Info
+  *((char *)buffer + offset) = (char)0;
+  offset += sizeof(char);
+  
+  // num_fileds+1 pointers + 1 byte for forward ponter + 1 for version
+  uint16_t field_offset = (num_fields+1)*2 + 2; 
+
+  // Pointer to column name
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += attr.name.size();
+
+  // Pointer to tablename
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += tableName.size();
+
+  // Pointer to position
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += sizeof(position);
+
+  // Pointer to column type
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += sizeof(attr.type);
+
+  // Pointer to column length
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += sizeof(attr.length);
+
+  // Pointer to nullable
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += sizeof(attr.nullable);
+
+  // Pointer to version
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += 1;
+  
+  // End pointer
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  
   memcpy((char *)buffer + offset, attr.name.c_str(), attr.name.size());
   offset += attr.name.size();
 
-  *((char*)buffer + offset) = tableName.size();
-  offset += sizeof(int);
   memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
   offset += tableName.size();
 
-  *((char*)buffer + offset) = position;
-  offset += sizeof(int);
+  memcpy((char *)buffer + offset, &position, sizeof(position));
+  offset += sizeof(position);
 
-  *((char*)buffer + offset) = attr.type;
-  offset += sizeof(int);
+  memcpy((char *)buffer + offset, &attr.type, sizeof(attr.type));
+  offset += sizeof(attr.type);
 
-  *((char*)buffer + offset) = attr.length;
-  offset += sizeof(int);
+  memcpy((char *)buffer + offset, &attr.length, sizeof(attr.length));
+  offset += sizeof(attr.length);
 
-  *((char*)buffer + offset) = attr.nullable;
+  memcpy((char *)buffer + offset, &attr.nullable, sizeof(attr.nullable));
+  offset += sizeof(attr.nullable);  
+
+  memcpy((char *)buffer + offset, &version, 1);
   offset += 1;  
   
   RC ret = insertFormattedTuple(COLUMNS_TABLE, buffer, offset, rid);
@@ -165,25 +225,194 @@ RC RM::addTableToCatalog(const string tableName, const string file_url, const st
 {
   RID rid;
 
+  int num_fields = 4;
+
   int offset = 0;
   void *buffer = malloc(100);
-  *((char*)buffer + offset) = tableName.size();
-  offset += sizeof(int);
+
+  // Forward pointer
+  *((bool *)buffer + offset) = false;
+  offset += sizeof(bool);
+
+  // Version Info
+  *((char *)buffer + offset) = (char)0;
+  offset += sizeof(char);
+  
+  // num_fileds+1 pointers + 1 byte for forward ponter + 1 for version
+  uint16_t field_offset = (num_fields+1)*2 + 2; 
+
+  // Pointer to table name
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += tableName.size();
+
+  // Pointer to fileurl
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += file_url.size();
+
+  // Pointer to type
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += type.size();
+
+  // Pointer to latest_version
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+  field_offset += 1;
+
+  // End pointer
+  memcpy((char *)buffer + offset, &field_offset, 2);
+  offset += 2;
+
   memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
   offset += tableName.size();
-  *((char*)buffer + offset) =file_url.size();
-  offset += sizeof(int);
+
   memcpy((char *)buffer + offset, file_url.c_str(), file_url.size());
   offset += file_url.size();
-  *((char*)buffer + offset) =type.size();
-  offset += sizeof(int);
+
   memcpy((char *)buffer + offset, type.c_str(), type.size());
   offset += type.size();
+
+  // Table starts at version 0;
+  memset((char *)buffer + offset, 0, 1);
+  offset += 1;
+
 
   RC ret = insertFormattedTuple(TABLES_TABLE, buffer, offset, rid);
   
   free(buffer);
   return ret;
+}
+
+char RM::getLatestVersionFromCatalog(const string tableName)
+{
+  int position = 0;    // the position of the table name (zero based)
+  AttrType type = TypeVarChar;
+  RM_ScanFormattedIterator rm_ScanIterator;
+  
+  cout << "Table: " << tableName;
+  
+  scanFormatted(TABLES_TABLE, position, type, EQ_OP, tableName.c_str(), rm_ScanIterator);
+
+  char latest_version;
+  RID rid;
+  char *data = (char*)(malloc(256)); // Must be more than the actual maximum
+ 
+  //memset(data, 0, 256);
+
+  // Just return the first one we find
+  if(rm_ScanIterator.getNextTuple(rid,data) == RM_EOF)
+    return 255; // 255 is an error
+  
+  // Version is the 4th field
+  int offset = 2 + 3*DIRECTORY_ENTRY_SIZE;
+
+  uint16_t field_offset;
+  // Copy the version info
+  memcpy(&field_offset,data+offset,2);
+  memcpy(&latest_version, data+field_offset,1);
+
+  return latest_version;
+}
+
+RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll, int version)
+{
+  int position = 1;   // the position of the table name (zero based)
+  AttrType type = TypeVarChar;
+  RM_ScanFormattedIterator rm_ScanIterator;
+  scanFormatted(COLUMNS_TABLE, position, type, EQ_OP, tableName.c_str(), rm_ScanIterator);
+  RID rid;
+  char *data = (char*)(malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH));
+
+  if(!findAll && version == -1){
+    version = (int)getLatestVersionFromCatalog(tableName);
+    
+    if(version == -1){
+      cout << "Latest version cannot be found" << endl;
+      return -1;
+    }
+  }
+
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
+    {
+      // First byte is the forward pointer bit which is 0 when scanning
+      // Second byte is the version which is 1 when reading the catalog
+      int offset = 2;
+
+      Column column;
+      
+      uint16_t field_offset;
+      uint16_t next_field;
+      char * name;
+      // Copy the column_name
+      memcpy(&field_offset,data+offset,2);
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      name = (char *)malloc(next_field-field_offset);
+      memcpy(name, data+field_offset,next_field-field_offset);
+      column.column_name = string(name);
+      free(name);
+      offset += 2;
+
+      // Copy the table_name
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      name = (char *)malloc(next_field-field_offset);
+      memcpy(name, data+field_offset,next_field-field_offset);
+      column.table_name = string(name);
+      free(name);
+      offset += 2;
+
+      // Copy the position
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.position, data+field_offset,next_field-field_offset);
+      offset += 2;
+
+      // Copy the type
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.type, data+field_offset,next_field-field_offset);
+      offset += 2;
+
+      // Copy the length
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.length, data+field_offset,next_field-field_offset);
+      offset += 2;
+
+      // Copy the nullable attribute
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.nullable, data+field_offset,next_field-field_offset);
+      offset += 2;
+
+      // Copy the version
+      field_offset = next_field;
+      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+      memcpy(&column.version, data+field_offset,next_field-field_offset);
+      offset += 2;
+
+      if(!findAll && column.version != version)
+	continue;
+
+      // Add the read record to the attributes vector
+      columns.push_back(column);
+    }
+
+  struct position_comp {
+    bool operator() (Column a, Column b) {
+      if( a.version < b.version )
+	return true;
+      else if( a.version == b.version ) 
+	return (a.position < b.position);
+      else 
+	return false;
+    }
+  } mycomp;
+  std::sort(columns.begin(), columns.end(), mycomp);
+
+  return 0;
 }
 
 RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
@@ -200,7 +429,7 @@ RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
   void *data = malloc(PF_PAGE_SIZE);
   memset((char *)data, 0, PF_PAGE_SIZE);
   *(uint16_t *)data = 1;
-  ((uint16_t *)data)[1] = PF_PAGE_SIZE - 2;
+  ((uint16_t *)data)[1] = INITIAL_FREE_MEMORY;
   fh->AppendPage(data);
 
   // When the page is first created the free block starts at 0
@@ -219,8 +448,76 @@ RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
   return 0;
 }
 
+// Create an empty table after delete it, the table info is alreay in the catalog
+RC RM::createTable(const string tableName)
+{
+  string file_url = database_folder + '/' + tableName;
+  RC ret = pfm->CreateFile(file_url);
+  
+  if(ret != 0)
+    return ret;
+
+  PF_FileHandle * fh = getFileHandle(tableName);
+  
+  // Add the free space page
+  void *data = malloc(PF_PAGE_SIZE);
+  memset((char *)data, 0, PF_PAGE_SIZE);
+  *(uint16_t *)data = 1;
+  ((uint16_t *)data)[1] = INITIAL_FREE_MEMORY;
+  fh->AppendPage(data);
+
+  // When the page is first created the free block starts at 0
+  memset((char *)data, 0, PF_PAGE_SIZE);
+  fh->AppendPage(data);
+  free(data);
+
+  return 0;
+}
+
 RC RM::deleteTable(const string tableName)
 {
+  // Close file if it's already opened
+  closeFileHandle(tableName);
+
+  // Delete the table form the tables table
+  RM_ScanFormattedIterator tablesScanIterator;
+  scanFormatted(TABLES_TABLE, 1, TypeVarChar, EQ_OP, tableName.c_str(), tablesScanIterator);
+
+  RID rid;
+  void *data = malloc(TABLES_TABLE_RECORD_MAX_LENGTH);
+
+  while (tablesScanIterator.getNextTuple(rid, data) != RM_EOF)
+    {
+      // Delete the table file
+      uint16_t fileLocAttributeOffset;
+      memcpy(&fileLocAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+
+      uint16_t typeAttributeOffset;
+      memcpy(&typeAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+      
+      char* fileLoc = ((char*)(malloc(typeAttributeOffset - fileLocAttributeOffset + 1)));
+      memset(fileLoc, 0, typeAttributeOffset - fileLocAttributeOffset + 1);
+      memcpy(fileLoc, (char*)data + fileLocAttributeOffset, typeAttributeOffset - fileLocAttributeOffset);
+
+      pfm->DestroyFile(fileLoc);
+      
+      // Delete the table record
+      deleteTuple(TABLES_TABLE, rid);
+    }
+  free(data);
+
+  // Delete the table info from the columns table
+  RM_ScanFormattedIterator columnsScanIterator;
+  scanFormatted(TABLES_TABLE, 1, TypeVarChar, EQ_OP, tableName.c_str(), columnsScanIterator);
+
+  data = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+
+  while (columnsScanIterator.getNextTuple(rid, data) != RM_EOF)
+    {
+      deleteTuple(TABLES_TABLE, rid);
+    }
+  free(data);
+
   return 0;
 }
 
@@ -228,13 +525,76 @@ RC RM::getAttributes(const string tableName, vector<Attribute> &attrs)
 {
   return 0;
 }
-RC RM::insertTuple(const string tableName, const void *data, RID &rid){
+RC RM::insertTuple(const string tableName, const void *data, RID &rid)
+{  
+  // Get information on the latest attributes
+  vector<Column> columns;
+  if( getAttributesFromCatalog(tableName, columns, false) != 0)
+    return -1;
   
-  // Get the length from the catalog
-  int length = 4;
-  // Process data to be in directory format
+  if(columns.size() < 1) {
+    cout << "catalog read error" << endl;
+    return -1;
+  }
 
-  return insertFormattedTuple(tableName, data, length, rid);
+  int max_length = 0;
+  for(uint i=0; i < columns.size(); i++){
+    max_length += columns[i].length;
+  }
+
+  void *buffer = malloc(max_length);
+  
+  // Forward pointer
+  *((bool *)buffer) = false;
+  
+  // Version Info
+  *((char *)buffer + 1) = (char)(columns[0].version);
+
+  int data_offset = 0; // offset into data*
+  int directory_offset = 2; // offset into the start of the directory 
+  uint16_t field_offset = (columns.size()+1)*DIRECTORY_ENTRY_SIZE + 2; // offset to the start of the fields
+  
+  // TODO: Deal with nullable
+  for(uint i=0; i < columns.size(); i++){
+    if(columns[i].type == TypeVarChar){
+      // Set the pointer
+      memcpy((char *)buffer+directory_offset, &field_offset, 2);
+      directory_offset += DIRECTORY_ENTRY_SIZE;
+
+      // Read the length
+      uint variable_length;
+      memcpy(&variable_length, (char*)data+data_offset,4);
+      data_offset+=4;
+
+      if(variable_length > columns[i].length){
+	cout << "VarChar is larger then maximum" << endl;
+	return -1;
+      }
+
+      // Set the data
+      memcpy((char *)buffer+field_offset, (char *)data+data_offset,variable_length);
+      field_offset += variable_length;
+
+      data_offset+=variable_length;
+
+    } else { // We don't have any other variable length fields
+      // Set the pointer
+      memcpy((char *)buffer+directory_offset, &field_offset, 2);
+      directory_offset += DIRECTORY_ENTRY_SIZE;
+
+      // Set the data
+      memcpy((char *)buffer+field_offset, (char *)data+data_offset,columns[i].length);
+      field_offset += columns[i].length;
+
+      data_offset+=columns[i].length;
+    }
+  }
+  
+  // End pointer
+  memcpy((char *)buffer + directory_offset, &field_offset, 2);
+  directory_offset += 2;
+   
+  return insertFormattedTuple(tableName, buffer, field_offset, rid);
   
 }
 RC RM::insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid)
@@ -246,18 +606,20 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     return -1;
   
   bool found = false;
-  uint16_t num_pages;
+  uint16_t num_pages; // This will hold the total number of pages. Not counting the first "directory" page
   uint16_t freespace = 0;
   
   uint16_t free_page;
 
   memcpy(&num_pages, page, 2);
-  for(uint16_t i = 1; i < num_pages && !found; i++) {
-    memcpy(&freespace, (char *)page+(i*2), 2);
+  for(uint16_t i = 0; i < num_pages && !found; i++) {
+    
+    // Check the freespace at page i
+    memcpy(&freespace, (char *)page+((i+1)*2), 2);
 
-    if(freespace > (uint16_t)length){
+    if(freespace >= ((uint16_t)length + DIRECTORY_ENTRY_SIZE)){
       found = true;
-      free_page = i;
+      free_page = i + 1; //this is stored as the actual page index
     }
   }
 
@@ -265,25 +627,34 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
   if(!found) {
     // No page with enough space existed, create a new page
 
-    free_page = num_pages;
     num_pages += 1;
+    free_page = num_pages; 
+    // Again note free_page needs to be in actual pages. 
+    //  (e.g. if we have 2 free pages and want to add a new one free_page 
+    //                         should equal 3. page 0 is the directory)
 
     // Increment the number of pages and set the free length.
     memcpy((char *)page,&num_pages,2);
 
-    ((uint16_t *)page)[free_page] = PF_PAGE_SIZE - length - 2;
+    ((uint16_t *)page)[free_page] = INITIAL_FREE_MEMORY - length - DIRECTORY_ENTRY_SIZE;
     if( fh->WritePage(0,page) != 0 )
       return -1;
 
     // Prep page to be written to the next location
     memset((char *)page, 0, PF_PAGE_SIZE);
-    *((uint16_t *)((char*)page+PF_PAGE_SIZE-2)) = length;
+    *((uint16_t *)((char*)page+PF_PAGE_SIZE-2)) = length; // Update the free list pointer
 
     // Insert the record
     memcpy((char *)page,data,length);
-    
-    // TODO: Update the directory 
-    // TODO: We also need to modify the free_space information to account for the added size
+
+    // Set the number of records
+    *((uint16_t *)((char*)page+PF_PAGE_SIZE- DIRECTORY_ENTRY_SIZE - 2)) = 1;
+
+    // Set the first slot to point to the right place
+    *((uint16_t *)((char*)page+PF_PAGE_SIZE- DIRECTORY_ENTRY_SIZE*2 - 2)) = 0;
+   
+    rid.pageNum = free_page;
+    rid.slotNum = 0; // Slot numbers are zero based, we jsut can't forget about the first two bytes storing length
 
     RC ret = fh->AppendPage(page);
     free(page);
@@ -292,7 +663,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
   // We have enough space so insert at the correct location
   else{
     // First update free_space information on the first page
-    ((uint16_t *)page)[free_page] = ((uint16_t *)page)[free_page] - length;
+    ((uint16_t *)page)[free_page] = ((uint16_t *)page)[free_page] - length - DIRECTORY_ENTRY_SIZE;
     if(fh->WritePage(0, page))
       return -1;
     
@@ -303,10 +674,12 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     uint16_t offset;
     memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
     
-    //Do we have enough room
-    // TOOD: We need to encorporate the directory size in our calculations
-    if(PF_PAGE_SIZE - offset < length){
-      printf("No Rearrange funciton available");
+    uint16_t number_of_records;
+    memcpy(&number_of_records, (char*)page+PF_PAGE_SIZE-4,2);
+  
+    // Do we have enough room as is
+    if(PF_PAGE_SIZE - offset < (length + number_of_records*DIRECTORY_ENTRY_SIZE + 4)){
+      printf("No Rearrange function available");
       // TODO: Rearrange the page
       return -1;
     }
@@ -314,8 +687,19 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     // Insert the record
     memcpy((char *)page+offset,data,length);
 
-    // TODO: Update the directory 
-    // TODO: We also need to modify the free_space information to account for the added size
+    // Update the directory
+    number_of_records++;
+    memcpy((char*)page+ PF_PAGE_SIZE - 4, &number_of_records,2);
+    
+    // Store the offset pointer in slot number_of_records
+    memcpy((char*)page+PF_PAGE_SIZE-4-number_of_records*DIRECTORY_ENTRY_SIZE, &offset,2);
+    
+    // Update the free pointer
+    offset += length;
+    memcpy((char *)page+PF_PAGE_SIZE-2,&offset, 2);
+
+    rid.pageNum = free_page;
+    rid.slotNum = number_of_records;
 
     RC ret = fh->WritePage(free_page,page);
     free(page);
@@ -327,15 +711,118 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
 
 RC RM::deleteTuples(const string tableName)
 {
+  // Close file if it's already opened
+  closeFileHandle(tableName);
+
+  // Delete the table form the tables table
+  RM_ScanFormattedIterator tablesScanIterator;
+  scanFormatted(TABLES_TABLE, 1, TypeVarChar, EQ_OP, tableName.c_str(), tablesScanIterator);
+
+  RID rid;
+  void *data = malloc(TABLES_TABLE_RECORD_MAX_LENGTH);
+
+  while (tablesScanIterator.getNextTuple(rid, data) != RM_EOF)
+    {
+      // Delete the table file
+      uint16_t fileLocAttributeOffset;
+      memcpy(&fileLocAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+
+      uint16_t typeAttributeOffset;
+      memcpy(&typeAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+      
+      char* fileLoc = ((char*)(malloc(typeAttributeOffset - fileLocAttributeOffset + 1)));
+      memset(fileLoc, 0, typeAttributeOffset - fileLocAttributeOffset + 1);
+      memcpy(fileLoc, (char*)data + fileLocAttributeOffset, typeAttributeOffset - fileLocAttributeOffset);
+
+      pfm->DestroyFile(fileLoc);
+    }
+  free(data);
+
+  // Create the table file again
+  createTable(tableName);
+
   return 0;
 }
 RC RM::deleteTuple(const string tableName, const RID &rid)
 {
+  PF_FileHandle *fh = getFileHandle(tableName);
+  void* data = malloc(PF_PAGE_SIZE);
+
+  // Read first page
+  void* firstPage = malloc(PF_PAGE_SIZE);
+  fh->ReadPage(0, firstPage);
+
+  int pageNum = rid.pageNum;
+  int slotNum = rid.slotNum;
+  bool done = false;
+  while(!done)
+    {
+      // Read page
+      fh->ReadPage(pageNum, data);
+      // Read number of records on the page
+      uint16_t numOfRecords;
+      //Last two bytes contain the offset of the free space on the page
+      memcpy(&numOfRecords, (char*)data + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
+      // No such record
+      if (slotNum >= numOfRecords)
+	{
+	  return -1;
+	}
+
+      // Read record offset
+      uint16_t recordOffset;
+      memcpy(&recordOffset, (char*)data + PF_PAGE_SIZE - 4 - (slotNum * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+
+      // Mark record as deleted (0xFFFF is the value that indicate that the field is deleted)
+      memset(&data + PF_PAGE_SIZE - 4 - (slotNum * DIRECTORY_ENTRY_SIZE), 0xFFFF, DIRECTORY_ENTRY_SIZE);
+
+      // Write page
+      fh->WritePage(pageNum, data);
+
+      // Read records forward pointer bit
+      uint16_t forwardPointer;
+      memcpy(&forwardPointer, data, DIRECTORY_ENTRY_SIZE);
+
+      uint16_t recordLength;
+      if (forwardPointer == 0)
+	{
+	  // Read record length
+	  uint16_t firstAttributeOffset;
+	  memcpy(&firstAttributeOffset, (char*)data + recordOffset + 4, DIRECTORY_ENTRY_SIZE);
+	  memcpy(&recordLength, (char*)data + recordOffset + 4 + (firstAttributeOffset * DIRECTORY_ENTRY_SIZE) - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+	  
+	  done = true;
+	}
+      else
+	{
+	  recordLength = 8;
+	}
+
+      // Update the free space on the first page
+      uint16_t freeSpace;
+      memcpy(&freeSpace, (char*)firstPage + DIRECTORY_ENTRY_SIZE + (pageNum * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+      memset((char*)firstPage + DIRECTORY_ENTRY_SIZE + (pageNum * DIRECTORY_ENTRY_SIZE), freeSpace - recordLength, DIRECTORY_ENTRY_SIZE);
+
+      if (forwardPointer != 0)
+	{
+	  memcpy(&pageNum, (char*)data + recordOffset + 4, DIRECTORY_ENTRY_SIZE);
+	  memcpy(&slotNum, (char*)data + recordOffset + 6, DIRECTORY_ENTRY_SIZE);
+	}
+    }
+
+  fh->WritePage(0, data);
+
   return 0;
 }
 // Assume the rid does not change after update
 RC RM::updateTuple(const string tableName, const void *data, const RID &rid)
 {
+  if (deleteTuple(tableName, rid) != 0)
+    {
+      return -1;
+    }
+
+  // TODO: insert the tuple and in the same slot on the same page, if there's no space for that, leave a forwarding pointer
   return 0;
 }
 RC RM::readTuple(const string tableName, const RID &rid, void *data)
@@ -344,12 +831,126 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
 }
 RC RM::readAttribute(const string tableName, const RID &rid, const string attributeName, void *data)
 {
+  // TODO: Read page and version
+  
+  int version = 3;
+  // **** 
+
+  vector<Column> columns;
+  if( getAttributesFromCatalog(tableName, columns, false, version) != 0)
+    return -1;
+
+  // Use columns
+  
+  
+
   return 0;
 }
 RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
 {
+  return -1;
+}
+RC RM::scanFormatted(const string tableName,
+      const int position, 
+      const AttrType type,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      RM_ScanFormattedIterator &rm_ScanIterator)
+{ 
+  rm_ScanIterator.fh = getFileHandle(tableName);
+  rm_ScanIterator.position = position;
+  rm_ScanIterator.compOp = compOp;
+  rm_ScanIterator.type = type;
+  rm_ScanIterator.value = value;
+  rm_ScanIterator.page = malloc(PF_PAGE_SIZE);
+
+  if(rm_ScanIterator.fh == NULL)
+    return -1;
+
   return 0;
 }
+
+// Get next tuple preemptively loads the next page.
+RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
+  bool condition = false;
+  while(!condition) {
+    if(current.pageNum >= fh->GetNumberOfPages())
+      return RM_EOF;
+
+    if(buffered_page != current.pageNum) {
+      if(fh->ReadPage(current.pageNum,page) != 0)
+	return -2;
+
+      uint16_t number_of_records;
+      memcpy(&number_of_records,(char*)page+PF_PAGE_SIZE-4,2);
+
+      if(number_of_records == 0){
+	current.pageNum++;
+	continue;       // TODO: Verify this continue works (write a test case for it)
+      }
+
+    }
+
+    uint16_t offset, first_field, end_offset;
+    memcpy(&offset,(char*)page+PF_PAGE_SIZE-4-((current.slotNum+1)*DIRECTORY_ENTRY_SIZE),2);
+  
+    // Was this record deleted
+    if(offset != (uint16_t)-1) {
+      memcpy(&first_field,(char*)page+offset+2,2);
+      memcpy(&end_offset,(char*)page+offset+first_field-DIRECTORY_ENTRY_SIZE,2);
+
+      // Copy in the data
+      memcpy(data,(char*)page+offset,end_offset);
+    }  
+
+    // increment current
+    uint16_t number_of_records;
+    memcpy(&number_of_records,(char*)page+PF_PAGE_SIZE-4,2);
+    current.slotNum++;
+
+    if(number_of_records <= current.slotNum){
+      current.slotNum = 0;
+      current.pageNum++;
+    }
+    
+    
+    // Grab the field offset at position +1 and then subtract the offset at position
+    uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
+
+    void *lvalue = malloc(length+1);
+    memset(lvalue,0,length+1); // Make sure strings have a null terminator
+
+    memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
+    
+    // TODO: Fill out the other operators
+    //   for now we assume everything is an equals
+    switch(type){
+    case TypeInt:
+      condition = ( *(int*)lvalue == *(int*)value );
+      break;
+    case TypeReal:
+      condition = (*(float*)lvalue == *(float*)value); 
+      break;
+    case TypeVarChar:
+      if( strcmp((char *)lvalue,(char *)value ) == 0 )
+	condition = true;
+      break;
+    case TypeShort:
+      condition = (*(char*)lvalue == *(char*)value);
+      break;  
+    case TypeBoolean:
+      condition = (*(bool*)lvalue == *(bool*)value);
+      break;  
+    }    
+  }
+
+  return 0;
+}
+
+RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
+  return RM_EOF;
+}
+
 RC RM::scan(const string tableName,
       const string conditionAttribute,
       const CompOp compOp,                  // comparision type such as "<" and "="
@@ -357,7 +958,7 @@ RC RM::scan(const string tableName,
       const vector<string> &attributeNames, // a list of projected attributes
       RM_ScanIterator &rm_ScanIterator)
 {
-  return 0;
+  return -1;
 }
 
 PF_FileHandle * RM::getFileHandle(const string tableName) 
@@ -367,8 +968,24 @@ PF_FileHandle * RM::getFileHandle(const string tableName)
   if ( got == fileHandles.end() )
     {
       fileHandles[tableName] = new PF_FileHandle();
-      pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fileHandles[tableName]);
+      if(pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fileHandles[tableName]) != 0)
+	return NULL;
     }
 
   return fileHandles[tableName];
+}
+
+RC RM::closeFileHandle(const string tableName) 
+{
+  unordered_map<string,PF_FileHandle *>::const_iterator got = fileHandles.find (tableName);
+
+  if ( got != fileHandles.end() )
+    {
+      if (pfm->CloseFile(*(fileHandles[tableName])) != 0)
+	{
+	  return -1;
+	}
+    }
+
+  return 0;
 }

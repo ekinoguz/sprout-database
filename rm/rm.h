@@ -7,6 +7,7 @@
 #include <ostream>
 #include <unordered_map>
 
+#include "../shared.h"
 #include "../pf/pf.h"
 
 using namespace std;
@@ -25,7 +26,7 @@ typedef struct
 
 
 // Attribute
-typedef enum { TypeInt = 0, TypeReal, TypeVarChar, TypeBoolean } AttrType;
+typedef enum { TypeInt = 0, TypeReal, TypeVarChar, TypeBoolean, TypeShort } AttrType;
 
 typedef unsigned AttrLength;
 
@@ -33,7 +34,17 @@ struct Attribute {
   string   name;     // attribute name
   AttrType type;     // attribute type
   AttrLength length; // attribute length
-  int nullable;
+  int nullable; // TODO: Remove nullable and also TypeBoolean
+};
+
+struct Column {
+  string column_name;
+  string table_name;
+  int position;
+  AttrType type;
+  AttrLength length;
+  bool nullable; // TODO: remove this 
+  char version;
 };
 
 
@@ -59,15 +70,39 @@ typedef enum { EQ_OP = 0,  // =
 //  }
 //  rmScanIterator.close();
 
-class RM_ScanIterator {
+class RM_ScanFormattedIterator {
 public:
-  RM_ScanIterator() {};
+  RM_ScanFormattedIterator() {current.pageNum = 1; current.slotNum = 0; buffered_page = 0; };
+  ~RM_ScanFormattedIterator() {};
+
+  virtual RC getNextTuple(RID &rid, void *data);
+
+  virtual RC close() { if(page != NULL) free(page); page = NULL; return 0; };
+
+  PF_FileHandle * fh;
+  int position;
+  AttrType type;
+  CompOp compOp;
+  const void * value;
+  void * page;
+
+protected:
+  RID current;
+  uint buffered_page;
+  
+
+};
+
+class RM_ScanIterator : public RM_ScanFormattedIterator {
+public:
+  RM_ScanIterator() : RM_ScanFormattedIterator() {};
   ~RM_ScanIterator() {};
 
   // "data" follows the same format as RM::insertTuple()
-  RC getNextTuple(RID &rid, void *data) { return RM_EOF; };
-  RC close() { return -1; };
+  RC getNextTuple(RID &rid, void *data);
 };
+
+
 
 
 // Record Manager
@@ -77,6 +112,8 @@ public:
   static RM* Instance();
 
   RC createTable(const string tableName, const vector<Attribute> &attrs);
+
+  RC createTable(const string tableName);
 
   RC deleteTable(const string tableName);
 
@@ -112,6 +149,15 @@ public:
       const vector<string> &attributeNames, // a list of projected attributes
       RM_ScanIterator &rm_ScanIterator);
 
+  // scanFormatted returns an iterator tp allow the caller to go through the results one by one
+  // by calling getNextTupleFormatted of the iterator
+  RC scanFormatted(const string tableName,
+      const int position, 
+      const AttrType type,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      RM_ScanFormattedIterator &rm_ScanIterator);
+
 
 // Extra credit
 public:
@@ -128,10 +174,13 @@ protected:
   ~RM();
 
 private:
-  RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr);
+  RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr, char version = 0);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
-
+  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 );
+  char getLatestVersionFromCatalog(const string tableName);
+  
   PF_FileHandle * getFileHandle(const string tableName);
+  RC closeFileHandle(const string tableName);
 
   unordered_map<string,PF_FileHandle *> fileHandles;
 
