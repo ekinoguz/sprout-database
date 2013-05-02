@@ -346,7 +346,8 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
       // Copy the column_name
       memcpy(&field_offset,data+offset,2);
       memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
-      name = (char *)malloc(next_field-field_offset);
+      name = (char *)malloc(next_field-field_offset+1);
+      name[next_field-field_offset] = '\0';
       memcpy(name, data+field_offset,next_field-field_offset);
       column.column_name = string(name);
       free(name);
@@ -355,7 +356,8 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
       // Copy the table_name
       field_offset = next_field;
       memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
-      name = (char *)malloc(next_field-field_offset);
+      name = (char *)malloc(next_field-field_offset+1);
+      name[next_field-field_offset] = '\0';
       memcpy(name, data+field_offset,next_field-field_offset);
       column.table_name = string(name);
       free(name);
@@ -521,6 +523,18 @@ RC RM::deleteTable(const string tableName)
 
 RC RM::getAttributes(const string tableName, vector<Attribute> &attrs)
 {
+  vector<Column> columns;
+  if(getAttributesFromCatalog(tableName, columns, false) != 0)
+    return -1;
+
+  Attribute attr;
+  for(uint i=0; i < columns.size(); i++){
+    attr.name = columns[i].column_name;
+    attr.length = columns[i].length;
+    attr.type = columns[i].type;
+    attrs.push_back(attr);
+  }
+  
   return 0;
 }
 RC RM::insertTuple(const string tableName, const void *data, RID &rid)
@@ -678,8 +692,12 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     // Do we have enough room as is
     if(PF_PAGE_SIZE - offset < (length + number_of_records*DIRECTORY_ENTRY_SIZE + 4)){
       printf("No Rearrange function available");
-      // TODO: Rearrange the page
-      return -1;
+      
+      if(reorganizePage(tableName, free_page) != 0)
+	return -1;
+      
+      // Where does the new free block begin
+      memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
     }
     
     // Insert the record

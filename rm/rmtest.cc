@@ -119,6 +119,7 @@ void secA_0(const string tablename)
   RC rc = rm->getAttributes(tablename, attrs);
   assert(rc == success);
 
+  // TODO: Automatically verify this
   for(unsigned i = 0; i < attrs.size(); i++)
     {
       cout << "Attribute Name: " << attrs[i].name << endl;
