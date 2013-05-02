@@ -291,8 +291,6 @@ char RM::getLatestVersionFromCatalog(const string tableName)
   AttrType type = TypeVarChar;
   RM_ScanFormattedIterator rm_ScanIterator;
   
-  cout << "Table: " << tableName;
-  
   scanFormatted(TABLES_TABLE, position, type, EQ_OP, tableName.c_str(), rm_ScanIterator);
 
   char latest_version;
@@ -699,7 +697,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     memcpy((char *)page+PF_PAGE_SIZE-2,&offset, 2);
 
     rid.pageNum = free_page;
-    rid.slotNum = number_of_records;
+    rid.slotNum = number_of_records-1;
 
     RC ret = fh->WritePage(free_page,page);
     free(page);
@@ -712,7 +710,8 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
 RC RM::deleteTuples(const string tableName)
 {
   // Close file if it's already opened
-  closeFileHandle(tableName);
+  if(closeFileHandle(tableName)!=0)
+    return -1;
 
   // Delete the table form the tables table
   RM_ScanFormattedIterator tablesScanIterator;
@@ -721,20 +720,25 @@ RC RM::deleteTuples(const string tableName)
   RID rid;
   void *data = malloc(TABLES_TABLE_RECORD_MAX_LENGTH);
 
-  tablesScanIterator.getNextTuple(rid, data);
+  if(tablesScanIterator.getNextTuple(rid, data) == RM_EOF)
+    return -1;
 
   // Delete the table file
   uint16_t fileLocAttributeOffset;
-  memcpy(&fileLocAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+  memcpy(&fileLocAttributeOffset, (char*)data + 2 + (1 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
   
   uint16_t typeAttributeOffset;
-  memcpy(&typeAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+  memcpy(&typeAttributeOffset, (char*)data + 2 + (2 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
   
   char* fileLoc = ((char*)(malloc(typeAttributeOffset - fileLocAttributeOffset + 1)));
   memset(fileLoc, 0, typeAttributeOffset - fileLocAttributeOffset + 1);
   memcpy(fileLoc, (char*)data + fileLocAttributeOffset, typeAttributeOffset - fileLocAttributeOffset);
-  
-  pfm->DestroyFile(fileLoc);
+
+
+  if(pfm->DestroyFile(fileLoc)!=0)
+    return -1;
+  cout << "Delete " << fileLoc  << endl;
+
 
   free(data);
 
@@ -758,7 +762,8 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
   while(!done)
     {
       // Read page
-      fh->ReadPage(pageNum, data);
+      if(fh->ReadPage(pageNum, data) != 0)
+	return -1;
       // Read number of records on the page
       uint16_t numOfRecords;
       //Last two bytes contain the offset of the free space on the page
@@ -771,10 +776,10 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 
       // Read record offset
       uint16_t recordOffset;
-      memcpy(&recordOffset, (char*)data + PF_PAGE_SIZE - 4 - (slotNum * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+      memcpy(&recordOffset, (char*)data + PF_PAGE_SIZE - 4 - ((slotNum+1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
 
       // Mark record as deleted (0xFFFF is the value that indicate that the field is deleted)
-      memset(&data + PF_PAGE_SIZE - 4 - (slotNum * DIRECTORY_ENTRY_SIZE), 0xFFFF, DIRECTORY_ENTRY_SIZE);
+      memset((char *)data + PF_PAGE_SIZE - 4 - ((slotNum+1) * DIRECTORY_ENTRY_SIZE), 0xFFFF, DIRECTORY_ENTRY_SIZE);
 
       // Write page
       fh->WritePage(pageNum, data);
@@ -788,8 +793,8 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 	{
 	  // Read record length
 	  uint16_t firstAttributeOffset;
-	  memcpy(&firstAttributeOffset, (char*)data + recordOffset + 2, DIRECTORY_ENTRY_SIZE);
-	  memcpy(&recordLength, (char*)data + recordOffset + firstAttributeOffset - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+	  memcpy(&firstAttributeOffset, (char*)data + recordOffset + 2, 2);
+	  memcpy(&recordLength, (char*)data + recordOffset + firstAttributeOffset - 2, 2);
 	  
 	  done = true;
 	}
@@ -800,17 +805,17 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 
       // Update the free space on the first page
       uint16_t freeSpace;
-      memcpy(&freeSpace, (char*)firstPage + DIRECTORY_ENTRY_SIZE + (pageNum * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
-      memset((char*)firstPage + DIRECTORY_ENTRY_SIZE + (pageNum * DIRECTORY_ENTRY_SIZE), freeSpace - recordLength, DIRECTORY_ENTRY_SIZE);
+      memcpy(&freeSpace, (char*)firstPage + 2 + (pageNum * 2), 2);
+      memset((char*)firstPage + 2 + (pageNum * 2), freeSpace - recordLength, 2);
 
       if (forwardPointer != 0)
 	{
-	  memcpy(&pageNum, (char*)data + recordOffset + 2, DIRECTORY_ENTRY_SIZE);
-	  memcpy(&slotNum, (char*)data + recordOffset + 4, DIRECTORY_ENTRY_SIZE);
+	  memcpy(&pageNum, (char*)data + recordOffset + 2, 2);
+	  memcpy(&slotNum, (char*)data + recordOffset + 4, 2);
 	}
     }
 
-  fh->WritePage(0, data);
+  fh->WritePage(0, firstPage);
 
   return 0;
 }
@@ -831,13 +836,64 @@ RC RM::updateTuple(const string tableName, const void *data, const RID &rid)
 RC RM::readTuple(const string tableName, const RID &rid, void *data)
 {
   void *record = malloc(PF_PAGE_SIZE);
-  readFormattedTuple(tableName, rid, record);
+  if(readFormattedTuple(tableName, rid, record) != 0)
+    return -1;
 
   // Read record version
   uint8_t version;
   memcpy(&version, (char*)record + 1, 1);
 
-  
+  vector<Column> currentColumns;
+  getAttributesFromCatalog(tableName, currentColumns, false, version);
+
+  vector<Column> latestColumns;
+  getAttributesFromCatalog(tableName, latestColumns, false);
+
+  int offset = 0;
+
+  uint i,j;
+  for (i = 0; i < latestColumns.size(); i++)
+    {
+      for(j = 0; j < currentColumns.size(); j++)
+	{
+	  if(currentColumns[j].column_name == latestColumns[i].column_name &&
+	     currentColumns[j].type == latestColumns[i].type &&
+	     currentColumns[j].length == latestColumns[i].length)
+	    {
+	      int position = currentColumns[j].position;
+	      
+	      uint16_t field_offset;
+	      memcpy(&field_offset,(char*)record+2+position*DIRECTORY_ENTRY_SIZE,DIRECTORY_ENTRY_SIZE);
+
+	      uint16_t field_end;
+	      memcpy(&field_end,(char*)record+2+(position+1)*DIRECTORY_ENTRY_SIZE,DIRECTORY_ENTRY_SIZE);
+	
+	      uint16_t length = field_end - field_offset;
+	      if(latestColumns[i].type == TypeVarChar){
+		memcpy((char*)data+offset, &length, 4);
+		offset+=4;		
+	      }
+
+	      memcpy((char*)data+offset, (char *)record+field_offset, length);
+	      offset += length;
+	      
+	      break;
+	    }
+	    
+	}
+
+      // The column wasn't present
+      if(j == currentColumns.size()){
+	if(latestColumns[i].type == TypeVarChar){
+	  memset((char *)data+offset, 0,4);
+	  offset+= 4;
+	}
+	else {
+	  memset((char *)data+offset, 0,latestColumns[i].length);
+	  offset+= latestColumns[i].length;
+	}
+      }
+    }
 
   return 0;
 }
@@ -852,11 +908,24 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
   while (!done)
     {
       // Read page
-      fh->ReadPage(pageNum, page);
-  
+      if(fh->ReadPage(pageNum, page) != 0)
+	return -1;
+
+      uint16_t numOfRecords;
+      //Last two bytes contain the offset of the free space on the page
+      memcpy(&numOfRecords, (char*)data + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
+      // No such record
+      if (slotNum >= numOfRecords)
+	{
+	  return -1;
+	}
+
       // Read record offest
       uint16_t recordOffset;
-      memcpy(&recordOffset, (char*)page + PF_PAGE_SIZE - 4 - (slotNum * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+      memcpy(&recordOffset, (char*)page + PF_PAGE_SIZE - 4 - ((slotNum+1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+
+      if(recordOffset == 0xFFFF)
+	return -1;
 
       // Read forward pointer bit
       uint8_t forwardPointer;
@@ -887,7 +956,8 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 RC RM::readAttribute(const string tableName, const RID &rid, const string attributeName, void *data)
 {
   void *record = malloc(PF_PAGE_SIZE);
-  readFormattedTuple(tableName, rid, record);
+  if(readFormattedTuple(tableName, rid, record) != 0)
+    return -1;
 
   // Read record version
   uint8_t version;
@@ -902,20 +972,53 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
   // Read the position and the type of the target attribute
   int position;
   AttrType type;
+  
+  bool found = false;
   for (uint i = 0; i < columns.size(); i++)
     {
       if (columns.at(i).column_name == attributeName)
 	{
 	  position = columns.at(i).position;
 	  type = columns.at(i).type;
+	  
+	  found = true;
 	}
+    }
+
+  if(!found)
+    {
+      // We need to read the latest to see what to return
+      columns.clear();
+      if( getAttributesFromCatalog(tableName, columns, false) != 0)
+	{
+	  return -1;
+	}
+
+      for (uint i = 0; i < columns.size(); i++)
+	{
+	  if (columns.at(i).column_name == attributeName)
+	    {
+	      type = columns.at(i).type;
+	      
+	      if(type == TypeVarChar){
+		*((uint *)data) = 0;
+	      } else {
+		memset(data,0,columns[i].length);
+	      }	    
+	      
+	      return 0;
+	    }
+	}
+      
+      // We didn't find it in latest columns either
+      return -1;
     }
   
   uint16_t attributeOffset;
   memcpy(&attributeOffset, (char*)record + 2 + (position * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
 
   uint16_t nextAttributeOffset;
-  memcpy(&attributeOffset, (char*)record + 2 + ((position + 1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+  memcpy(&nextAttributeOffset, (char*)record + 2 + ((position + 1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
 
   int length = ((int)(nextAttributeOffset - attributeOffset));
 
@@ -1070,6 +1173,8 @@ RC RM::closeFileHandle(const string tableName)
 	{
 	  return -1;
 	}
+
+      fileHandles.erase(tableName);
     }
 
   return 0;

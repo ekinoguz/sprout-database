@@ -162,6 +162,8 @@ public:
 
 // Extra credit
 public:
+  // Because of the implementaiton choices drop followed by add will *NOT* causee loss of data.
+  //   Feature not a bug :)
   RC dropAttribute(const string tableName, const string attributeName);
 
   RC addAttribute(const string tableName, const Attribute attr);
