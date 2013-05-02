@@ -121,14 +121,16 @@ end
 guard 'gtest', :test_paths => ['rm', 'pf'] do
   # Uncomment this line if you have a flat compile system
   #watch(%r{(((?!\/).)+)\.(h|c|hxx|cxx|cpp)$}) { |m|
-  watch(%r{(.+)\.(h|c|hxx|cxx|cpp|cc)$}) { |m|
+  watch(%r{(.+)\.(h|cc|c|hxx|cxx|cpp)$}) { |m|
  #   name = m[1].split('/')
     name = m[1]
+
+    puts name
 
     if name =~ /test$/
       "#{name}"
     else
-      "#{name}/#{name}test"
+      "#{name}test"
     end
   }
 
