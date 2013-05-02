@@ -818,7 +818,7 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 	}
       else
 	{
-	  recordLength = 8;
+	  recordLength = 6;
 	}
 
       // Update the free space on the first page
@@ -845,10 +845,20 @@ RC RM::updateTuple(const string tableName, const void *data, const RID &rid)
       return -1;
     }
 
+  PF_FileHandle *fh = getFileHandle(tableName);
+  void *first_page = malloc(PF_PAGE_SIZE);
+  if (fh->ReadPage(0, first_page) != 0)
+    {
+      return -1;
+    }
+
+
   // check if there is a space on this page 
   // if yes add data in this rid
   // if not, use insertTuple function to insert the tuple anywhere and i will add a forward point on this page to the rid returned by insertTuple
 
+  free(first_page);
+  
   return 0;
 }
 RC RM::readTuple(const string tableName, const RID &rid, void *data)
@@ -1054,7 +1064,73 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
 }
 RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
 {
-  return -1;
+  void *reorganized_page = malloc(PF_PAGE_SIZE);
+  memset(reorganized_page, 0, PF_PAGE_SIZE);
+
+  PF_FileHandle *fh =  getFileHandle(tableName);
+  void *page = malloc(PF_PAGE_SIZE);
+  if (fh->ReadPage(pageNumber, page) != 0)
+    {
+      return -1;
+    }
+
+  // Read the number of records on page
+  uint16_t records_number;
+  memcpy(&records_number, (char*)page + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
+  memcpy((char*)reorganized_page + PF_PAGE_SIZE - 4, &records_number, DIRECTORY_ENTRY_SIZE);
+
+  uint16_t record_offset;
+  uint16_t offset = 0;
+  for (uint16_t i = 0; i < records_number; i++)
+    {
+      memcpy(&record_offset, (char*)page + PF_PAGE_SIZE - 4 - ((i + 1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+
+      if (record_offset == 0xFFFF)
+	{
+	  // Mark the record as deleted on the new page
+	  uint16_t deleted = 0xFFFF;
+	  memcpy((char*)reorganized_page + PF_PAGE_SIZE - 4 - ((i + 1) * DIRECTORY_ENTRY_SIZE), &deleted, DIRECTORY_ENTRY_SIZE);
+
+	  continue;
+	}
+
+      // Read records forward pointer bit
+      uint8_t forward_pointer;
+      memcpy(&forward_pointer, page, 1);
+
+      uint16_t record_length;
+      if (forward_pointer == 0)
+	{
+	  // Read record length
+	  uint16_t first_attribute_offset;
+	  memcpy(&first_attribute_offset, (char*)page + record_offset + 2, 2);
+	  memcpy(&record_length, (char*)page + record_offset + first_attribute_offset - 2, 2);
+	}
+      else
+	{
+	  record_length = 6;
+	}
+      
+      // Write new record offset in the records directory
+      memcpy((char*)reorganized_page + PF_PAGE_SIZE - 4 - ((i + 1) * DIRECTORY_ENTRY_SIZE), &offset, DIRECTORY_ENTRY_SIZE);
+      
+      // Copy the record to the organized page
+      memcpy((char*)reorganized_page + offset, (char*)page + record_offset, record_length);
+      offset += record_length;
+    }
+
+  // Write the free space pointer
+  memcpy((char*)reorganized_page + PF_PAGE_SIZE - 2, &offset, DIRECTORY_ENTRY_SIZE);
+
+  if (fh->WritePage(pageNumber, reorganized_page) != 0)
+    {
+      return -1;
+    }
+
+  free(page);
+  free(reorganized_page);
+
+  return 0;
 }
 RC RM::scanFormatted(const string tableName,
       const int position, 
