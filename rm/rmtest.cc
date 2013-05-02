@@ -119,6 +119,7 @@ void secA_0(const string tablename)
   RC rc = rm->getAttributes(tablename, attrs);
   assert(rc == success);
 
+  // TODO: Automatically verify this
   for(unsigned i = 0; i < attrs.size(); i++)
     {
       cout << "Attribute Name: " << attrs[i].name << endl;
@@ -148,7 +149,7 @@ void secA_1(const string tablename, const int name_length, const string name, co
   printTuple(tuple, tuple_size);
   RC rc = rm->insertTuple(tablename, tuple, rid);
   assert(rc == success);
-    
+  
   // Given the rid, read the tuple from table
   rc = rm->readTuple(tablename, rid, data_returned);
   assert(rc == success);
@@ -429,22 +430,23 @@ void secA_6(const string tablename)
 void Tests()
 {
   // GetAttributes
-  //secA_0("tbl_employee");
+  secA_0("tbl_employee");
 
   // Insert/Read Tuple
   secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
 
   // Delete Tuple
-  //secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
+  secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
 
   // Update Tuple
   //secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
 
   // Read Attributes
-  //secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
+  secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
 
   // Delete Tuples
-  //secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
+  secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
+  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
 
   // Simple Scan
   //createTable("tbl_employee3");
