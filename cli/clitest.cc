@@ -19,6 +19,8 @@ void Test01()
 
 int main()
 {
+  system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
+
   cli = CLI::Instance();
   string input;
   cout << "************************" << endl;
