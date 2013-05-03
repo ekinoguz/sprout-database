@@ -1211,6 +1211,7 @@ RC RM::scanFormatted(const string tableName,
   Column column;
   column.position = position;
   column.type = type;
+  column.version = 0;
 
   vector<Column> columns;
   columns.push_back(column);
@@ -1218,7 +1219,7 @@ RC RM::scanFormatted(const string tableName,
   return scanFormatted(tableName, columns, compOp, value, rm_ScanIterator);
 }
 RC RM::scanFormatted(const string tableName,
-      const vector<Columnn> columns,
+      const vector<Column> columns,
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
       RM_ScanFormattedIterator &rm_ScanIterator)
@@ -1250,11 +1251,11 @@ RC RM::scan(const string tableName,
   vector<Column> projectedColumns;
   vector<Column> conditionColumns;
 
-  for(uint i=0;i<columns.length;i++){
+  for(uint i=0;i<columns.size();i++){
     if( columns[i].column_name == conditionAttribute )
       conditionColumns.push_back(columns[i]);
     
-    for(uint j=0;j<attributeNames.length;j++)
+    for(uint j=0;j<attributeNames.size();j++)
       if( columns[i].column_name == attributeNames[j] )
 	projectedColumns.push_back(columns[i]);
   }
@@ -1262,8 +1263,7 @@ RC RM::scan(const string tableName,
 
   rm_ScanIterator.projectedColumns = projectedColumns;
 
-  if(scanFormatted(tableName, conditionColumns, compOp, value, rm_ScanIterator) != 0)
-    return -1;
+  return scanFormatted(tableName, conditionColumns, compOp, value, rm_ScanIterator);
 }
 
 // Get next tuple preemptively loads the next page.
@@ -1299,7 +1299,19 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
       memcpy(data,(char*)page+offset,end_offset);
           
       // Make sure the forward pointer isn't set
-      if(*(char *)data != 0) {
+      if(*(char *)data == 0) {
+	
+	int version = *((char *)data+1);
+	int position;
+	AttrType type;
+	for(uint i=0;i<columns.size();i++){
+	  if(columns[i].version == version){
+	    position = columns[i].position;
+	    type = columns[i].type;
+	  }
+	}
+	
+	// We should check that position/type are set to see if a version was found...
 	
 	// Grab the field offset at position +1 and then subtract the offset at position
 	uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
@@ -1353,7 +1365,7 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
   switch(RM_ScanFormattedIterator::getNextTuple(rid,buffer)){
   case 0:
     break;
-  case RM_EOF
+  case RM_EOF:
     return RM_EOF;
   default:
     return -2;

@@ -1,4 +1,3 @@
-
 #ifndef _rm_h_
 #define _rm_h_
 
@@ -80,8 +79,7 @@ public:
   virtual RC close() { if(page != NULL) free(page); page = NULL; return 0; };
 
   PF_FileHandle * fh;
-  int position;
-  AttrType type;
+  vector<Column> columns;
   CompOp compOp;
   const void * value;
   void * page;
