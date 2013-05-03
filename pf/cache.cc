@@ -184,8 +184,8 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       SetDirty(frameNum);
     }
 
-  // Write the page to disk to comply with the project requirements
-  fileHandle->WritePageToDisk(pageNum, data);
+  // Write the page to disk to ensure fault tolerance
+  // fileHandle->WritePageToDisk(pageNum, data);
 
   return 0;
 }
@@ -254,6 +254,7 @@ void Cache::UnsetDirty(unsigned frameNum)
   *(dirtyFlag + frameNum) = false;
 }
 
+// This should only be closed for closing fileHandles
 int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
 {
   for (int i = 0; i < numCachePages; i++)
@@ -269,6 +270,10 @@ int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
 	      return result;
 	    }
 	}
+      
+      if (((framesInfo + i)->fileHandle == fileHandle)){	
+	memset(framesInfo+i,0,sizeof(FrameInfo));
+      }
     }
   
   return 0;
