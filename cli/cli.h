@@ -39,7 +39,7 @@ private:
   RC addAttributeToCatalog(const Attribute &attr, const string tableName, const int position);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
   
-  char *  next(char * tokenizer);
+  char *  next();
   RC expect(char * tokenizer, const string expected);
   void error(const string errorMessage);
   
