@@ -164,7 +164,8 @@ public:
 		   const void *value,                    // used in the comparison
 		   RM_ScanFormattedIterator &rm_ScanIterator);
 
-
+  static RC translateTuple(void * data, const void * record, const vector<Column> & currentColumns, const vector<Column> & targetColumns);
+ private:
 
 // Extra credit
 public:
