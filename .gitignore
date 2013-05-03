@@ -15,6 +15,7 @@
 #Binaries
 pf/pftest
 rm/rmtest
+cli/clitest
 
 #db files
 db/

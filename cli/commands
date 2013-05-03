@@ -1,0 +1,2 @@
+create table ekin name=varchar(40), age=int
+

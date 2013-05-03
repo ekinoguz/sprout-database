@@ -191,8 +191,8 @@ RC CLI::process(const string input)
 RC CLI::createTable(const string name, char * tokenizer)
 {
 	// parse col and types
-	vector<string> names;
-	vector<string> types;
+	vector<Attribute> table_attrs;
+	Attribute attr;
 	while (tokenizer != NULL)
 	{
 		// get name if there is
@@ -200,7 +200,7 @@ RC CLI::createTable(const string name, char * tokenizer)
 		if (tokenizer == NULL) {
 			break;
 		}
-		names.push_back(string(tokenizer));
+		attr.name = string(tokenizer);
 
 		// get type
 		tokenizer = next();
@@ -208,15 +208,54 @@ RC CLI::createTable(const string name, char * tokenizer)
 			cout << "expecting type" << endl;
 			break;
 		}
-		types.push_back(string(tokenizer));
+		if (expect(tokenizer, "int") == 0) {
+			attr.type = TypeInt;
+			attr.length = 4;
+		}
+		else if (expect(tokenizer, "real") == 0) {
+			attr.type = TypeReal;
+			attr.length = 4;
+		}
+		else if (expect(tokenizer, "varchar") == 0) {
+			attr.type = TypeVarChar;
+			// read length
+			tokenizer = next();
+			attr.length = atoi(tokenizer);
+		}
+		else if (expect(tokenizer, "boolean") == 0) {
+			attr.type = TypeBoolean;
+			attr.length = 1;
+		}
+		else if (expect(tokenizer, "short") == 0) {
+			attr.type = TypeShort;
+			attr.length = 1;
+		}
+		else {
+			// TODO this is actually error
+			error ("problem in attribute type in create table");
+		}
+		table_attrs.push_back(attr);
 	}
-	cout << "create table for <" << name << "> and attributes:" << endl;
-	for (std::vector<string>::iterator it = names.begin() ; it != names.end(); ++it)
-    std::cout << ' ' << *it;
-  cout << endl;
-  for (std::vector<string>::iterator it = types.begin() ; it != types.end(); ++it)
-    std::cout << ' ' << *it;
-  cout << endl;
+	// cout << "create table for <" << name << "> and attributes:" << endl;
+	// for (std::vector<Attribute>::iterator it = table_attrs.begin() ; it != table_attrs.end(); ++it)
+ //    std::cout << ' ' << it->length;
+ //  cout << endl;
+
+	RC ret = rm->createTable(name, table_attrs);
+	if (ret != 0)
+		return ret;
+
+	// add table to cli catalogs
+	string file_url = string(DATABASE_FOLDER) + '/' + name;
+	ret = this->addTableToCatalog(name, file_url, "heap");
+	if (ret != 0)
+		return ret;
+
+	// add attributes to cli columns table
+  for(uint i=0; i < table_attrs.size(); i ++) {
+    this->addAttributeToCatalog(table_attrs[i], name, i);
+  }
+
 	return 0;
 }
 
