@@ -1,6 +1,14 @@
 #include "cli.h"
 
-#define DELIMITERS " =,()\"" // TODO: update delimiters later
+// Command parsing delimiters
+// TODO: update delimiters later
+#define DELIMITERS " =,()\""
+
+// CVS file read delimiters
+#define CVS_DELIMITERS ","
+#define CLI_TABLES "cli_tables"
+#define CLI_COLUMNS "cli_columns"
+#define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
 
 CLI * CLI::_cli = 0;
 
@@ -14,7 +22,80 @@ CLI* CLI::Instance()
 
 CLI::CLI()
 {
-	rm = RM::Instance();	
+	rm = RM::Instance();
+	Attribute attr;
+
+	// create cli columns table
+  vector<Attribute> column_attrs;
+  attr.name = "column_name";
+  attr.type = TypeVarChar;
+  attr.length = 30;
+  column_attrs.push_back(attr);
+
+  attr.name = "table_name";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  column_attrs.push_back(attr);
+
+  attr.name = "position";
+  attr.type = TypeInt;
+  attr.length = 4;
+  column_attrs.push_back(attr);
+  
+  attr.name = "type";
+  attr.type = TypeInt;
+  attr.length = 4;
+  column_attrs.push_back(attr);
+  
+  attr.name = "length";
+  attr.type = TypeInt;
+  attr.length = 4;
+  column_attrs.push_back(attr);
+
+  attr.name = "nullable";
+  attr.type = TypeBoolean;
+  attr.length = 1;
+  column_attrs.push_back(attr);
+
+  rm->createTable(CLI_COLUMNS, column_attrs);
+
+  // add cli catalog attributes to CLI_COLUMNS table
+  for(uint i=0; i < column_attrs.size(); i ++) {
+    this->addAttributeToCatalog(column_attrs[i], CLI_COLUMNS, i);
+  }
+
+  // create CLI_TABLES table
+  vector<Attribute> table_attrs;
+  attr.name = "table_name";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  table_attrs.push_back(attr);
+  
+  attr.name = "file_location";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  table_attrs.push_back(attr);
+
+  attr.name = "type";
+  attr.type = TypeVarChar;
+  attr.length = 20;
+  table_attrs.push_back(attr);
+  
+	rm->createTable(CLI_TABLES, table_attrs);
+
+	// add cli catalog attributes to cli columns table
+  for(uint i=0; i < table_attrs.size(); i ++) {
+    this->addAttributeToCatalog(table_attrs[i], CLI_TABLES, i);
+  }
+
+  // add cli catalog information to itself
+  string file_url = string(DATABASE_FOLDER) + '/' + CLI_COLUMNS;
+  if (this->addTableToCatalog(CLI_COLUMNS, file_url, "heap") != 0)
+  	return;
+
+  file_url = string(DATABASE_FOLDER) + '/' + CLI_TABLES;
+  if (this->addTableToCatalog(CLI_TABLES, file_url, "heap") != 0)
+  	return;
 }
 
 CLI::~CLI()
@@ -35,13 +116,13 @@ RC CLI::process(const string input)
 	if (tokenizer != NULL)
 	{
 		if (expect(tokenizer, "create") == 0) {
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			if (tokenizer == NULL) {
 				error ("I expect <table>");
 				return 0;
 			}
 			string type = string(tokenizer);
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			if (tokenizer == NULL) {
 				error ("I expect <name> to be created");
 				return 0;
@@ -52,13 +133,13 @@ RC CLI::process(const string input)
 			// TODO: create index
 		}
 		else if (expect(tokenizer, "drop") == 0) {
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			if (tokenizer == NULL) {
 				error ("I expect <table> or <index>");
 				return 0;
 			}
 			string type = string(tokenizer);
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			if (tokenizer == NULL) {
 				error ("I expect <name> to be dropped");
 				return 0;
@@ -67,14 +148,14 @@ RC CLI::process(const string input)
 			drop(type, name);
 		}
 		else if (expect(tokenizer, "load") == 0) {
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			
 			if (tokenizer == NULL) {
 				error ("I expect <tableName>");
 				return 0;
 			}
 			string name = string(tokenizer);
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			if (tokenizer == NULL) {
 				error ("I expect <fileName> to be loaded");
 				return 0;
@@ -83,14 +164,14 @@ RC CLI::process(const string input)
 			load(name, fileName);
 		}
 		else if (expect(tokenizer, "print") == 0) {
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			if (tokenizer != NULL)
 				print(string(tokenizer));
 			else
 				error ("I expect \"tableName\"");
 		}
 		else if (expect(tokenizer, "help") == 0) {
-			tokenizer = next(tokenizer);
+			tokenizer = next();
 			if (tokenizer != NULL)
 				help(string(tokenizer));
 			else
@@ -115,14 +196,14 @@ RC CLI::createTable(const string name, char * tokenizer)
 	while (tokenizer != NULL)
 	{
 		// get name if there is
-		tokenizer = next(tokenizer);
+		tokenizer = next();
 		if (tokenizer == NULL) {
 			break;
 		}
 		names.push_back(string(tokenizer));
 
 		// get type
-		tokenizer = next(tokenizer);
+		tokenizer = next();
 		if (tokenizer == NULL) {
 			cout << "expecting type" << endl;
 			break;
@@ -139,16 +220,55 @@ RC CLI::createTable(const string name, char * tokenizer)
 	return 0;
 }
 
-// check type, it should be either table or index
 RC CLI::drop(const string type, const string name)
 {
-	cout << "we will drop <" << type << "> <" << name << ">" << endl;
-	return 0;
+	if (type.compare("table") == 0) {
+		return rm->deleteTable(name);
+	}
+	else if (type.compare("index") == 0) {
+		// TODO: drop index here
+		return 0;
+	}
+	else {
+		error ("I can either drop table or index");
+		return -1;
+	}
 }
 
+// CSV reader without escaping commas
+// should be fixed
+// reads files in data folder
 RC CLI::load(const string tableName, const string fileName)
 {
 	cout << "we will load file <" << fileName << "> to table <" << tableName << ">" << endl;
+	ifstream ifs;
+	string file_url = string("../data/") + fileName;
+	ifs.open (file_url, ifstream::in);
+
+	if (!ifs.is_open()) {
+		cout << "could not open file: " << file_url << endl;
+		return -1;
+	}
+
+	string line;
+	char * tokenizer;
+	while (ifs.good()) {
+		getline(ifs, line);
+
+		char *a=new char[line.size()+1];
+		a[line.size()] = 0;
+		memcpy(a,line.c_str(),line.size());
+		
+		// tokenize input
+		tokenizer = strtok(a, CVS_DELIMITERS);
+		while (tokenizer != NULL) {
+			cout << tokenizer << endl;
+			tokenizer = strtok(NULL, CVS_DELIMITERS);
+		}
+		
+	}
+
+	ifs.close();
 	return 0;
 }
 
@@ -179,7 +299,7 @@ RC CLI::help(const string input)
 		cout << "\thelp: show help for all commands" << endl;
 	}
 	else if (input.compare("quit") == 0) {
-		cout << "\tquit: quit SecSQL. But remember, you have to come back!" << endl;
+		cout << "\tquit: quit SecSQL. But remember, love never ends!" << endl;
 	}
 	else if (input.compare("all") == 0) {
 		help("create");
@@ -187,15 +307,92 @@ RC CLI::help(const string input)
 		help("load");
 		help("print");
 		help("help");
+		help("quit");
 	}
 	else {
 		cout << "I dont know how to help you with <" << input << ">" << endl;
+		return -1;
 	}
 	return 0;
 }
 
+RC CLI::getAttributesFromCatalog(const string tableName, vector<Attribute> &columns)
+{
+	return rm->getAttributes(tableName, columns);
+}
+
+// Add given table to CLI_TABLES
+RC CLI::addTableToCatalog(const string tableName, const string file_url, const string type)
+{
+  int offset = 0;
+  int length;
+  void *buffer = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+
+  length = tableName.size();
+  memcpy((char *)buffer + offset, &length, sizeof(int));
+	offset += sizeof(int);
+  memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
+  offset += tableName.size();
+
+  length = file_url.size();
+  memcpy((char *)buffer + offset, &length, sizeof(int));
+	offset += sizeof(int);
+  memcpy((char *)buffer + offset, file_url.c_str(), file_url.size());
+  offset += file_url.size();
+
+  length = type.size();
+	memcpy((char *)buffer + offset, &length, sizeof(int));
+	offset += sizeof(int);
+  memcpy((char *)buffer + offset, type.c_str(), type.size());
+  offset += type.size();
+
+  RID rid;
+  RC ret = rm->insertTuple(CLI_TABLES, buffer, rid);
+
+  free(buffer);
+  return ret;
+}
+
+// adds given attribute to CLI_COLUMNS
+RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, const int position)
+{
+	int offset = 0;
+	int length;
+  void *buffer = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+
+  length = attr.name.size();
+	memcpy((char *)buffer + offset, &length, sizeof(int));
+	offset += sizeof(int);
+  memcpy((char *)buffer + offset, attr.name.c_str(), attr.name.size());
+  offset += attr.name.size();
+
+  length = tableName.size();
+	memcpy((char *)buffer + offset, &length, sizeof(int));
+	offset += sizeof(int);
+  memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
+  offset += tableName.size();
+
+  memcpy((char *)buffer + offset, &position, sizeof(position));
+  offset += sizeof(position);
+
+  memcpy((char *)buffer + offset, &attr.type, sizeof(attr.type));
+  offset += sizeof(attr.type);
+
+  memcpy((char *)buffer + offset, &attr.length, sizeof(attr.length));
+  offset += sizeof(attr.length);
+
+  memcpy((char *)buffer + offset, &attr.nullable, sizeof(attr.nullable));
+  offset += sizeof(attr.nullable);  
+
+  RID rid;
+  RC ret = rm->insertTuple(CLI_COLUMNS, buffer, rid);
+
+  free(buffer);
+  return ret;
+}
+
 // advance tokenizer to next token
-char * CLI::next(char * tokenizer)
+char * CLI::next()
 {
 	return strtok (NULL, DELIMITERS);
 }

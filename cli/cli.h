@@ -34,6 +34,11 @@ private:
   RC print(const string input);
   RC help(const string input);
 
+  // cli catalog functions
+  RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
+  RC addAttributeToCatalog(const Attribute &attr, const string tableName, const int position);
+  RC addTableToCatalog(const string tableName, const string file_url, const string type);
+  
   char *  next(char * tokenizer);
   RC expect(char * tokenizer, const string expected);
   void error(const string errorMessage);
