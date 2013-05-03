@@ -12,7 +12,7 @@ cli.o: cli.h
 clitest.o: cli.h
 
 # binary dependencies
-clitest: clitest.o libcli.a $(CODEROOT)/pf/libpf.a $(CODEROOT)/rm/librm.a
+clitest: clitest.o libcli.a $(CODEROOT)/rm/librm.a $(CODEROOT)/pf/libpf.a
 
 
 # dependencies to compile used libraries
