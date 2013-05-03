@@ -439,7 +439,9 @@ void Tests()
   secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
 
   // Update Tuple
-  //secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
+  secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
+
+  // TODO: need to test update forward pointers
 
   // Read Attributes
   secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
