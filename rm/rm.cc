@@ -537,7 +537,7 @@ RC RM::getAttributes(const string tableName, vector<Attribute> &attrs)
   
   return 0;
 }
-RC RM::insertTuple(const string tableName, const void *data, RID &rid)
+RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useRid)
 {  
   // Get information on the latest attributes
   vector<Column> columns;
@@ -606,10 +606,13 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid)
   memcpy((char *)buffer + directory_offset, &field_offset, 2);
   directory_offset += 2;
    
-  return insertFormattedTuple(tableName, buffer, field_offset, rid);
+  return insertFormattedTuple(tableName, buffer, field_offset, rid, useRid);
   
 }
-RC RM::insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid)
+
+// In order to make use of useRid the rid must have been previously been deleted
+//   this should really only be used for update.
+RC RM::insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid, bool useRid)
 {
   PF_FileHandle * fh = this->getFileHandle(tableName);
   
@@ -623,19 +626,32 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
   
   uint16_t free_page;
 
-  memcpy(&num_pages, page, 2);
-  for(uint16_t i = 0; i < num_pages && !found; i++) {
-    
-    // Check the freespace at page i
-    memcpy(&freespace, (char *)page+((i+1)*2), 2);
+  if(useRid){
+    // Check if we have space on that page
+    memcpy(&freespace, (char *)page+((rid.pageNum)*2), 2);
+  }
 
-    if(freespace >= ((uint16_t)length + DIRECTORY_ENTRY_SIZE)){
-      found = true;
-      free_page = i + 1; //this is stored as the actual page index
+  // If we have enough room don't bother looking for free space
+  if(freespace >= ((uint16_t)length)){
+    free_page = rid.pageNum;
+    found = true;
+  }
+  else {
+    memcpy(&num_pages, page, 2);
+    for(uint16_t i = 0; i < num_pages && !found; i++) {
+    
+      // Check the freespace at page i
+      memcpy(&freespace, (char *)page+((i+1)*2), 2);
+
+      if(freespace >= ((uint16_t)length + DIRECTORY_ENTRY_SIZE)){
+	found = true;
+	free_page = i + 1; //this is stored as the actual page index
+      }
     }
   }
 
-  
+
+  // Even if we need a forward pointer we still continue inserting as normal
   if(!found) {
     // No page with enough space existed, create a new page
 
@@ -665,15 +681,16 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     // Set the first slot to point to the right place
     *((uint16_t *)((char*)page+PF_PAGE_SIZE- DIRECTORY_ENTRY_SIZE*2 - 2)) = 0;
    
-    rid.pageNum = free_page;
-    rid.slotNum = 0; // Slot numbers are zero based, we jsut can't forget about the first two bytes storing length
+    if(!useRid){
+      rid.pageNum = free_page;
+      rid.slotNum = 0; // Slot numbers are zero based, we jsut can't forget about the first two bytes storing length
+    }
 
-    RC ret = fh->AppendPage(page);
-    free(page);
-    return ret;
+    if(fh->AppendPage(page)!=0)
+      return -1;
   }
-  // We have enough space so insert at the correct location
-  else{
+  else{ // We have enough space so insert at the correct location
+      
     // First update free_space information on the first page
     ((uint16_t *)page)[free_page] = ((uint16_t *)page)[free_page] - length - DIRECTORY_ENTRY_SIZE;
     if(fh->WritePage(0, page))
@@ -688,12 +705,85 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     
     uint16_t number_of_records;
     memcpy(&number_of_records, (char*)page+PF_PAGE_SIZE-4,2);
+
+    // These will help with update
+    uint16_t slotNum = number_of_records;
+    int directory_length = DIRECTORY_ENTRY_SIZE;
+
+    if(useRid && free_page == rid.pageNum){
+      slotNum = rid.slotNum;
+      directory_length = 0;
+    }
+     
+    // Do we have enough room as is
+    if(PF_PAGE_SIZE - offset - 4 - number_of_records*DIRECTORY_ENTRY_SIZE< length + directory_length){
+      if(reorganizePage(tableName, free_page) != 0)
+	return -1;
+      
+      // Where does the new free block begin
+      memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
+    }
+
+    // Insert the record
+    memcpy((char *)page+offset,data,length);
+
+    // Update the directory
+
+    if(!(useRid && free_page == rid.pageNum)){
+      number_of_records++;
+      memcpy((char*)page+ PF_PAGE_SIZE - 4, &number_of_records,2);
+    }
+    
+    // Store the offset pointer in slotNum
+    memcpy((char*)page+PF_PAGE_SIZE-4-(slotNum+1)*DIRECTORY_ENTRY_SIZE, &offset,2);
+    
+    // Update the free pointer
+    offset += length;
+    memcpy((char *)page+PF_PAGE_SIZE-2,&offset, 2);
+
+    // We don't update rid if this is an update
+    if(!useRid){
+      rid.pageNum = free_page;
+      rid.slotNum = slotNum;
+    }
+
+    if(fh->WritePage(free_page,page)!=0)
+      return -1;   
+  }
+  
+
+  // Do we need to write a forward pointer
+  if(useRid && free_page != rid.pageNum){ // If we aren't inserting on the appropriate page.
+    int forward_pointer_length = 6;
+    char * forward_pointer = (char *)malloc(6);
+    
+    *forward_pointer = 1; // Free pointer
+    *(forward_pointer+1) = 0; // Version
+    memcpy(forward_pointer+2,&rid.pageNum,2);
+    memcpy(forward_pointer+4,&rid.slotNum,2);
+    
+    // read in the free page again and update the free_space info
+    if( fh->ReadPage(0,page) != 0 )
+      return -1;
+
+    ((uint16_t *)page)[rid.pageNum] = ((uint16_t *)page)[rid.pageNum] - 6;
+    if(fh->WritePage(0, page))
+      return -1;
+    
+    // Read in the old page
+    if(fh->ReadPage(rid.pageNum,page) != 0)
+      return -1;
+
+     // Where does the free block begin
+    uint16_t offset;
+    memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
+    
+    uint16_t number_of_records;
+    memcpy(&number_of_records, (char*)page+PF_PAGE_SIZE-4,2);
   
     // Do we have enough room as is
-    if(PF_PAGE_SIZE - offset < (length + number_of_records*DIRECTORY_ENTRY_SIZE + 4)){
-      printf("No Rearrange function available");
-      
-      if(reorganizePage(tableName, free_page) != 0)
+    if(PF_PAGE_SIZE - offset  - 4 - number_of_records*DIRECTORY_ENTRY_SIZE < forward_pointer_length){
+      if(reorganizePage(tableName, rid.pageNum) != 0)
 	return -1;
       
       // Where does the new free block begin
@@ -701,27 +791,21 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     }
     
     // Insert the record
-    memcpy((char *)page+offset,data,length);
+    memcpy((char *)page+offset,forward_pointer,forward_pointer_length);
 
-    // Update the directory
-    number_of_records++;
-    memcpy((char*)page+ PF_PAGE_SIZE - 4, &number_of_records,2);
-    
-    // Store the offset pointer in slot number_of_records
-    memcpy((char*)page+PF_PAGE_SIZE-4-number_of_records*DIRECTORY_ENTRY_SIZE, &offset,2);
+    // Store the offset pointer in slot rid.slotNum
+    memcpy((char*)page+PF_PAGE_SIZE-4-(rid.slotNum+1)*DIRECTORY_ENTRY_SIZE, &offset,2);
     
     // Update the free pointer
-    offset += length;
+    offset += forward_pointer_length;
     memcpy((char *)page+PF_PAGE_SIZE-2,&offset, 2);
 
-    rid.pageNum = free_page;
-    rid.slotNum = number_of_records-1;
-
-    RC ret = fh->WritePage(free_page,page);
-    free(page);
-    return ret;
+    if(fh->WritePage(rid.pageNum,page) != 0)
+      return -1;
   }
-  return -1;
+
+  free(page);
+  return 0;
 }
 
 
@@ -841,25 +925,10 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 RC RM::updateTuple(const string tableName, const void *data, const RID &rid)
 {
   if (deleteTuple(tableName, rid) != 0)
-    {
       return -1;
-    }
 
-  PF_FileHandle *fh = getFileHandle(tableName);
-  void *first_page = malloc(PF_PAGE_SIZE);
-  if (fh->ReadPage(0, first_page) != 0)
-    {
-      return -1;
-    }
-
-
-  // check if there is a space on this page 
-  // if yes add data in this rid
-  // if not, use insertTuple function to insert the tuple anywhere and i will add a forward point on this page to the rid returned by insertTuple
-
-  free(first_page);
-  
-  return 0;
+  // Hackery to get around the way we modify insertTuple to also do updates
+  return insertTuple(tableName, data, *(const_cast<RID*>(&rid)), true);
 }
 RC RM::readTuple(const string tableName, const RID &rid, void *data)
 {
@@ -941,7 +1010,7 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 
       uint16_t numOfRecords;
       //Last two bytes contain the offset of the free space on the page
-      memcpy(&numOfRecords, (char*)data + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
+      memcpy(&numOfRecords, (char*)page + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
       // No such record
       if (slotNum >= numOfRecords)
 	{
