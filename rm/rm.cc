@@ -896,7 +896,7 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
 	      uint16_t field_end;
 	      memcpy(&field_end,(char*)record+2+(position+1)*DIRECTORY_ENTRY_SIZE,DIRECTORY_ENTRY_SIZE);
 	
-	      uint16_t length = field_end - field_offset;
+	      int length = field_end - field_offset;
 	      if(latestColumns[i].type == TypeVarChar){
 		memcpy((char*)data+offset, &length, 4);
 		offset+=4;		
