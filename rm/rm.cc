@@ -14,7 +14,7 @@
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
 #define TABLES_TABLE_RECORD_MAX_LENGTH 150   // It is actually 121
 
-RM RM::_rm = RM();
+RM RM::_rm;
 
 RM* RM::Instance()
 {
@@ -24,7 +24,7 @@ RM* RM::Instance()
   return &RM::_rm;
 }
 RM::RM(){
-
+  initialized = false;
 }
 
 void RM::init()

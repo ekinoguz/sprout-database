@@ -195,7 +195,7 @@ private:
   //static RM *_rm;
   
   void init();
-  bool initialized = false;
+  bool initialized;
 };
 
 #endif
