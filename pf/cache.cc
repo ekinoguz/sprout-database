@@ -57,6 +57,7 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
 {
   ostringstream convert;
   convert << pageNum;
+  // cout << fileHandle->fileName << "|" << pageNum << endl;
   std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());
   if (element == existingPages.end())
     {
@@ -79,8 +80,7 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
     	    }
 	  
 	  // Read the data from disk
-	  //cout <<
-	  fileHandle->ReadPageFromDisk(pageNum, data);// << endl;
+	  fileHandle->ReadPageFromDisk(pageNum, data);
 	  
           // Add the data to the cache and set the forward mapping
       	  memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
@@ -103,8 +103,15 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
     }
   else
     {
+      // cout << element->second << endl;
+
       int frameNum = element->second;
       memcpy(data, buffer + (PF_PAGE_SIZE * frameNum), PF_PAGE_SIZE);
+
+      uint16_t temp;
+      memcpy(&temp, (char*)data + PF_PAGE_SIZE - 4, 2);
+      // cout << "num of records: " << temp << endl;
+      
       *(frameUsage + frameNum) = *(frameUsage + frameNum) + 1;
       return 0;
     }
@@ -126,14 +133,11 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
   std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());
   if (element == existingPages.end())
     {
-      //cout << "page num: " << pageNum << endl;
       // Locate a page to flush
       int frameToFlush = GetFrameWithLowestUsage();
-      //cout << "--- to flush: " << frameToFlush << endl;
       // If frame is dirty write it to disk
       if (isDirty(frameToFlush))
 	{
-	  // cout << "--- is dirty" << endl;
 	  int result = (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
 	  if (result != 0)
 	    {
@@ -167,7 +171,7 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     }
   else
     {
-      //cout << "already in buffer" << endl;
+      // cout << "writing in cache: " << element->second << endl;
       int frameNum = element->second;
 
       // Overwrite the cache frame with the new data
@@ -181,7 +185,7 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     }
 
   // Write the page to disk to comply with the project requirements
-  //fileHandle->WritePageToDisk(pageNum, data);
+  fileHandle->WritePageToDisk(pageNum, data);
 
   return 0;
 }

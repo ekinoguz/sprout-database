@@ -755,8 +755,6 @@ RC RM::deleteTuples(const string tableName)
 
   if(pfm->DestroyFile(fileLoc)!=0)
     return -1;
-  cout << "Delete " << fileLoc  << endl;
-
 
   free(data);
 
@@ -941,7 +939,7 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 
       uint16_t numOfRecords;
       //Last two bytes contain the offset of the free space on the page
-      memcpy(&numOfRecords, (char*)data + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
+      memcpy(&numOfRecords, (char*)page + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
       // No such record
       if (slotNum >= numOfRecords)
 	{
