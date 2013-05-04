@@ -166,7 +166,7 @@ RC CLI::process(const string input)
 		else if (expect(tokenizer, "print") == 0) {
 			tokenizer = next();
 			if (tokenizer != NULL)
-				print(string(tokenizer));
+				printTable(string(tokenizer));
 			else
 				error ("I expect \"tableName\"");
 		}
@@ -177,7 +177,7 @@ RC CLI::process(const string input)
 			else
 				help("all");
 		}
-		else if (expect(tokenizer,"quit") == 0) {
+		else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0) {
 			code = -1;
 		}
 		else {
@@ -311,9 +311,38 @@ RC CLI::load(const string tableName, const string fileName)
 	return 0;
 }
 
-RC CLI::print(const string input)
+RC CLI::printTable(const string tableName)
 {
-	cout << "we will print table <" << input << ">" << endl;
+	cout << "we will print table <" << tableName << ">" << endl;
+	// Set up the iterator
+  RM_ScanIterator rmsi;
+  RID rid;
+  vector<Attribute> attributes;
+  void *data_returned = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+  this->getAttributesFromCatalog(tableName, attributes);
+
+  // convert attributes to vector<string>
+  vector<string> stringAttributes;
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+    stringAttributes.push_back(it->name);
+
+  RC rc = rm->scan(tableName, "", NO_OP, NULL, stringAttributes, rmsi);
+  if (rc != 0)
+  	return rc;
+
+  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
+  	printTuple(data_returned, attributes);
+  rmsi.close();
+
+  free(data_returned);
+	return 0;
+}
+
+RC CLI::printTuple(void *data, vector<Attribute> &attrs)
+{
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+		stringAttributes.push_back(it->name);
+
 	return 0;
 }
 
@@ -338,7 +367,7 @@ RC CLI::help(const string input)
 		cout << "\thelp: show help for all commands" << endl;
 	}
 	else if (input.compare("quit") == 0) {
-		cout << "\tquit: quit SecSQL. But remember, love never ends!" << endl;
+		cout << "\tquit or exit: quit SecSQL. But remember, love never ends!" << endl;
 	}
 	else if (input.compare("all") == 0) {
 		help("create");

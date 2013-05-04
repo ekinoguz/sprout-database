@@ -31,7 +31,8 @@ private:
   RC createTable(const string name, char * tokenizer); // this is how all of them should be
   RC drop(const string type, const string name);
   RC load(const string tableName, const string fileName);
-  RC print(const string input);
+  RC printTable(const string tableName);
+  RC printTuple(void *data, vector<Attribute> &attrs);
   RC help(const string input);
 
   // cli catalog functions
