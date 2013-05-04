@@ -55,7 +55,7 @@ void Test02()
 
   // test create table
   // test load table
-  command = "create table tbl_employeea EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
