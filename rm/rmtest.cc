@@ -428,32 +428,151 @@ void secA_6(const string tablename)
   return;
 }
 
+void secA_7(const string tablename)
+{
+  // Functions tested
+  // 1. Create Table ** -- made separate now.
+  // 2. Insert Tuple **
+  // 3. Read Tuple **
+  // NOTE: "**" signifies the new functions being tested in this test case. 
+  cout << "****In Test Case 7****" << endl;
+
+  string name = "Cesar";
+  int name_length = name.size();
+  int age = 20;
+  int height = 200;
+  float salary = 200.0;
+   
+  RID rid1; 
+  int tuple_size = 0;
+  void *tuple1 = malloc(100);
+  void *data_returned = malloc(100);
+
+  // Insert a tuple into a table
+  prepareTuple(name_length, name, age, height, salary, tuple1, &tuple_size);
+  cout << "Insert Data:" << endl;
+  printTuple(tuple1, tuple_size);
+  RC rc = rm->insertTuple(tablename, tuple1, rid1);
+  assert(rc == success);
+
+  
+  name = "Sky";
+  name_length = name.size();
+  age = 30;
+  height = 300;
+  salary = 300.0;
+
+  tuple_size = 0;
+  void *tuple2 = malloc(100);
+  RID rid2;
+
+  prepareTuple(name_length, name, age, height, salary, tuple2, &tuple_size);
+  cout << "Insert Data:" << endl;
+  printTuple(tuple2, tuple_size);
+  rc = rm->insertTuple(tablename, tuple2, rid2);
+  assert(rc == success);
+
+
+
+  name = "Ekin";
+  name_length = name.size();
+  age = 40;
+  height = 400;
+  salary = 400.0;
+
+  tuple_size = 0;
+  void *tuple3 = malloc(100);
+  RID rid3;
+
+  prepareTuple(name_length, name, age, height, salary, tuple3, &tuple_size);
+  cout << "Insert Data:" << endl;
+  printTuple(tuple3, tuple_size);
+  rc = rm->insertTuple(tablename, tuple3, rid3);
+  assert(rc == success);
+  
+  // Test Delete Tuple
+  rc = rm->deleteTuple(tablename, rid2);
+  assert(rc == success);
+
+  // Reorganize page
+  rc = rm->reorganizePage(tablename, rid2.pageNum);
+  assert(rc == success);
+
+
+
+  name = "Mike";
+  name_length = name.size();
+  age = 50;
+  height = 500;
+  salary = 500.0;
+
+  tuple_size = 0;
+  void *tuple4 = malloc(100);
+  RID rid4;
+
+  prepareTuple(name_length, name, age, height, salary, tuple4, &tuple_size);
+  cout << "Insert Data:" << endl;
+  printTuple(tuple4, tuple_size);
+  rc = rm->insertTuple(tablename, tuple4, rid4);
+  assert(rc == success);
+
+
+  // Given the rid, read the tuple from table
+  rc = rm->readTuple(tablename, rid3, data_returned);
+  assert(rc == success);
+
+  cout << "Returned Data:" << endl;
+  printTuple(data_returned, tuple_size);
+
+  // Compare whether the two memory blocks are the same
+  if(memcmp(tuple3, data_returned, tuple_size) == 0)
+    {
+      cout << "****Test case 7 passed****" << endl << endl;
+    }
+  else
+    {
+      cout << "****Test case 7 failed****" << endl << endl;
+    }
+
+  free(tuple1);
+  free(tuple2);
+  free(tuple3);
+  free(tuple4);
+  free(data_returned);
+  return;
+}
+
 void Tests()
 {
   // GetAttributes
-  secA_0("tbl_employee");
+  // secA_0("tbl_employee");
 
   // Insert/Read Tuple
-  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
+  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
 
   // Delete Tuple
-  secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
+  // secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
 
   // Update Tuple
-  secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
+  // secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
 
   // TODO: need to test update forward pointers
 
   // Read Attributes
-  secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
+  // secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
 
   // Delete Tuples
-  secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
-  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
+  // secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
+  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
 
   // Simple Scan
-  createTable("tbl_employee3");
-  secA_6("tbl_employee3");
+  // createTable("tbl_employee3");
+  // secA_6("tbl_employee3");
+
+  // Reorganize page
+  createTable("tbl_employee4");
+  secA_7("tbl_employee4");
+
     
   return;
 }
