@@ -52,11 +52,6 @@ CLI::CLI()
   attr.length = 4;
   column_attrs.push_back(attr);
 
-  attr.name = "nullable";
-  attr.type = TypeBoolean;
-  attr.length = 1;
-  column_attrs.push_back(attr);
-
   rm->createTable(CLI_COLUMNS, column_attrs);
 
   // add cli catalog attributes to CLI_COLUMNS table
@@ -165,9 +160,7 @@ RC CLI::process(const string input)
 		}
 		else if (expect(tokenizer, "print") == 0) {
 			tokenizer = next();
-			if (expect(tokenizer, "tables") == 0)
-				printTables();
-			else if (expect(tokenizer, "columns") == 0)
+			if (expect(tokenizer, "columns") == 0)
 				printColumns(tokenizer);
 			else if (tokenizer != NULL)
 				printTable(string(tokenizer));
@@ -352,35 +345,6 @@ RC CLI::load(const string tableName, const string fileName)
 	return 0;
 }
 
-// Print all tableName, location, type
-RC CLI::printTables()
-{
-	// get tables from CLI_TABLES
-	Attribute attr;
-	vector<Attribute> attributes;
-	this->getAttributesFromCatalog(CLI_TABLES, attributes);
-
-	// Set up the iterator
-  RM_ScanIterator rmsi;
-  RID rid;
-  void *data_returned = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
-
-  // convert attributes to vector<string>
-  vector<string> stringAttributes;
-	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
-    stringAttributes.push_back(it->name);
-
-  RC rc = rm->scan(CLI_TABLES, "", NO_OP, NULL, stringAttributes, rmsi);
-  if (rc != 0)
-  	return rc;
-
-  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
-  	printTuple(data_returned, attributes);
-  rmsi.close();
-
-	return 0;
-}
-
 RC CLI::printColumns(char * tokenizer)
 {	
 	tokenizer = next();
@@ -398,8 +362,9 @@ RC CLI::printColumns(char * tokenizer)
 	this->getAttributesFromCatalog(tableName, attributes);
 
 	// print attributes
-	cout << setw(20) << left << "attr.name" << setw(15) << "attr.type" << setw(15) << "attr.length" << endl;
+	//cout << setw(20) << left << "attr.name" << setw(15) << "attr.type" << setw(15) << "attr.length" << endl;
 	cout << "==============================================" << endl;
+	printAttributes(attributes);
 	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
 		cout << setw(20) << left << it->name << setw(15) << left << it->type << setw(15) << it->length << endl;
 
@@ -426,6 +391,7 @@ RC CLI::printTable(const string tableName)
   if (rc != 0)
   	return rc;
 
+	printAttributes(attributes);
   while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
   	printTuple(data_returned, attributes);
   rmsi.close();
@@ -485,7 +451,6 @@ RC CLI::help(const string input)
 	}
 	else if (input.compare("print") == 0) {
 		cout << "\tprint <tableName>: print every record in tableName" << endl;
-		cout << "\tprint tables: print all tables in database" << endl;
 		cout << "\tprint columns <tableName>: print columns of given tableName" << endl;
 	}
 	else if (input.compare("help") == 0) {
@@ -609,7 +574,16 @@ void CLI::error(const string errorMessage)
 
 void CLI::printAttributes(vector<Attribute> &attributes)
 {
-	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
-		cout << setw(it->length+5) << left << it->name;
+	int length = 0, used = 0;
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
+		used = it->length + 5;
+		if (it->length > 20)
+			used = 20 + 5;
+		cout << setw(used) << left << it->name;
+		length += used;
+	}
+	cout << endl;
+	for (uint i = 0; i < length; i++)
+		cout << "=";
 	cout << endl;
 }

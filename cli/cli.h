@@ -33,7 +33,6 @@ private:
   RC drop(const string type, const string name);
   RC load(const string tableName, const string fileName);
   RC printTable(const string tableName);
-  RC printTables();
   RC printColumns(char * tokenizer);
   RC printTuple(void *data, vector<Attribute> &attrs);
   RC help(const string input);

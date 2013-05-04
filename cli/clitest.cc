@@ -25,7 +25,7 @@ void Test01()
   cout << ">>> " << command << endl;
   cli->process(command);
 
-  command = "print columns tables";
+  command = "print columns cli_tables";
   cout << ">>> " << command << endl;
   cli->process(command);
 
