@@ -439,9 +439,7 @@ RC CLI::printTuple(void *data, vector<Attribute> &attrs)
 	int length, offset = 0, number;
 	char *str;
 	string record = "";
-	cout << "here" << endl;
 	for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
-		cout << it->type << endl;
 		switch(it->type) {
 			case TypeInt:
 			case TypeReal:
@@ -464,7 +462,7 @@ RC CLI::printTuple(void *data, vector<Attribute> &attrs)
 			break;
 			case TypeShort:
 			case TypeBoolean:
-			error ("should not see this, in printTuple");
+			error ("should not see this, in printTuple, type is: " + it->type);
 			break;
 		}
 	}
