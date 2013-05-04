@@ -22,10 +22,10 @@ CLI* CLI::Instance()
 
 CLI::CLI()
 {
-	rm = RM::Instance();
-	Attribute attr;
+  rm = RM::Instance();
+  Attribute attr;
 
-	// create cli columns table
+  // create cli columns table
   vector<Attribute> column_attrs;
   attr.name = "column_name";
   attr.type = TypeVarChar;
