@@ -541,9 +541,6 @@ RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, con
   memcpy((char *)buffer + offset, &attr.length, sizeof(attr.length));
   offset += sizeof(attr.length);
 
-  memcpy((char *)buffer + offset, &attr.nullable, sizeof(attr.nullable));
-  offset += sizeof(attr.nullable);  
-
   RID rid;
   RC ret = rm->insertTuple(CLI_COLUMNS, buffer, rid);
 
