@@ -127,54 +127,52 @@ RC CLI::process(const string input)
 		if (expect(tokenizer, "create") == 0) {
 			tokenizer = next();
 			if (tokenizer == NULL) {
-				error ("I expect <table>");
-				return 0;
+				return error ("I expect <table>");
 			}
 			string type = string(tokenizer);
 			tokenizer = next();
 			if (tokenizer == NULL) {
-				error ("I expect <name> to be created");
-				return 0;
+				return error ("I expect <name> to be created");
 			}
 			string name = string(tokenizer);
 			// if type equals table, then create table
-			return createTable(name, tokenizer);
+			createTable(name, tokenizer);
 			// TODO: create index
 		}
 		else if (expect(tokenizer, "drop") == 0) {
 			tokenizer = next();
-			if (tokenizer == NULL) {
-				error ("I expect <table> or <index>");
-				return 0;
+			if (expect(tokenizer, "index") == 0 || expect(tokenizer, "table") == 0) {
+				string type = string(tokenizer);
+				tokenizer = next();
+				if (tokenizer == NULL)
+					return error ("I expect <name> to be dropped");
+
+				string name = string(tokenizer);
+				drop(type, name);
 			}
-			string type = string(tokenizer);
-			tokenizer = next();
-			if (tokenizer == NULL) {
-				error ("I expect <name> to be dropped");
-				return 0;
+			else if (expect(tokenizer, "attribute") == 0) {
+				dropAttribute(tokenizer);
 			}
-			string name = string(tokenizer);
-			drop(type, name);
+			else
+				return error ("I expect <tableName>, <indexName>, <attribute>");
 		}
 		else if (expect(tokenizer, "load") == 0) {
 			tokenizer = next();
 			
-			if (tokenizer == NULL) {
-				error ("I expect <tableName>");
-				return 0;
-			}
+			if (tokenizer == NULL)
+				return error ("I expect <tableName>");
+			
 			string name = string(tokenizer);
 			tokenizer = next();
 			if (tokenizer == NULL) {
-				error ("I expect <fileName> to be loaded");
-				return 0;
+				return error ("I expect <fileName> to be loaded");
 			}
 			string fileName = string(tokenizer);
 			load(name, fileName);
 		}
 		else if (expect(tokenizer, "print") == 0) {
 			tokenizer = next();
-			if (expect(tokenizer, "body") == 0)
+			if (expect(tokenizer, "body") == 0 || expect(tokenizer, "attributes") == 0)
 				printColumns(tokenizer);
 			else if (tokenizer != NULL)
 				printTable(string(tokenizer));
@@ -244,7 +242,7 @@ RC CLI::createTable(const string name, char * tokenizer)
 		}
 		else {
 			// TODO this is actually error
-			error ("problem in attribute type in create table: " + string(tokenizer));
+			return error ("problem in attribute type in create table: " + string(tokenizer));
 		}
 		table_attrs.push_back(attr);
 	}
@@ -311,12 +309,22 @@ RC CLI::drop(const string type, const string tableName)
 	}
 	else if (type.compare("index") == 0) {
 		// TODO: drop index here
-		return 0;
 	}
-	else {
-		error ("I can drop either table or index");
-		return -1;
+
+	return 0;
+}
+
+RC CLI::dropAttribute(char * tokenizer)
+{
+	tokenizer = next(); // attributeName
+	string attrName = string(tokenizer);
+	tokenizer = next();
+	if (expect(tokenizer, "from") != 0) {
+		return error ("expect from");
 	}
+	tokenizer = next(); //tableName
+	string tableName = string(tokenizer);
+	return rm->dropAttribute(tableName, attrName);
 }
 
 // CSV reader without escaping commas
@@ -497,6 +505,8 @@ RC CLI::help(const string input)
 	else if (input.compare("drop") == 0) {
 		cout << "\tdrop table <tableName>: drops given table" << endl;
 		cout << "\tdrop index \"indexName\": drops given index" << endl;
+		cout << "\tdrop attribute \"tableName\" from \"tableName\": drops attributeName from tableName" << endl;
+		error ("I expect <table>, <index>, attribute <tableName> <attributeName>");
 	}
 	else if (input.compare("load") == 0) {
 		cout << "\tload <tableName> \"fileName\"";
@@ -504,7 +514,7 @@ RC CLI::help(const string input)
 	}
 	else if (input.compare("print") == 0) {
 		cout << "\tprint <tableName>: print every record in tableName" << endl;
-		cout << "\tprint body <tableName>: print columns of given tableName" << endl;
+		cout << "\tprint attributes <tableName>: print columns of given tableName" << endl;
 	}
 	else if (input.compare("help") == 0) {
 		cout << "\thelp <commandName>: print help for given command" << endl;
@@ -683,9 +693,10 @@ RC CLI::expect(char * tokenizer, const string expected)
 	return expected.compare(string(tokenizer));
 }
 
-void CLI::error(const string errorMessage)
+RC CLI::error(const string errorMessage)
 {
 	cout << errorMessage << endl;
+	return -2;
 }
 
 void CLI::printAttributes(vector<Attribute> &attributes)

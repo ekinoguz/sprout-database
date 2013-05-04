@@ -30,8 +30,9 @@ protected:
   ~CLI();
 
 private:
-  RC createTable(const string name, char * tokenizer); // this is how all of them should be
+  RC createTable(const string name, char * tokenizer);
   RC drop(const string type, const string name);
+  RC dropAttribute(char * tokenizer);
   RC load(const string tableName, const string fileName);
   RC printTable(const string tableName);
   RC printColumns(char * tokenizer);
@@ -45,7 +46,7 @@ private:
   
   char *  next();
   RC expect(char * tokenizer, const string expected);
-  void error(const string errorMessage);
+  RC error(const string errorMessage);
   void printAttributes(vector<Attribute> &attributes);
 
   RM * rm;
