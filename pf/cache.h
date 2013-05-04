@@ -38,7 +38,7 @@ class Cache
   bool isDirty(unsigned frameNum);
   void SetDirty(unsigned frameNum);
   void UnsetDirty(unsigned frameNum);
-  int WriteDirtyPagesToDisk(PF_FileHandle *fileHandle);
+  int ClosingFile(PF_FileHandle *fileHandle);
   void AddFileInfo(PF_FileHandle* fileHandle);
   void DeleteFileInfo(PF_FileHandle* fileHandle);
   unsigned GetNumberOfPages(PF_FileHandle* fileHandle);

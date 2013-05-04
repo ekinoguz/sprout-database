@@ -189,7 +189,13 @@ private:
 
   PF_Manager * pfm;
   string database_folder;
-  static RM *_rm;
+
+  // This will make sure the destructor gets called
+  static RM _rm;
+  //static RM *_rm;
+  
+  void init();
+  bool initialized = false;
 };
 
 #endif

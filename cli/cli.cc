@@ -22,11 +22,16 @@ CLI* CLI::Instance()
 
 CLI::CLI()
 {
-	rm = RM::Instance();
-	Attribute attr;
+  rm = RM::Instance();
+  Attribute attr;
 
+<<<<<<< HEAD
 	// create cli columns table
 	vector<Attribute> column_attrs;
+=======
+  // create cli columns table
+  vector<Attribute> column_attrs;
+>>>>>>> a41b41e57ee772b35b8c58e659ba6c73c6d21994
   attr.name = "column_name";
   attr.type = TypeVarChar;
   attr.length = 30;
@@ -606,6 +611,7 @@ void CLI::error(const string errorMessage)
 {
 	cout << errorMessage << endl;
 }
+<<<<<<< HEAD
 
 void CLI::printAttributes(vector<Attribute> &attributes)
 {
@@ -613,3 +619,5 @@ void CLI::printAttributes(vector<Attribute> &attributes)
 		cout << setw(it->length+5) << left << it->name;
 	cout << endl;
 }
+=======
+>>>>>>> a41b41e57ee772b35b8c58e659ba6c73c6d21994

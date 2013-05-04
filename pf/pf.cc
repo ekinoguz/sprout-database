@@ -112,7 +112,7 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
   if (fileHandle.filestr.is_open())
     {
       // Write all dirty pages to disk
-      int result = cache->WriteDirtyPagesToDisk(&fileHandle);
+      int result = cache->ClosingFile(&fileHandle);
       if (result != 0)
 	{
 	  return result;
@@ -120,8 +120,6 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 
       fileHandle.filestr.flush();
       fileHandle.filestr.close();
-
-      cache->DeleteFileInfo(&fileHandle);
       return 0;
     }
   else

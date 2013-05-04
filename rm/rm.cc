@@ -14,18 +14,23 @@
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
 #define TABLES_TABLE_RECORD_MAX_LENGTH 150   // It is actually 121
 
-RM* RM::_rm = 0;
+RM RM::_rm = RM();
 
 RM* RM::Instance()
 {
-    if(!_rm)
-        _rm = new RM();
+  if(!_rm.initialized){
+    _rm.init();
+  }
+  return &RM::_rm;
+}
+RM::RM(){
 
-    return _rm;
 }
 
-RM::RM()
+void RM::init()
 {
+  initialized = true;
+
   pfm = PF_Manager::Instance(10);
   this->database_folder = DATABASE_FOLDER;
 
@@ -34,8 +39,9 @@ RM::RM()
   //system("rm -r "DATABASE_FOLDER);
 
   // Create the database 'somewhere on disk'
-  pfm->CreateDirectory(database_folder);
-
+  if(pfm->CreateDirectory(database_folder) != 0){
+    cout << "CreateDir failed " << endl;
+  }
   
   // Create the tables table
   Attribute attr;
