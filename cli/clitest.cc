@@ -84,6 +84,10 @@ void Test03()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
+  command = "create table tbl_employeeReal EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
   command = "load tbl_employee employee_5";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
@@ -106,7 +110,7 @@ void Test03()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "print columns";
+  command = "print cli_columns";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 

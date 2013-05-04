@@ -327,6 +327,49 @@ RC CLI::dropAttribute(char * tokenizer)
 	}
 	tokenizer = next(); //tableName
 	string tableName = string(tokenizer);
+
+	// delete entry from CLI_COLUMNS
+  Attribute attr;
+  vector<Attribute> attributes;
+  this->getAttributesFromCatalog(CLI_TABLES, attributes);
+
+  // Set up the iterator
+  RM_ScanIterator rmsi;
+  RID rid;
+  void *data_returned = malloc(PF_PAGE_SIZE);
+
+  // convert attributes to vector<string>
+  vector<string> stringAttributes;
+  stringAttributes.push_back("column_name");
+  stringAttributes.push_back("table_name");
+  
+  // Delete columns	  
+  if( rm->scan(CLI_COLUMNS, "column_name", EQ_OP, attrName.c_str(), stringAttributes, rmsi) != 0)
+    return -1;
+  
+  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
+  	// check if tableName is what we want
+		int length, offset = 0;
+		char *str;
+		for (uint i = 0; i < 2; i++) {
+		  length = 0;
+		  memcpy(&length, (char *)data_returned+offset, sizeof(int));
+		  offset += sizeof(int);
+
+		  str = (char *)malloc(length+1);
+		  memcpy(str, (char *)data_returned+offset, length);
+		  str[length] = '\0';
+		  offset += length;
+		  free(str);
+		}
+    if(tableName.compare(string(str)) == 0 && rm->deleteTuple(CLI_COLUMNS, rid) != 0)
+      return -1;
+  }
+
+  free(data_returned);
+  return rm->deleteTable(tableName);
+
+
 	return rm->dropAttribute(tableName, attrName);
 }
 
