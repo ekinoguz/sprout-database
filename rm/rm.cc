@@ -1342,3 +1342,267 @@ RC RM::closeFileHandle(const string tableName)
 
   return 0;
 }
+
+// Extra stuff
+RC RM::dropAttribute(const string tableName, const string attributeName)
+{
+  // Read the latest version of the attributes from the catalog
+  vector<Column> latest_columns;
+  if (getAttributesFromCatalog(tableName, latest_columns, false) != 0)
+    {
+      return -1;
+    }
+
+  // Calculate the new version
+  uint8_t new_version = latest_columns[0].version + 1;
+  int position = latest_columns[0].position;
+
+  // Insert the new version attributes in the catalog
+  void *tuple = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+  int offset;
+  int attribute_size;
+  RID rid;
+  for (uint i = 0; i < latest_columns.size(); i++)
+    {
+      if (latest_columns[i].column_name == attributeName)
+	{
+	  continue;
+	}
+
+      memset(tuple, 0, COLUMNS_TABLE_RECORD_MAX_LENGTH);
+      offset = 0;
+
+      // Copy the column name
+      attribute_size = latest_columns[i].column_name.size();
+      memcpy((char*)tuple + offset, &attribute_size, 4);
+      offset += 4;
+      memcpy((char*)tuple + offset, &(latest_columns[i].column_name), attribute_size);
+      offset += attribute_size;
+
+      // Copy the table name
+      attribute_size = latest_columns[i].table_name.size();
+      memcpy((char*)tuple + offset, &attribute_size, 4);
+      offset += 4;
+      memcpy((char*)tuple + offset, &(latest_columns[i].table_name), attribute_size);
+      offset += attribute_size;
+
+      // Copy the position
+      memcpy((char*)tuple + offset, &position, sizeof(position));
+      offset += sizeof(position);
+
+      // Copy the type
+      memcpy((char*)tuple + offset, &(latest_columns[i].type), sizeof(latest_columns[i].type));
+      offset += sizeof(latest_columns[i].type);
+
+      // Copy the length
+      memcpy((char*)tuple + offset, &(latest_columns[i].length), sizeof(latest_columns[i].length));
+      offset += sizeof(latest_columns[i].length);
+      
+      // Copy the nullable
+      memcpy((char*)tuple + offset, &(latest_columns[i].nullable), sizeof(latest_columns[i].nullable));
+      offset += sizeof(latest_columns[i].nullable);
+
+      // Copy the version
+      memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
+      offset += sizeof(new_version);
+
+      // Add the tuple to the catalog
+      if (insertTuple(COLUMNS_TABLE, tuple, rid) != 0)
+	{
+	  return -1;
+	}
+
+      // Advance the position
+      position++;
+    }
+
+
+  // Write the new version number to the tables table
+  if (updateTablesTableLatestVersion(tableName, new_version) != 0)
+    {
+      return -1;
+    }
+
+  return 0;
+}
+
+RC RM::addAttribute(const string tableName, const Attribute attr)
+{
+  // Read the latest version of the attributes from the catalog
+  vector<Column> latest_columns;
+  if (getAttributesFromCatalog(tableName, latest_columns, false) != 0)
+    {
+      return -1;
+    }
+
+  // Calculate the new version
+  uint8_t new_version = latest_columns[0].version + 1;
+  int position = latest_columns[0].position;
+
+  // Insert the new version attributes in the catalog
+  void *tuple = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+  int offset;
+  int attribute_size;
+  RID rid;
+  for (uint i = 0; i < latest_columns.size(); i++)
+    {
+      memset(tuple, 0, COLUMNS_TABLE_RECORD_MAX_LENGTH);
+      offset = 0;
+
+      // Copy the column name
+      attribute_size = latest_columns[i].column_name.size();
+      memcpy((char*)tuple + offset, &attribute_size, 4);
+      offset += 4;
+      memcpy((char*)tuple + offset, &(latest_columns[i].column_name), attribute_size);
+      offset += attribute_size;
+
+      // Copy the table name
+      attribute_size = latest_columns[i].table_name.size();
+      memcpy((char*)tuple + offset, &attribute_size, 4);
+      offset += 4;
+      memcpy((char*)tuple + offset, &(latest_columns[i].table_name), attribute_size);
+      offset += attribute_size;
+
+      // Copy the position
+      memcpy((char*)tuple + offset, &position, sizeof(position));
+      offset += sizeof(position);
+
+      // Copy the type
+      memcpy((char*)tuple + offset, &(latest_columns[i].type), sizeof(latest_columns[i].type));
+      offset += sizeof(latest_columns[i].type);
+
+      // Copy the length
+      memcpy((char*)tuple + offset, &(latest_columns[i].length), sizeof(latest_columns[i].length));
+      offset += sizeof(latest_columns[i].length);
+      
+      // Copy the nullable
+      memcpy((char*)tuple + offset, &(latest_columns[i].nullable), sizeof(latest_columns[i].nullable));
+      offset += sizeof(latest_columns[i].nullable);
+
+      // Copy the version
+      memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
+      offset += sizeof(new_version);
+
+      // Add the tuple to the catalog
+      insertTuple(COLUMNS_TABLE, tuple, rid);
+
+      // Advance the position
+      position++;
+    }
+
+  // Add the new attribute
+  memset(tuple, 0, COLUMNS_TABLE_RECORD_MAX_LENGTH);
+  offset = 0;
+
+  // Copy the column name
+  attribute_size = attr.name.size();
+  memcpy((char*)tuple + offset, &attribute_size, 4);
+  offset += 4;
+  memcpy((char*)tuple + offset, &(attr.name), attribute_size);
+  offset += attribute_size;
+
+  // Copy the table name
+  attribute_size = tableName.size();
+  memcpy((char*)tuple + offset, &attribute_size, 4);
+  offset += 4;
+  memcpy((char*)tuple + offset, &tableName, attribute_size);
+  offset += attribute_size;
+
+  // Copy the position
+  memcpy((char*)tuple + offset, &position, sizeof(position));
+  offset += sizeof(position);
+
+  // Copy the type
+  memcpy((char*)tuple + offset, &(attr.type), sizeof(attr.type));
+  offset += sizeof(attr.type);
+
+  // Copy the length
+  memcpy((char*)tuple + offset, &(attr.length), sizeof(attr.length));
+  offset += sizeof(attr.length);
+      
+  // Copy the nullable
+  memcpy((char*)tuple + offset, &(attr.nullable), sizeof(attr.nullable));
+  offset += sizeof(attr.nullable);
+
+  // Copy the version
+  memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
+  offset += sizeof(new_version);
+
+  // Add the tuple to the catalog
+  insertTuple(COLUMNS_TABLE, tuple, rid);
+
+
+  // Write the new version number to the tables table
+  if (updateTablesTableLatestVersion(tableName, new_version) != 0)
+    {
+      return -1;
+    }
+
+  return 0;
+}
+
+RC RM::updateTablesTableLatestVersion(const string tableName, int new_version)
+{
+  // Write the new version number to the tables table
+  RM_ScanFormattedIterator scanFormattedIterator;
+  scanFormatted(TABLES_TABLE, 0, TypeVarChar, EQ_OP, &tableName, scanFormattedIterator);
+
+  void *table_tuple = malloc(TABLES_TABLE_RECORD_MAX_LENGTH);
+  memset(table_tuple, 0, TABLES_TABLE_RECORD_MAX_LENGTH);
+
+  void *old_table_tuple = malloc(TABLES_TABLE_RECORD_MAX_LENGTH);
+  memset(old_table_tuple, 0, TABLES_TABLE_RECORD_MAX_LENGTH);
+
+  RID tables_rid;
+  scanFormattedIterator.getNextTuple(tables_rid, old_table_tuple);
+
+  uint16_t field_offset;
+  uint16_t end_offset;
+  int offset = 2;
+  int new_offset = 0;
+  int length;
+
+  // Parse table name
+  memcpy(&field_offset, (char*)old_table_tuple + offset, DIRECTORY_ENTRY_SIZE);
+  offset += DIRECTORY_ENTRY_SIZE;
+  memcpy(&end_offset, (char*)old_table_tuple + offset, DIRECTORY_ENTRY_SIZE);
+  offset += DIRECTORY_ENTRY_SIZE;
+  length = end_offset - field_offset;
+  memcpy((char*)table_tuple + new_offset, &length, sizeof(length));
+  new_offset += sizeof(length);
+  memcpy((char*)table_tuple + new_offset, (char*)old_table_tuple + field_offset, length);
+  new_offset += length;
+
+  // Parse file location
+  field_offset = end_offset;
+  memcpy(&end_offset, (char*)old_table_tuple + offset, DIRECTORY_ENTRY_SIZE);
+  offset += DIRECTORY_ENTRY_SIZE;
+  length = end_offset - field_offset;
+  memcpy((char*)table_tuple + new_offset, &length, sizeof(length));
+  new_offset += sizeof(length);
+  memcpy((char*)table_tuple + new_offset, (char*)old_table_tuple + field_offset, length);
+  new_offset += length;
+
+  // Parse file type
+  field_offset = end_offset;
+  memcpy(&end_offset, (char*)old_table_tuple + offset, DIRECTORY_ENTRY_SIZE);
+  offset += DIRECTORY_ENTRY_SIZE;
+  length = end_offset - field_offset;
+  memcpy((char*)table_tuple + new_offset, &length, sizeof(length));
+  new_offset += sizeof(length);
+  memcpy((char*)table_tuple + new_offset, (char*)old_table_tuple + field_offset, length);
+  new_offset += length;
+
+  // Parse latest version
+  field_offset = end_offset;
+  memcpy((char*)table_tuple + new_offset, &new_version, sizeof(new_version));
+  new_offset += sizeof(new_version);
+ 
+  // Update the tables tuple with the new version
+  if (insertTuple(TABLES_TABLE, table_tuple, tables_rid) != 0)
+    {
+      return -1;
+    }
+
+  return 0;
+}
