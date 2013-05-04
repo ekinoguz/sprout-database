@@ -42,6 +42,7 @@ class Cache
   void AddFileInfo(PF_FileHandle* fileHandle);
   void DeleteFileInfo(PF_FileHandle* fileHandle);
   unsigned GetNumberOfPages(PF_FileHandle* fileHandle);
+  unsigned EvictAllPagesToFiles();
 
  private:
   int GetFrameWithLowestUsage();
