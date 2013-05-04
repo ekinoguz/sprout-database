@@ -174,7 +174,7 @@ RC CLI::process(const string input)
 		}
 		else if (expect(tokenizer, "print") == 0) {
 			tokenizer = next();
-			if (expect(tokenizer, "columns") == 0)
+			if (expect(tokenizer, "body") == 0)
 				printColumns(tokenizer);
 			else if (tokenizer != NULL)
 				printTable(string(tokenizer));
@@ -350,7 +350,8 @@ RC CLI::load(const string tableName, const string fileName)
 	char * tokenizer;
 	while (ifs.good()) {
 		getline(ifs, line);
-
+		if (line.compare("") == 0)
+			continue;
 		char *a=new char[line.size()+1];
 		a[line.size()] = 0;
 		memcpy(a,line.c_str(),line.size());
@@ -503,7 +504,7 @@ RC CLI::help(const string input)
 	}
 	else if (input.compare("print") == 0) {
 		cout << "\tprint <tableName>: print every record in tableName" << endl;
-		cout << "\tprint columns <tableName>: print columns of given tableName" << endl;
+		cout << "\tprint body <tableName>: print columns of given tableName" << endl;
 	}
 	else if (input.compare("help") == 0) {
 		cout << "\thelp <commandName>: print help for given command" << endl;
@@ -529,7 +530,73 @@ RC CLI::help(const string input)
 
 RC CLI::getAttributesFromCatalog(const string tableName, vector<Attribute> &columns)
 {
-	//TODO: this should return attributes from CLI_COLUMNS when scanIterator works
+	// //TODO: this should return attributes from CLI_COLUMNS when scanIterator works
+	// Attribute attr;
+ //  vector<Attribute> attributes;
+ //  rm->getAttributes(CLI_COLUMNS, attributes);
+
+ //  // Set up the iterator
+ //  RM_ScanIterator rmsi;
+ //  RID rid;
+ //  void *data = malloc(PF_PAGE_SIZE);
+
+ //  // convert attributes to vector<string>
+ //  vector<string> stringAttributes;
+	// for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+ //    stringAttributes.push_back(it->name);
+  
+ //  if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
+ //    return -1;
+  
+ //  while(rmsi.getNextTuple(rid, data) != RM_EOF){
+ //  	int offset = 0;
+	// 	Attribute attr;
+	// 	int position;
+	// 	int length;
+
+ //    uint16_t field_offset;
+ //    uint16_t next_field;
+ //    char * name;
+ //    // Copy the column_name
+ //    memcpy(&field_offset,data+offset,2);
+ //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+ //    name = (char *)malloc(next_field-field_offset+1);
+ //    name[next_field-field_offset] = '\0';
+ //    memcpy(name, data+field_offset,next_field-field_offset);
+ //    attr.column_name = string(name);
+ //    free(name);
+ //    offset += 2;
+
+ //    // Copy the table_name
+ //    field_offset = next_field;
+ //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+ //    name = (char *)malloc(next_field-field_offset+1);
+ //    name[next_field-field_offset] = '\0';
+ //    memcpy(name, data+field_offset,next_field-field_offset);
+ //    column.table_name = string(name);
+ //    free(name);
+ //    offset += 2;
+
+ //    // Copy the position
+ //    field_offset = next_field;
+ //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+ //    memcpy(&column.position, data+field_offset,next_field-field_offset);
+ //    offset += 2;
+
+ //    // Copy the type
+ //    field_offset = next_field;
+ //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+ //    memcpy(&column.type, data+field_offset,next_field-field_offset);
+ //    offset += 2;
+
+ //    // Copy the length
+ //    field_offset = next_field;
+ //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
+ //    memcpy(&column.length, data+field_offset,next_field-field_offset);
+ //    offset += 2;
+
+ //  }
+ //  rmsi.close();
 	return rm->getAttributes(tableName, columns);
 }
 
@@ -623,9 +690,9 @@ void CLI::error(const string errorMessage)
 
 void CLI::printAttributes(vector<Attribute> &attributes)
 {
-	int length = 0, used = 0;
+	int length = 0, used = 20;
 	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
-		used = it->length;
+		used = 20;//it->length;
 		if (it->length > 20)
 			used = 20;
 		cout << setw(used) << left << it->name;
