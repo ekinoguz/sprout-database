@@ -1,17 +1,22 @@
 #include "cache.h"
 
-Cache* Cache::_cache = 0;
+Cache Cache::_cache;
 
 Cache* Cache::Instance(int numCachePages)
 {
-  if (!_cache)
-  	_cache = new Cache(numCachePages);
+  if (!_cache.initialized)
+    _cache.init(numCachePages);
 
-  return _cache;
+  return &_cache;
+}
+Cache::Cache()
+{
+  initialized = false;
 }
 
-Cache::Cache(int cacheNumPages)
+void Cache::init(int cacheNumPages)
 {
+  initialized = true;
   this->numCachePages = cacheNumPages;
 
   buffer = ((uint8_t*)(malloc(PF_PAGE_SIZE * cacheNumPages)));
@@ -32,6 +37,9 @@ Cache::Cache(int cacheNumPages)
 
 Cache::~Cache()
 {
+  // We are dead close any dangling file pages
+  //TODO: 
+  
   free(buffer);
   free(framesInfo);
   free(pinnedFrames);

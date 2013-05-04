@@ -47,11 +47,13 @@ class Cache
   int GetFrameWithLowestUsage();
 
  protected:
-  Cache(int numCachePages);
+  Cache();
   ~Cache();
 
  private:
-  static Cache* _cache;
+  void init(int numCachePages);
+  static Cache _cache;
+  bool initialized;
   int numCachePages;
   uint8_t *buffer;
   FrameInfo *framesInfo;
