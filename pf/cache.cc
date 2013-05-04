@@ -255,12 +255,13 @@ void Cache::UnsetDirty(unsigned frameNum)
 }
 
 // This should only be closed for closing fileHandles
-int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
+int Cache::ClosingFile(PF_FileHandle *fileHandle)
 {
   for (int i = 0; i < numCachePages; i++)
     {
       // If the fileHandle associated with the frame is the same one passed to this function (same one that is been closed)
       // and if the page is dirty, write it to disk
+
       if (((framesInfo + i)->fileHandle == fileHandle) && isDirty(i))
 	{
 	  int result = (framesInfo + i)->fileHandle->WritePageToDisk((framesInfo + i)->pageNum, getData(i));
@@ -276,6 +277,8 @@ int Cache::WriteDirtyPagesToDisk(PF_FileHandle *fileHandle)
       }
     }
   
+  DeleteFileInfo(fileHandle);
+
   return 0;
 }
 
