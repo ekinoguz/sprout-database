@@ -41,6 +41,11 @@ void Test01()
   cout << ">>> " << command << endl;
   cli->process(command);
 
+  command = "print cli_columns";
+  cout << ">>> " << command << endl;
+  cli->process(command);
+
+
   // command = "print columns tables";
   // cout << ">>> " << command << endl;
   // cli->process(command);  

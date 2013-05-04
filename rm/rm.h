@@ -74,7 +74,12 @@ public:
 
   virtual RC getNextTuple(RID &rid, void *data);
 
-  virtual RC close() { if(page != NULL) free(page); page = NULL; return 0; };
+  virtual RC close() { 
+    value = NULL;
+    fh = NULL;
+    current.pageNum = 1; current.slotNum = 0; buffered_page = 0;
+    if(page != NULL) free(page); page = NULL; return 0;
+  };
 
   PF_FileHandle * fh;
   vector<Column> columns;

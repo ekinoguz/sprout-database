@@ -503,13 +503,13 @@ RC RM::deleteTable(const string tableName)
 
   // Delete the table info from the columns table
   RM_ScanFormattedIterator columnsScanIterator;
-  scanFormatted(TABLES_TABLE, 0, TypeVarChar, EQ_OP, tableName.c_str(), columnsScanIterator);
+  scanFormatted(COLUMNS_TABLE, 1, TypeVarChar, EQ_OP, tableName.c_str(), columnsScanIterator);
 
   data = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
 
   while (columnsScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
-      if(deleteTuple(TABLES_TABLE, rid) != 0)
+      if(deleteTuple(COLUMNS_TABLE, rid) != 0)
 	return -1;
     }
   free(data);
@@ -868,7 +868,6 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 	{
 	  return -1;
 	}
-
       // Read record offset
       uint16_t recordOffset;
       memcpy(&recordOffset, (char*)data + PF_PAGE_SIZE - 4 - ((slotNum+1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
@@ -890,7 +889,7 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 	  uint16_t firstAttributeOffset;
 	  memcpy(&firstAttributeOffset, (char*)data + recordOffset + 2, 2);
 	  memcpy(&recordLength, (char*)data + recordOffset + firstAttributeOffset - 2, 2);
-	  
+
 	  done = true;
 	}
       else
@@ -1250,7 +1249,6 @@ RC RM::scan(const string tableName,
   if(getAttributesFromCatalog(tableName, columns) != 0)
     return -1;
 
-
   vector<Column> projectedColumns;
   vector<Column> conditionColumns;
 
@@ -1262,7 +1260,6 @@ RC RM::scan(const string tableName,
       if( columns[i].column_name == attributeNames[j] )
 	projectedColumns.push_back(columns[i]);
   }
-  
 
   rm_ScanIterator.projectedColumns = projectedColumns;
   if(conditionColumns.size() == 0 && conditionAttribute != ""){
@@ -1335,7 +1332,7 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	memset(lvalue,0,length+1); // Make sure strings have a null terminator
 	
 	memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
-	
+
 	switch(compOp){
 	case EQ_OP:
 	case NE_OP:
@@ -1349,6 +1346,7 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	  case TypeVarChar:
 	    if( strcmp((char *)lvalue,(char *)value ) == 0 )
 	      condition = true;
+
 	    break;
 	  case TypeShort:
 	    condition = (*(char*)lvalue == *(char*)value);
