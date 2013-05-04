@@ -546,6 +546,89 @@ void secA_7(const string tablename)
   return;
 }
 
+void secA_8()
+{
+  string tablename = "droptest";
+  createTable(tablename);
+
+  string name = "ekin";
+  int age = 5;
+  int height = 36;
+  int salary = 8;
+  int name_length = name.size();
+
+
+  // Functions Tested
+  // 1. Insert tuple
+  // 2. Read Attributes **
+  cout << "****In Test Case 8****" << endl;
+    
+  RID rid;    
+  int tuple_size = 0;
+  void *tuple = malloc(100);
+  void *data_returned = malloc(100);
+    
+  // Test Insert Tuple 
+  prepareTuple(name_length, name, age, height, salary, tuple, &tuple_size);
+  RC rc = rm->insertTuple(tablename, tuple, rid);
+  assert(rc == success);
+
+  // Test Read Attribute
+  rc = rm->readAttribute(tablename, rid, "Salary", data_returned);
+  assert(rc == success);
+
+  rc = rm->dropAttribute(tablename, "Salary");
+  assert(rc == success);
+  
+  rc = rm->readAttribute(tablename, rid, "Salary", data_returned);
+  assert(rc != success);
+
+  memset(data_returned, 0,100);
+
+  rc = rm->readAttribute(tablename, rid, "Age", data_returned);
+  assert(rc == success);
+
+  assert( memcmp((char *)data_returned, (char *)&age, 4) == 0 );
+  
+  rc = rm->readTuple(tablename, rid, data_returned);
+  assert(rc == success);
+  
+  // This will still print salary but it should be 0
+  printTuple(data_returned, tuple_size);  
+
+  // Add attribute back in
+  Attribute attr;
+  attr.name = "Salary";
+  attr.type = TypeInt;
+  attr.length = 4;
+    
+  rc = rm->addAttribute(tablename, attr);
+  assert(rc == success);
+
+  rc = rm->readAttribute(tablename, rid, "Salary", data_returned);
+  assert(rc == success);
+
+  // TODO: Add another attribute and make sure it is initialized to 0
+  
+  assert(*(int *)data_returned == 8);
+  
+  printTuple(tuple, tuple_size);
+  if (memcmp((char *)data_returned, (char *)tuple+4+4+4+name_length, 4) != 0)
+    {
+      cout << "****Test case 8 failed" << endl << endl;
+    }
+  else
+    {
+      cout << "****Test case 8 passed" << endl << endl;
+    }
+    
+  free(tuple);
+  free(data_returned);
+  return;
+}
+
+
+
 void Tests()
 {
   // GetAttributes
@@ -576,6 +659,8 @@ void Tests()
   // Reorganize page
   createTable("tbl_employee4");
   secA_7("tbl_employee4");
+  
+  secA_8();
 
     
   return;

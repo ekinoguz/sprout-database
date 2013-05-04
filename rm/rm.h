@@ -180,7 +180,7 @@ public:
 
   RC reorganizeTable(const string tableName);
 
-  RC updateTablesTableLatestVersion(const string tableName, int new_version);
+  RC updateTablesTableLatestVersion(const string tableName, uint8_t new_version);
 
 
 protected:
