@@ -549,29 +549,29 @@ void secA_7(const string tablename)
 void Tests()
 {
   // GetAttributes
-  // secA_0("tbl_employee");
+  secA_0("tbl_employee");
 
   // Insert/Read Tuple
-  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
+  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
 
   // Delete Tuple
-  // secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
+  secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
 
   // Update Tuple
-  // secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
+  secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
 
   // TODO: need to test update forward pointers
 
-  // Read Attributes
-  // secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
+  //  Read Attributes
+  secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
 
   // Delete Tuples
-  // secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
-  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
+  secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
+  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
 
   // Simple Scan
-  // createTable("tbl_employee3");
-  // secA_6("tbl_employee3");
+  createTable("tbl_employee3");
+  secA_6("tbl_employee3");
 
   // Reorganize page
   createTable("tbl_employee4");
