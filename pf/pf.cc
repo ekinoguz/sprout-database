@@ -124,7 +124,7 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
     }
   else
     {
-      cout << "fileHandle does not have open file instance to close" << endl;
+      // cout << "fileHandle does not have open file instance to close" << endl;
       return -1;
     }
 }
