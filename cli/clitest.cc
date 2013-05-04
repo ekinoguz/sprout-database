@@ -13,8 +13,25 @@ const int success = 0;
 
 void Test01()
 {
-  cout << ">>> create table ekin name=varchar(40), age=int" << endl;
-  cli->process("create table ekin name=varchar(40), age=int");
+  // cout << ">>> create table ekin name=varchar(40), age=int" << endl;
+  // cli->process("create table ekin name=varchar(40), age=int");
+  string command;
+
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  cli->process(command);
+
+  command = "load tbl_employee employee_50";
+  cout << ">>> " << command << endl;
+  cli->process(command);
+
+  command = "print columns tables";
+  cout << ">>> " << command << endl;
+  cli->process(command);
+
+  command = "print cli_columns";
+  cout << ">>> " << command << endl;
+  cli->process(command);
 }
 
 int main()

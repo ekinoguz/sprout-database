@@ -1,4 +1,3 @@
-
 #ifndef _rm_h_
 #define _rm_h_
 
@@ -80,8 +79,7 @@ public:
   virtual RC close() { if(page != NULL) free(page); page = NULL; return 0; };
 
   PF_FileHandle * fh;
-  int position;
-  AttrType type;
+  vector<Column> columns;
   CompOp compOp;
   const void * value;
   void * page;
@@ -97,7 +95,9 @@ class RM_ScanIterator : public RM_ScanFormattedIterator {
 public:
   RM_ScanIterator() : RM_ScanFormattedIterator() {};
   ~RM_ScanIterator() {};
-
+  
+  vector<Column> projectedColumns;
+  
   // "data" follows the same format as RM::insertTuple()
   RC getNextTuple(RID &rid, void *data);
 };
@@ -158,7 +158,14 @@ public:
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
       RM_ScanFormattedIterator &rm_ScanIterator);
+  RC scanFormatted(const string tableName,
+		   const vector<Column> columns,         // All versions of search column
+		   const CompOp compOp,                  // comparision type such as "<" and "="
+		   const void *value,                    // used in the comparison
+		   RM_ScanFormattedIterator &rm_ScanIterator);
 
+  static RC translateTuple(void * data, const void * record, const vector<Column> & currentColumns, const vector<Column> & targetColumns);
+ private:
 
 // Extra credit
 public:
@@ -179,7 +186,7 @@ protected:
 private:
   RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr, char version = 0);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
-  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 );
+  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 ); // if !findAll then look for only version
   char getLatestVersionFromCatalog(const string tableName);
   
   PF_FileHandle * getFileHandle(const string tableName);
@@ -195,7 +202,7 @@ private:
   //static RM *_rm;
   
   void init();
-  bool initialized = false;
+  bool initialized;
 };
 
 #endif

@@ -14,7 +14,7 @@
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
 #define TABLES_TABLE_RECORD_MAX_LENGTH 150   // It is actually 121
 
-RM RM::_rm = RM();
+RM RM::_rm;
 
 RM* RM::Instance()
 {
@@ -24,7 +24,7 @@ RM* RM::Instance()
   return &RM::_rm;
 }
 RM::RM(){
-
+  initialized = false;
 }
 
 void RM::init()
@@ -934,32 +934,23 @@ RC RM::updateTuple(const string tableName, const void *data, const RID &rid)
   // Hackery to get around the way we modify insertTuple to also do updates
   return insertTuple(tableName, data, *(const_cast<RID*>(&rid)), true);
 }
-RC RM::readTuple(const string tableName, const RID &rid, void *data)
-{
-  void *record = malloc(PF_PAGE_SIZE);
-  if(readFormattedTuple(tableName, rid, record) != 0)
-    return -1;
 
+// Translate record in page format into fucked up data format
+RC RM::translateTuple(void * data, const void *record, const vector<Column> &currentColumns, const vector<Column> &targetColumns){
   // Read record version
   uint8_t version;
   memcpy(&version, (char*)record + 1, 1);
 
-  vector<Column> currentColumns;
-  getAttributesFromCatalog(tableName, currentColumns, false, version);
-
-  vector<Column> latestColumns;
-  getAttributesFromCatalog(tableName, latestColumns, false);
-
   int offset = 0;
 
   uint i,j;
-  for (i = 0; i < latestColumns.size(); i++)
+  for (i = 0; i < targetColumns.size(); i++)
     {
       for(j = 0; j < currentColumns.size(); j++)
 	{
-	  if(currentColumns[j].column_name == latestColumns[i].column_name &&
-	     currentColumns[j].type == latestColumns[i].type &&
-	     currentColumns[j].length == latestColumns[i].length)
+	  if(currentColumns[j].column_name == targetColumns[i].column_name &&
+	     currentColumns[j].type == targetColumns[i].type &&
+	     currentColumns[j].length == targetColumns[i].length)
 	    {
 	      int position = currentColumns[j].position;
 	      
@@ -970,7 +961,7 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
 	      memcpy(&field_end,(char*)record+2+(position+1)*DIRECTORY_ENTRY_SIZE,DIRECTORY_ENTRY_SIZE);
 	
 	      int length = field_end - field_offset;
-	      if(latestColumns[i].type == TypeVarChar){
+	      if(targetColumns[i].type == TypeVarChar){
 		memcpy((char*)data+offset, &length, 4);
 		offset+=4;		
 	      }
@@ -985,17 +976,36 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
 
       // The column wasn't present
       if(j == currentColumns.size()){
-	if(latestColumns[i].type == TypeVarChar){
+	if(targetColumns[i].type == TypeVarChar){
 	  memset((char *)data+offset, 0,4);
 	  offset+= 4;
 	}
 	else {
-	  memset((char *)data+offset, 0,latestColumns[i].length);
-	  offset+= latestColumns[i].length;
+	  memset((char *)data+offset, 0,targetColumns[i].length);
+	  offset+= targetColumns[i].length;
 	}
       }
     }
+  
+  return 0;
+}
+RC RM::readTuple(const string tableName, const RID &rid, void *data)
+{
+  void *record = malloc(PF_PAGE_SIZE);
+  if(readFormattedTuple(tableName, rid, record) != 0)
+    return -1;
 
+  uint8_t version;
+  memcpy(&version, (char*)record + 1, 1);
+
+  vector<Column> currentColumns;
+  getAttributesFromCatalog(tableName, currentColumns, false, version);
+
+  vector<Column> latestColumns;
+  getAttributesFromCatalog(tableName, latestColumns, false);
+
+  RM::translateTuple(data,record, currentColumns, latestColumns);
+  
   return 0;
 }
 RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
@@ -1211,11 +1221,26 @@ RC RM::scanFormatted(const string tableName,
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
       RM_ScanFormattedIterator &rm_ScanIterator)
+{
+  Column column;
+  column.position = position;
+  column.type = type;
+  column.version = 0;
+
+  vector<Column> columns;
+  columns.push_back(column);
+  
+  return scanFormatted(tableName, columns, compOp, value, rm_ScanIterator);
+}
+RC RM::scanFormatted(const string tableName,
+      const vector<Column> columns,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      RM_ScanFormattedIterator &rm_ScanIterator)
 { 
+  rm_ScanIterator.columns = columns;
   rm_ScanIterator.fh = getFileHandle(tableName);
-  rm_ScanIterator.position = position;
   rm_ScanIterator.compOp = compOp;
-  rm_ScanIterator.type = type;
   rm_ScanIterator.value = value;
   rm_ScanIterator.page = malloc(PF_PAGE_SIZE);
 
@@ -1223,6 +1248,36 @@ RC RM::scanFormatted(const string tableName,
     return -1;
 
   return 0;
+}
+
+RC RM::scan(const string tableName,
+      const string conditionAttribute,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      const vector<string> &attributeNames, // a list of projected attributes
+      RM_ScanIterator &rm_ScanIterator)
+{
+  vector<Column> columns;
+  if(getAttributesFromCatalog(tableName, columns) != 0)
+    return -1;
+
+
+  vector<Column> projectedColumns;
+  vector<Column> conditionColumns;
+
+  for(uint i=0;i<columns.size();i++){
+    if( columns[i].column_name == conditionAttribute )
+      conditionColumns.push_back(columns[i]);
+    
+    for(uint j=0;j<attributeNames.size();j++)
+      if( columns[i].column_name == attributeNames[j] )
+	projectedColumns.push_back(columns[i]);
+  }
+  
+
+  rm_ScanIterator.projectedColumns = projectedColumns;
+
+  return scanFormatted(tableName, conditionColumns, compOp, value, rm_ScanIterator);
 }
 
 // Get next tuple preemptively loads the next page.
@@ -1249,15 +1304,79 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     uint16_t offset, first_field, end_offset;
     memcpy(&offset,(char*)page+PF_PAGE_SIZE-4-((current.slotNum+1)*DIRECTORY_ENTRY_SIZE),2);
   
-    // Was this record deleted
-    if(offset != (uint16_t)-1) {
+    // If this record wasn't deleted
+    if((offset != 0xFFFF)) {
       memcpy(&first_field,(char*)page+offset+2,2);
       memcpy(&end_offset,(char*)page+offset+first_field-DIRECTORY_ENTRY_SIZE,2);
-
+      
       // Copy in the data
       memcpy(data,(char*)page+offset,end_offset);
-    }  
+          
+      // Make sure the forward pointer isn't set
+      if(*(char *)data == 0) {
+	
+	int version = *((char *)data+1);
+	int position;
+	AttrType type;
+	for(uint i=0;i<columns.size();i++){
+	  if(columns[i].version == version){
+	    position = columns[i].position;
+	    type = columns[i].type;
+	  }
+	}
+	
+	// We should check that position/type are set to see if a version was found...
+	
+	// Grab the field offset at position +1 and then subtract the offset at position
+	uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
 
+	void *lvalue = malloc(length+1);
+	memset(lvalue,0,length+1); // Make sure strings have a null terminator
+	
+	memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
+	
+	switch(compOp){
+	case EQ_OP:
+	  switch(type){
+	  case TypeInt:
+	    condition = ( *(int*)lvalue == *(int*)value );
+	    break;
+	  case TypeReal:
+	    condition = (*(float*)lvalue == *(float*)value); 
+	    break;
+	  case TypeVarChar:
+	    if( strcmp((char *)lvalue,(char *)value ) == 0 )
+	      condition = true;
+	    break;
+	  case TypeShort:
+	    condition = (*(char*)lvalue == *(char*)value);
+	    break;  
+	  case TypeBoolean:
+	    condition = (*(bool*)lvalue == *(bool*)value);
+	    break;  
+	  }    
+
+	  break;
+	case LT_OP:
+	  break;
+	case GT_OP:
+	  break;
+	case LE_OP:
+	  break;
+	case GE_OP:
+	  break;
+	case NE_OP:
+	  break;
+	case NO_OP:
+	  condition = true;
+	  break;
+	default:
+	  cout << "Op not supported" << endl;
+	  return -3;
+	}
+      }
+    }
+  
     // increment current
     uint16_t number_of_records;
     memcpy(&number_of_records,(char*)page+PF_PAGE_SIZE-4,2);
@@ -1268,52 +1387,33 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
       current.pageNum++;
     }
     
-    
-    // Grab the field offset at position +1 and then subtract the offset at position
-    uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
-
-    void *lvalue = malloc(length+1);
-    memset(lvalue,0,length+1); // Make sure strings have a null terminator
-
-    memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
-    
-    // TODO: Fill out the other operators
-    //   for now we assume everything is an equals
-    switch(type){
-    case TypeInt:
-      condition = ( *(int*)lvalue == *(int*)value );
-      break;
-    case TypeReal:
-      condition = (*(float*)lvalue == *(float*)value); 
-      break;
-    case TypeVarChar:
-      if( strcmp((char *)lvalue,(char *)value ) == 0 )
-	condition = true;
-      break;
-    case TypeShort:
-      condition = (*(char*)lvalue == *(char*)value);
-      break;  
-    case TypeBoolean:
-      condition = (*(bool*)lvalue == *(bool*)value);
-      break;  
-    }    
   }
 
   return 0;
 }
 
 RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
-  return RM_EOF;
-}
+  
+  char * buffer = (char *)malloc(PF_PAGE_SIZE);
+  switch(RM_ScanFormattedIterator::getNextTuple(rid,buffer)){
+  case 0:
+    break;
+  case RM_EOF:
+    return RM_EOF;
+  default:
+    return -2;
+  }
 
-RC RM::scan(const string tableName,
-      const string conditionAttribute,
-      const CompOp compOp,                  // comparision type such as "<" and "="
-      const void *value,                    // used in the comparison
-      const vector<string> &attributeNames, // a list of projected attributes
-      RM_ScanIterator &rm_ScanIterator)
-{
-  return -1;
+  uint8_t version;
+  memcpy(&version, (char*)buffer + 1, 1);
+
+  vector<Column> currentColumns;
+  for(uint i=0; i < columns.size(); i++){
+    if(columns[i].version == version)
+      currentColumns.push_back(columns[i]);
+  }
+  
+  return RM::translateTuple(data, buffer, currentColumns, projectedColumns);
 }
 
 PF_FileHandle * RM::getFileHandle(const string tableName) 

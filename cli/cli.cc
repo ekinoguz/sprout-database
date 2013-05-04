@@ -73,7 +73,7 @@ CLI::CLI()
   
   attr.name = "file_location";
   attr.type = TypeVarChar;
-  attr.length = 50;
+  attr.length = 100;
   table_attrs.push_back(attr);
 
   attr.name = "type";
@@ -165,10 +165,14 @@ RC CLI::process(const string input)
 		}
 		else if (expect(tokenizer, "print") == 0) {
 			tokenizer = next();
-			if (tokenizer != NULL)
-				print(string(tokenizer));
+			if (expect(tokenizer, "tables") == 0)
+				printTables();
+			else if (expect(tokenizer, "columns") == 0)
+				printColumns(tokenizer);
+			else if (tokenizer != NULL)
+				printTable(string(tokenizer));
 			else
-				error ("I expect \"tableName\"");
+				error ("I expect <tableName>");
 		}
 		else if (expect(tokenizer, "help") == 0) {
 			tokenizer = next();
@@ -177,7 +181,7 @@ RC CLI::process(const string input)
 			else
 				help("all");
 		}
-		else if (expect(tokenizer,"quit") == 0) {
+		else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0) {
 			code = -1;
 		}
 		else {
@@ -190,7 +194,7 @@ RC CLI::process(const string input)
 
 RC CLI::createTable(const string name, char * tokenizer)
 {
-	// parse col and types
+	// parse columnNames and types
 	vector<Attribute> table_attrs;
 	Attribute attr;
 	while (tokenizer != NULL)
@@ -232,7 +236,7 @@ RC CLI::createTable(const string name, char * tokenizer)
 		}
 		else {
 			// TODO this is actually error
-			error ("problem in attribute type in create table");
+			error ("problem in attribute type in create table: " + string(tokenizer));
 		}
 		table_attrs.push_back(attr);
 	}
@@ -269,7 +273,7 @@ RC CLI::drop(const string type, const string name)
 		return 0;
 	}
 	else {
-		error ("I can either drop table or index");
+		error ("I can drop either table or index");
 		return -1;
 	}
 }
@@ -279,7 +283,19 @@ RC CLI::drop(const string type, const string name)
 // reads files in data folder
 RC CLI::load(const string tableName, const string fileName)
 {
-	cout << "we will load file <" << fileName << "> to table <" << tableName << ">" << endl;
+	// get attributes from catalog
+	Attribute attr;
+	vector<Attribute> attributes;
+	this->getAttributesFromCatalog(tableName, attributes);
+	int totalLength = 0;
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+		totalLength += it->length;
+	int offset = 0, index = 0;
+  int length;
+  void *buffer = malloc(totalLength);
+  RID rid;
+
+	// read file
 	ifstream ifs;
 	string file_url = string("../data/") + fileName;
 	ifs.open (file_url, ifstream::in);
@@ -289,7 +305,7 @@ RC CLI::load(const string tableName, const string fileName)
 		return -1;
 	}
 
-	string line;
+	string line, token;
 	char * tokenizer;
 	while (ifs.good()) {
 		getline(ifs, line);
@@ -297,48 +313,189 @@ RC CLI::load(const string tableName, const string fileName)
 		char *a=new char[line.size()+1];
 		a[line.size()] = 0;
 		memcpy(a,line.c_str(),line.size());
+		index = 0, offset = 0;
 		
 		// tokenize input
 		tokenizer = strtok(a, CVS_DELIMITERS);
 		while (tokenizer != NULL) {
-			cout << tokenizer << endl;
+			attr = attributes.at(index++);
+			token = string(tokenizer);
+			if (attr.type == TypeVarChar) {
+				length = token.size();
+				memcpy((char *)buffer + offset, &length, sizeof(int));
+				offset += sizeof(int);
+				memcpy((char *)buffer + offset, token.c_str(), token.size());
+		  	offset += token.size();
+			} 
+			else if (attr.type == TypeInt || attr.type == TypeReal) {
+				int num = atoi(tokenizer);
+				memcpy((char *)buffer + offset, &num, sizeof(num));
+		  	offset += sizeof(num);
+			}
+			else if (attr.type == TypeBoolean || attr.type == TypeShort) {
+				// TODO: this should be fixed, not sure about size
+				int num = atoi(tokenizer);
+				memcpy((char *)buffer + offset, &num, sizeof(num));
+		  	offset += sizeof(num);	
+			}
+		  //cout << token << endl;
 			tokenizer = strtok(NULL, CVS_DELIMITERS);
 		}
+		rm->insertTuple(tableName, buffer, rid);
 		
+		// prepare tuple for addition
+		// for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it)
+		// totalLength += it->length;
 	}
-
+	free(buffer);
 	ifs.close();
 	return 0;
 }
 
-RC CLI::print(const string input)
+// Print all tableName, location, type
+RC CLI::printTables()
 {
-	cout << "we will print table <" << input << ">" << endl;
+	// get tables from CLI_TABLES
+	Attribute attr;
+	vector<Attribute> attributes;
+	this->getAttributesFromCatalog(CLI_TABLES, attributes);
+
+	// Set up the iterator
+  RM_ScanIterator rmsi;
+  RID rid;
+  void *data_returned = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+
+  // convert attributes to vector<string>
+  vector<string> stringAttributes;
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+    stringAttributes.push_back(it->name);
+
+  RC rc = rm->scan(CLI_TABLES, "", NO_OP, NULL, stringAttributes, rmsi);
+  if (rc != 0)
+  	return rc;
+
+  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
+  	printTuple(data_returned, attributes);
+  rmsi.close();
+
+	return 0;
+}
+
+RC CLI::printColumns(char * tokenizer)
+{	
+	tokenizer = next();
+	if (tokenizer == NULL) {
+		error ("I expect tableName to print its columns");
+		return -1;
+	}
+
+	string tableName = string(tokenizer);
+	//cout << "we will print columns of <" << tableName << ">" << endl;
+
+	// get attributes of tableName
+	Attribute attr;
+	vector<Attribute> attributes;
+	this->getAttributesFromCatalog(tableName, attributes);
+
+	// print attributes
+	cout << setw(20) << left << "attr.name" << setw(15) << "attr.type" << setw(15) << "attr.length" << endl;
+	cout << "==============================================" << endl;
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+		cout << setw(20) << left << it->name << setw(15) << left << it->type << setw(15) << it->length << endl;
+
+	return 0;
+}
+
+// print every tuples in given tableName
+RC CLI::printTable(const string tableName)
+{
+	cout << "print every tuples in table <" << tableName << ">" << endl;
+	// Set up the iterator
+  RM_ScanIterator rmsi;
+  RID rid;
+  vector<Attribute> attributes;
+  void *data_returned = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+  this->getAttributesFromCatalog(tableName, attributes);
+
+  // convert attributes to vector<string>
+  vector<string> stringAttributes;
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+    stringAttributes.push_back(it->name);
+
+  RC rc = rm->scan(tableName, "", NO_OP, NULL, stringAttributes, rmsi);
+  if (rc != 0)
+  	return rc;
+
+  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
+  	printTuple(data_returned, attributes);
+  rmsi.close();
+
+  free(data_returned);
+	return 0;
+}
+
+RC CLI::printTuple(void *data, vector<Attribute> &attrs)
+{
+	int length, offset = 0, number;
+	char *str;
+	string record = "";
+	cout << "here" << endl;
+	for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
+		cout << it->type << endl;
+		switch(it->type) {
+			case TypeInt:
+			case TypeReal:
+			number = 0;
+			memcpy(&number, (char *)data+offset, sizeof(int));
+			offset += sizeof(int);
+			cout << setw(sizeof(int)) << left << number;
+			break;
+			case TypeVarChar:
+			length = 0;
+			memcpy(&length, (char *)data+offset, sizeof(int));
+			offset += sizeof(int);
+
+			str = (char *)malloc(length+1);
+			memcpy(str, (char *)data+offset, length);
+			str[length] = '\0';
+			offset += length;
+			cout << setw(length) << left << str;
+			free(str);
+			break;
+			case TypeShort:
+			case TypeBoolean:
+			error ("should not see this, in printTuple");
+			break;
+		}
+	}
+	cout << endl;
 	return 0;
 }
 
 RC CLI::help(const string input)
 {
 	if (input.compare("create") == 0) {
-		cout << "\tcreate table \"tableName\" (col1=type1, col2=type2, ...): creates table with given properties" << endl;
+		cout << "\tcreate table <tableName> (col1=type1, col2=type2, ...): creates table with given properties" << endl;
 	}
 	else if (input.compare("drop") == 0) {
-		cout << "\tdrop table \"tableName\": drops given table" << endl;
+		cout << "\tdrop table <tableName>: drops given table" << endl;
 		cout << "\tdrop index \"indexName\": drops given index" << endl;
 	}
 	else if (input.compare("load") == 0) {
-		cout << "\tload \"tableName\" \"fileName\"";
+		cout << "\tload <tableName> \"fileName\"";
 		cout << ": loads given filName to given table" << endl;
 	}
 	else if (input.compare("print") == 0) {
-		cout << "\tprint \"tableName\"" << endl;
+		cout << "\tprint <tableName>: print every record in tableName" << endl;
+		cout << "\tprint tables: print all tables in database" << endl;
+		cout << "\tprint columns <tableName>: print columns of given tableName" << endl;
 	}
 	else if (input.compare("help") == 0) {
 		cout << "\thelp <commandName>: print help for given command" << endl;
 		cout << "\thelp: show help for all commands" << endl;
 	}
 	else if (input.compare("quit") == 0) {
-		cout << "\tquit: quit SecSQL. But remember, love never ends!" << endl;
+		cout << "\tquit or exit: quit SecSQL. But remember, love never ends!" << endl;
 	}
 	else if (input.compare("all") == 0) {
 		help("create");
@@ -357,6 +514,7 @@ RC CLI::help(const string input)
 
 RC CLI::getAttributesFromCatalog(const string tableName, vector<Attribute> &columns)
 {
+	// this should return attributes from CLI_COLUMNS when scanIterator works
 	return rm->getAttributes(tableName, columns);
 }
 
@@ -449,4 +607,11 @@ RC CLI::expect(char * tokenizer, const string expected)
 void CLI::error(const string errorMessage)
 {
 	cout << errorMessage << endl;
+}
+
+void CLI::printAttributes(vector<Attribute> &attributes)
+{
+	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+		cout << setw(it->length+5) << left << it->name;
+	cout << endl;
 }

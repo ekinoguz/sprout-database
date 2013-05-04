@@ -4,6 +4,7 @@
 
 #include <string>
 #include <cstring>
+#include <iomanip>
 
 #include "../shared.h"
 #include "../pf/pf.h"
@@ -31,7 +32,10 @@ private:
   RC createTable(const string name, char * tokenizer); // this is how all of them should be
   RC drop(const string type, const string name);
   RC load(const string tableName, const string fileName);
-  RC print(const string input);
+  RC printTable(const string tableName);
+  RC printTables();
+  RC printColumns(char * tokenizer);
+  RC printTuple(void *data, vector<Attribute> &attrs);
   RC help(const string input);
 
   // cli catalog functions
@@ -42,7 +46,8 @@ private:
   char *  next();
   RC expect(char * tokenizer, const string expected);
   void error(const string errorMessage);
-  
+  void printAttributes(vector<Attribute> &attributes);
+
   RM * rm;
   static CLI * _cli;
 };
