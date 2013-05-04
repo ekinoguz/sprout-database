@@ -1318,8 +1318,13 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
       
       // Copy in the data
       memcpy(data,(char*)page+offset,end_offset);
-      // Make sure the forward pointer isn't set
-      if(*(char *)data == 0) {
+
+      // If we are not a forward pointer and this is a NO_OP      
+      if(compOp == NO_OP && *(char *)data == 0)
+	condition = true;
+      
+      // If we are not a forward pointer
+      else if(*(char *)data == 0) {
 	
 	int version = *((char *)data+1);
 	int position;
@@ -1333,10 +1338,10 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	}
 	
 	// We should check that position/type are set to see if a version was found...
-	
+       
 	// Grab the field offset at position +1 and then subtract the offset at position
 	uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
-
+	
 	void *lvalue = malloc(length+1);
 	memset(lvalue,0,length+1); // Make sure strings have a null terminator
 	
@@ -1410,7 +1415,7 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	  }    
 	  condition = condition ^ (compOp == LE_OP);
 	  break;
-	case NO_OP:
+	case NO_OP: // We should never actually reach here
 	  condition = true;
 	  break;
 	default:
