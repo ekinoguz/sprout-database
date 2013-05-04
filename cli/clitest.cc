@@ -93,12 +93,20 @@ void Test03()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
+  command = "print columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
   command = "drop attribute Salary from tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
   cout << "After dropping attibute Salary: " << endl;
   command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print columns";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 

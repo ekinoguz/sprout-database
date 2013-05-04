@@ -190,8 +190,11 @@ RC CLI::process(const string input)
 						 expect(tokenizer, "q") == 0 || expect(tokenizer, "e") == 0) {
 			code = -1;
 		}
+		else if (expect(tokenizer, "make")) {
+			return error ("this is for you Sky...");
+		}
 		else {
-			error ("i have no idea about this command, sorry");
+			return error ("i have no idea about this command, sorry");
 		}
 	}
 	delete[] a;
@@ -506,7 +509,6 @@ RC CLI::help(const string input)
 		cout << "\tdrop table <tableName>: drops given table" << endl;
 		cout << "\tdrop index \"indexName\": drops given index" << endl;
 		cout << "\tdrop attribute \"tableName\" from \"tableName\": drops attributeName from tableName" << endl;
-		error ("I expect <table>, <index>, attribute <tableName> <attributeName>");
 	}
 	else if (input.compare("load") == 0) {
 		cout << "\tload <tableName> \"fileName\"";
