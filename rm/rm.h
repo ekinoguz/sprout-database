@@ -177,6 +177,7 @@ public:
 
   RC reorganizeTable(const string tableName);
 
+  RC updateTablesTableLatestVersion(const string tableName, int new_version);
 
 
 protected:
