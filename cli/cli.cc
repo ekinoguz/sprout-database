@@ -351,6 +351,7 @@ RC CLI::dropAttribute(char * tokenizer)
   	// check if tableName is what we want
 		int length, offset = 0;
 		char *str;
+		// first iteration reads the column_name
 		for (uint i = 0; i < 2; i++) {
 		  length = 0;
 		  memcpy(&length, (char *)data_returned+offset, sizeof(int));
@@ -365,11 +366,9 @@ RC CLI::dropAttribute(char * tokenizer)
     if(tableName.compare(string(str)) == 0 && rm->deleteTuple(CLI_COLUMNS, rid) != 0)
       return -1;
   }
-
   free(data_returned);
-  return rm->deleteTable(tableName);
-
-
+  if (rm->deleteTable(tableName) != 0)
+  	return -1;
 	return rm->dropAttribute(tableName, attrName);
 }
 
