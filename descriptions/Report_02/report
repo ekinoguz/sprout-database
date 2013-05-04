@@ -38,4 +38,4 @@ The columns table of the catalog contains information about all the columns in e
 
 5. Table Reorganization
 -----------------------
-When a table version reaches a certain predefined threshold, e.g. 10, the whole table is reorganized. At this point, all records are read, converted to the latest version and stored in the file without changing their RIDs. If a record cannot fit on the page that it was located in, a forward pointer is used. Unfortunately, this feature is not implemented.
+When a table version reaches a certain predefined threshold, e.g. 10, the whole table is reorganized. At this point, all records are read, converted to the latest version and reinserted in a temp table in the database. Then, the table that we are reorganizing is replaces with the temp table. Unfortunately, this feature is not implemented.
