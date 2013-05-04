@@ -47,7 +47,7 @@ RM::RM()
   
   attr.name = "file_location";
   attr.type = TypeVarChar;
-  attr.length = 50;
+  attr.length = 100;
   table_attrs.push_back(attr);
 
   attr.name = "type";
