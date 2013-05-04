@@ -309,6 +309,8 @@ void Cache::AddFileInfo(PF_FileHandle* fileHandle)
 
 void Cache::DeleteFileInfo(PF_FileHandle* fileHandle)
 {
+  if (filesInfo.size() == 0)
+    return;
   std::unordered_map<std::string, FileInfo*>::const_iterator element = filesInfo.find(fileHandle->fileName);
   if (element != filesInfo.end())
     {

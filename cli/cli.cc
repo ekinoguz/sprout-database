@@ -97,6 +97,20 @@ CLI::~CLI()
 {
 }
 
+RC CLI::start()
+{
+	string input;
+  cout << "************************" << endl;
+  cout << "SecSQL CLI started" << endl;
+  cout << "Enjoy!" << endl;
+  do {
+    cout << ">>> ";
+    getline (cin, input);
+  } while ((this->process(input)) == 0);
+  cout << "Goodbye :(" << endl;
+
+  return 0;
+}
 
 RC CLI::process(const string input)
 {

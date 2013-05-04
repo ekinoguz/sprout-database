@@ -8,47 +8,80 @@
 
 using namespace std;
 
+#define SUCCESS 0
+#define MODE 0  // 0 = TEST MODE
+                // 1 = INTERACTIVE MODE
+
 CLI *cli;
-const int success = 0;
+
 
 void Test01()
 {
-  // cout << ">>> create table ekin name=varchar(40), age=int" << endl;
-  // cli->process("create table ekin name=varchar(40), age=int");
+
+  // test create table
+  // test drop table
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
-  cout << ">>> " << command << endl;
-  cli->process(command);
-
-  command = "load tbl_employee employee_50";
-  cout << ">>> " << command << endl;
-  cli->process(command);
+  command = "create table ekin name=varchar(40), age=int";
+  cout << ">>> create table ekin name=varchar(40), age=int" << endl;
+  assert (cli->process(command) == SUCCESS);
 
   command = "print columns cli_columns";
   cout << ">>> " << command << endl;
-  cli->process(command);
+  assert (cli->process(command) == SUCCESS);
 
   command = "print cli_tables";
   cout << ">>> " << command << endl;
-  cli->process(command);
+  assert (cli->process(command) == SUCCESS);
 
-  command = "drop table tbl_employee";
+  command = "drop table ekin";
   cout << ">>> " << command << endl;
-  cli->process(command);
+  assert (cli->process(command) == SUCCESS);
 
   command = "print cli_tables";
   cout << ">>> " << command << endl;
-  cli->process(command);
+  assert (cli->process(command) == SUCCESS);
 
   command = "print cli_columns";
   cout << ">>> " << command << endl;
-  cli->process(command);
+  assert (cli->process(command) == SUCCESS);
 
+  cout << "We should not see anything related to ekin table" << endl; 
+}
 
-  // command = "print columns tables";
-  // cout << ">>> " << command << endl;
-  // cli->process(command);  
+void Test02()
+{
+  string command;
+
+  // test create table
+  // test load table
+  command = "create table tbl_employeea EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  cout << "Before loading file: " << endl;
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_50";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  cout << "After loading file: " << endl;
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+}
+
+void Test03()
+{
+  string command;
+
+  // test quit
+  command = "q";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
 }
 
 int main()
@@ -56,17 +89,14 @@ int main()
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
 
   cli = CLI::Instance();
-  string input;
-  cout << "************************" << endl;
-  cout << "SecSQL CLI started" << endl;
-  cout << "Enjoy!" << endl;
 
-  Test01();
-
-  do {
-    cout << ">>> ";
-    getline (cin, input);
-  } while ((cli->process(input)) != -1);
-  cout << "Goodbye :(" << endl;
+  if (MODE == 0) {
+    //Test01();
+    Test02();
+    //Test03();  
+  } else if (MODE == 1) {
+    cli->start();
+  }
+  
   return 0;
 }

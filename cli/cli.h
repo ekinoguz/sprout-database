@@ -23,6 +23,7 @@ public:
   static CLI* Instance();
 
   RC process(const string input);
+  RC start();
 
 protected:
   CLI();

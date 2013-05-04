@@ -1,1 +1,1 @@
-make clean; make; ./rmtest
+clear; make; ./rmtest
