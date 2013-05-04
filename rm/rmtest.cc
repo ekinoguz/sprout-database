@@ -419,6 +419,10 @@ void secA_6(const string tablename)
   rc = rm->deleteTable(tablename);
   assert(rc == success);
 
+  struct stat stFileInfo;
+  string fileName = DATABASE_FOLDER"/" + tablename;
+  assert( stat(fileName.c_str(), &stFileInfo) != 0 );
+
   free(data_returned);
   for(int i = 0; i < num_records; i++)
     {

@@ -483,33 +483,41 @@ RC RM::createTable(const string tableName)
 RC RM::deleteTable(const string tableName)
 {
   // Close file if it's already opened
-  closeFileHandle(tableName);
+  if(closeFileHandle(tableName) != 0)
+     return -1;
 
+  
   // Delete the table form the tables table
   RM_ScanFormattedIterator tablesScanIterator;
-  scanFormatted(TABLES_TABLE, 0, TypeVarChar, EQ_OP, tableName.c_str(), tablesScanIterator);
+  if(scanFormatted(TABLES_TABLE, 0, TypeVarChar, EQ_OP, tableName.c_str(), tablesScanIterator) != 0)
+     return -1;
 
   RID rid;
   void *data = malloc(TABLES_TABLE_RECORD_MAX_LENGTH);
 
-  tablesScanIterator.getNextTuple(rid, data);
+  if(tablesScanIterator.getNextTuple(rid, data) != 0)
+    return -1;
 
-  // Delete the table file
-  uint16_t fileLocAttributeOffset;
-  memcpy(&fileLocAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+  // TODO: Make this work for *ANY* file name
+  // // Delete the table file
+  // uint16_t fileLocAttributeOffset;
+  // memcpy(&fileLocAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
   
-  uint16_t typeAttributeOffset;
-  memcpy(&typeAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
+  // uint16_t typeAttributeOffset;
+  // memcpy(&typeAttributeOffset, (char*)data + (3 * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
   
-  char* fileLoc = ((char*)(malloc(typeAttributeOffset - fileLocAttributeOffset + 1)));
-  memset(fileLoc, 0, typeAttributeOffset - fileLocAttributeOffset + 1);
-  memcpy(fileLoc, (char*)data + fileLocAttributeOffset, typeAttributeOffset - fileLocAttributeOffset);
+  // char* fileLoc = ((char*)(malloc(typeAttributeOffset - fileLocAttributeOffset + 1)));
+  // memset(fileLoc, 0, typeAttributeOffset - fileLocAttributeOffset + 1);
+  // memcpy(fileLoc, (char*)data + fileLocAttributeOffset, typeAttributeOffset - fileLocAttributeOffset);
   
-  pfm->DestroyFile(fileLoc);
-      
+  string fileLoc = DATABASE_FOLDER "/" + tableName;
+  if(pfm->DestroyFile(fileLoc.c_str()) != 0)
+    return -1;
+
   // Delete the table record
-  deleteTuple(TABLES_TABLE, rid);
-  
+  if(deleteTuple(TABLES_TABLE, rid) != 0)
+    return -1;
+
   free(data);
 
   // Delete the table info from the columns table
@@ -520,7 +528,8 @@ RC RM::deleteTable(const string tableName)
 
   while (columnsScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
-      deleteTuple(TABLES_TABLE, rid);
+      if(deleteTuple(TABLES_TABLE, rid) != 0)
+	return -1;
     }
   free(data);
 
