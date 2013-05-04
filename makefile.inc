@@ -15,3 +15,4 @@ endif
 
 #CPPFLAGS = -Wall -I$(CODEROOT) -O3  # maximal optimization
 CPPFLAGS = -std=c++0x -Wall -I$(CODEROOT) -DDATABASE_FOLDER=\"$(CODEROOT)/db\"  -g     # with debugging info
+#CPPFLAGS = -std=c++0x -Wall -I$(CODEROOT) -DDATABASE_FOLDER=\"$(CODEROOT)/db\" -DDEBUG=true  -g     # with debugging info

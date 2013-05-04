@@ -192,7 +192,9 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     }
 
   // Write the page to disk to ensure fault tolerance
-  // fileHandle->WritePageToDisk(pageNum, data);
+#ifdef DEBUG
+    fileHandle->WritePageToDisk(pageNum, data);
+#endif
 
   return 0;
 }
