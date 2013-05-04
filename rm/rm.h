@@ -97,7 +97,9 @@ class RM_ScanIterator : public RM_ScanFormattedIterator {
 public:
   RM_ScanIterator() : RM_ScanFormattedIterator() {};
   ~RM_ScanIterator() {};
-
+  
+  vector<Column> projectedColumns;
+  
   // "data" follows the same format as RM::insertTuple()
   RC getNextTuple(RID &rid, void *data);
 };
@@ -158,6 +160,12 @@ public:
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
       RM_ScanFormattedIterator &rm_ScanIterator);
+  RC scanFormatted(const string tableName,
+		   const vector<Column> columns,         // All versions of search column
+		   const CompOp compOp,                  // comparision type such as "<" and "="
+		   const void *value,                    // used in the comparison
+		   RM_ScanFormattedIterator &rm_ScanIterator);
+
 
 
 // Extra credit
@@ -179,7 +187,7 @@ protected:
 private:
   RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr, char version = 0);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
-  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 );
+  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 ); // if !findAll then look for only version
   char getLatestVersionFromCatalog(const string tableName);
   
   PF_FileHandle * getFileHandle(const string tableName);

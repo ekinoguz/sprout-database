@@ -1207,11 +1207,25 @@ RC RM::scanFormatted(const string tableName,
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
       RM_ScanFormattedIterator &rm_ScanIterator)
+{
+  Column column;
+  column.position = position;
+  column.type = type;
+
+  vector<Column> columns;
+  columns.push_back(column);
+  
+  return scanFormatted(tableName, columns, compOp, value, rm_ScanIterator);
+}
+RC RM::scanFormatted(const string tableName,
+      const vector<Columnn> columns,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      RM_ScanFormattedIterator &rm_ScanIterator)
 { 
+  rm_ScanIterator.columns = columns;
   rm_ScanIterator.fh = getFileHandle(tableName);
-  rm_ScanIterator.position = position;
   rm_ScanIterator.compOp = compOp;
-  rm_ScanIterator.type = type;
   rm_ScanIterator.value = value;
   rm_ScanIterator.page = malloc(PF_PAGE_SIZE);
 
@@ -1219,6 +1233,37 @@ RC RM::scanFormatted(const string tableName,
     return -1;
 
   return 0;
+}
+
+RC RM::scan(const string tableName,
+      const string conditionAttribute,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      const vector<string> &attributeNames, // a list of projected attributes
+      RM_ScanIterator &rm_ScanIterator)
+{
+  vector<Column> columns;
+  if(getAttributesFromCatalog(tableName, columns) != 0)
+    return -1;
+
+
+  vector<Column> projectedColumns;
+  vector<Column> conditionColumns;
+
+  for(uint i=0;i<columns.length;i++){
+    if( columns[i].column_name == conditionAttribute )
+      conditionColumns.push_back(columns[i]);
+    
+    for(uint j=0;j<attributeNames.length;j++)
+      if( columns[i].column_name == attributeNames[j] )
+	projectedColumns.push_back(columns[i]);
+  }
+  
+
+  rm_ScanIterator.projectedColumns = projectedColumns;
+
+  if(scanFormatted(tableName, conditionColumns, compOp, value, rm_ScanIterator) != 0)
+    return -1;
 }
 
 // Get next tuple preemptively loads the next page.
@@ -1303,17 +1348,21 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 }
 
 RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
-  return RM_EOF;
-}
+  
+  char * buffer = (char *)malloc(PF_PAGE_SIZE);
+  switch(RM_ScanFormattedIterator::getNextTuple(rid,buffer)){
+  case 0:
+    break;
+  case RM_EOF
+    return RM_EOF;
+  default:
+    return -2;
+  }
 
-RC RM::scan(const string tableName,
-      const string conditionAttribute,
-      const CompOp compOp,                  // comparision type such as "<" and "="
-      const void *value,                    // used in the comparison
-      const vector<string> &attributeNames, // a list of projected attributes
-      RM_ScanIterator &rm_ScanIterator)
-{
-  return -1;
+  // TODO: translate this record into the projected columns format and save in data
+  // this->projectedColumns
+  
+  return 0;
 }
 
 PF_FileHandle * RM::getFileHandle(const string tableName) 
