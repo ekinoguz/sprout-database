@@ -37,9 +37,8 @@ void Cache::init(int cacheNumPages)
 
 Cache::~Cache()
 {
-  // We are dead close any dangling file pages
-  //TODO: 
-  
+  EvictAllPagesToFiles();
+
   free(buffer);
   free(framesInfo);
   free(pinnedFrames);
@@ -332,4 +331,20 @@ unsigned Cache::GetNumberOfPages(PF_FileHandle* fileHandle)
     {
       return -1;
     }
+}
+
+unsigned Cache::EvictAllPagesToFiles()
+{
+  for (int i = 0; i < numCachePages; i++)
+    {
+      if ((framesInfo + i)->fileHandle != NULL)
+	{
+	  if (PF_Manager::Instance(numCachePages)->CloseFile(*((framesInfo + i)->fileHandle)) != 0)
+	    {
+	      return -1;
+	    }
+	}
+    }
+
+  return 0;
 }
