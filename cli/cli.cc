@@ -439,7 +439,9 @@ RC CLI::printTuple(void *data, vector<Attribute> &attrs)
 	int length, offset = 0, number;
 	char *str;
 	string record = "";
+	cout << "here" << endl;
 	for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
+		cout << it->type << endl;
 		switch(it->type) {
 			case TypeInt:
 			case TypeReal:

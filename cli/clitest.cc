@@ -15,15 +15,23 @@ void Test01()
 {
   // cout << ">>> create table ekin name=varchar(40), age=int" << endl;
   // cli->process("create table ekin name=varchar(40), age=int");
+  string command;
 
-  cout << ">>> create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int" << endl;
-  cli->process("create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int");
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  cli->process(command);
 
-  cout << ">>> load tbl_employee employee_50 " << endl;
-  cli->process("load tbl_employee employee_50");
+  command = "load tbl_employee employee_50";
+  cout << ">>> " << command << endl;
+  cli->process(command);
 
-  cout << ">>> print columns tables" << endl;
-  cli->process("print columns tables");
+  command = "print columns tables";
+  cout << ">>> " << command << endl;
+  cli->process(command);
+
+  command = "print cli_columns";
+  cout << ">>> " << command << endl;
+  cli->process(command);
 }
 
 int main()
