@@ -114,11 +114,6 @@ void RM::init()
   attr.type = TypeInt;
   attr.length = 4;
   column_attrs.push_back(attr);
-
-  attr.name = "nullable";
-  attr.type = TypeBoolean;
-  attr.length = 1;
-  column_attrs.push_back(attr);
   
   attr.name = "version";
   attr.type = TypeShort;
@@ -145,7 +140,7 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
 {
   RID rid;
 
-  int num_fields = 7;
+  int num_fields = 6;
 
   int offset = 0;
   void *buffer = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
@@ -186,11 +181,6 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
   offset += 2;
   field_offset += sizeof(attr.length);
 
-  // Pointer to nullable
-  memcpy((char *)buffer + offset, &field_offset, 2);
-  offset += 2;
-  field_offset += sizeof(attr.nullable);
-
   // Pointer to version
   memcpy((char *)buffer + offset, &field_offset, 2);
   offset += 2;
@@ -214,9 +204,6 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
 
   memcpy((char *)buffer + offset, &attr.length, sizeof(attr.length));
   offset += sizeof(attr.length);
-
-  memcpy((char *)buffer + offset, &attr.nullable, sizeof(attr.nullable));
-  offset += sizeof(attr.nullable);  
 
   memcpy((char *)buffer + offset, &version, 1);
   offset += 1;  
@@ -385,12 +372,6 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
       field_offset = next_field;
       memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
       memcpy(&column.length, data+field_offset,next_field-field_offset);
-      offset += 2;
-
-      // Copy the nullable attribute
-      field_offset = next_field;
-      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
-      memcpy(&column.nullable, data+field_offset,next_field-field_offset);
       offset += 2;
 
       // Copy the version
@@ -581,7 +562,6 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useR
   int directory_offset = 2; // offset into the start of the directory 
   uint16_t field_offset = (columns.size()+1)*DIRECTORY_ENTRY_SIZE + 2; // offset to the start of the fields
   
-  // TODO: Deal with nullable
   for(uint i=0; i < columns.size(); i++){
     if(columns[i].type == TypeVarChar){
       // Set the pointer
@@ -1565,10 +1545,6 @@ RC RM::dropAttribute(const string tableName, const string attributeName)
       memcpy((char*)tuple + offset, &(latest_columns[i].length), sizeof(latest_columns[i].length));
       offset += sizeof(latest_columns[i].length);
       
-      // Copy the nullable
-      memcpy((char*)tuple + offset, &(latest_columns[i].nullable), sizeof(latest_columns[i].nullable));
-      offset += sizeof(latest_columns[i].nullable);
-
       // Copy the version
       memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
       offset += sizeof(new_version);
@@ -1642,9 +1618,6 @@ RC RM::addAttribute(const string tableName, const Attribute attr)
       memcpy((char*)tuple + offset, &(latest_columns[i].length), sizeof(latest_columns[i].length));
       offset += sizeof(latest_columns[i].length);
       
-      // Copy the nullable
-      memcpy((char*)tuple + offset, &(latest_columns[i].nullable), sizeof(latest_columns[i].nullable));
-      offset += sizeof(latest_columns[i].nullable);
 
       // Copy the version
       memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
@@ -1687,17 +1660,12 @@ RC RM::addAttribute(const string tableName, const Attribute attr)
   memcpy((char*)tuple + offset, &(attr.length), sizeof(attr.length));
   offset += sizeof(attr.length);
       
-  // Copy the nullable
-  memcpy((char*)tuple + offset, &(attr.nullable), sizeof(attr.nullable));
-  offset += sizeof(attr.nullable);
-
   // Copy the version
   memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
   offset += sizeof(new_version);
 
   // Add the tuple to the catalog
   insertTuple(COLUMNS_TABLE, tuple, rid);
-
 
   // Write the new version number to the tables table
   if (updateTablesTableLatestVersion(tableName, new_version) != 0)

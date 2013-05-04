@@ -33,7 +33,6 @@ struct Attribute {
   string   name;     // attribute name
   AttrType type;     // attribute type
   AttrLength length; // attribute length
-  int nullable; // TODO: Remove nullable and also TypeBoolean
 };
 
 struct Column {
@@ -42,7 +41,6 @@ struct Column {
   int position;
   AttrType type;
   AttrLength length;
-  bool nullable; // TODO: remove this 
   char version;
 };
 
