@@ -32,6 +32,7 @@ protected:
 private:
   RC createTable(const string name, char * tokenizer);
   RC drop(const string type, const string name);
+  RC addAttribute(char * tokenizer);
   RC dropAttribute(char * tokenizer);
   RC load(const string tableName, const string fileName);
   RC printTable(const string tableName);
