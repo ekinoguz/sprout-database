@@ -1276,7 +1276,14 @@ RC RM::scan(const string tableName,
   
 
   rm_ScanIterator.projectedColumns = projectedColumns;
-
+  if(conditionColumns.size() == 0 && conditionAttribute != ""){
+    cout << "No matching column found" << endl;
+    return -1;
+  }
+  if(projectedColumns.size() == 0){
+    cout << "No matching projection found" << endl;
+    return -1;
+  }
   return scanFormatted(tableName, conditionColumns, compOp, value, rm_ScanIterator);
 }
 
@@ -1311,13 +1318,13 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
       
       // Copy in the data
       memcpy(data,(char*)page+offset,end_offset);
-          
       // Make sure the forward pointer isn't set
       if(*(char *)data == 0) {
 	
 	int version = *((char *)data+1);
 	int position;
 	AttrType type;
+
 	for(uint i=0;i<columns.size();i++){
 	  if(columns[i].version == version){
 	    position = columns[i].position;
@@ -1337,6 +1344,7 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	
 	switch(compOp){
 	case EQ_OP:
+	case NE_OP:
 	  switch(type){
 	  case TypeInt:
 	    condition = ( *(int*)lvalue == *(int*)value );
@@ -1355,17 +1363,52 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	    condition = (*(bool*)lvalue == *(bool*)value);
 	    break;  
 	  }    
+	  condition = condition ^ (compOp == NE_OP);
 
 	  break;
 	case LT_OP:
+	case GE_OP:
+	  switch(type){
+	  case TypeInt:
+	    condition = ( *(int*)lvalue < *(int*)value );
+	    break;
+	  case TypeReal:
+	    condition = (*(float*)lvalue < *(float*)value); 
+	    break;
+	  case TypeVarChar:
+	    if( strcmp((char *)lvalue,(char *)value ) < 0 )
+	      condition = true;
+	    break;
+	  case TypeShort:
+	    condition = (*(char*)lvalue < *(char*)value);
+	    break;  
+	  case TypeBoolean:
+	    condition = (*(bool*)lvalue != *(bool*)value);
+	    break;  
+	  }    
+	  condition = condition ^ (compOp == GE_OP);
 	  break;
 	case GT_OP:
-	  break;
 	case LE_OP:
-	  break;
-	case GE_OP:
-	  break;
-	case NE_OP:
+	  switch(type){
+	  case TypeInt:
+	    condition = ( *(int*)lvalue > *(int*)value );
+	    break;
+	  case TypeReal:
+	    condition = (*(float*)lvalue > *(float*)value); 
+	    break;
+	  case TypeVarChar:
+	    if( strcmp((char *)lvalue,(char *)value ) > 0 )
+	      condition = true;
+	    break;
+	  case TypeShort:
+	    condition = (*(char*)lvalue > *(char*)value);
+	    break;  
+	  case TypeBoolean:
+	    condition = (*(bool*)lvalue != *(bool*)value);
+	    break;  
+	  }    
+	  condition = condition ^ (compOp == LE_OP);
 	  break;
 	case NO_OP:
 	  condition = true;
@@ -1375,7 +1418,11 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	  return -3;
 	}
       }
-    }
+    } 
+
+    // Update rid
+    rid.pageNum = current.pageNum;
+    rid.slotNum = current.slotNum;
   
     // increment current
     uint16_t number_of_records;
@@ -1387,14 +1434,14 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
       current.pageNum++;
     }
     
-  }
+  }// end while
 
   return 0;
 }
 
 RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
   
-  char * buffer = (char *)malloc(PF_PAGE_SIZE);
+  void * buffer = malloc(PF_PAGE_SIZE);
   switch(RM_ScanFormattedIterator::getNextTuple(rid,buffer)){
   case 0:
     break;
@@ -1404,14 +1451,16 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
     return -2;
   }
 
-  uint8_t version;
-  memcpy(&version, (char*)buffer + 1, 1);
+
+  char version = *((char *)buffer+1);
 
   vector<Column> currentColumns;
-  for(uint i=0; i < columns.size(); i++){
-    if(columns[i].version == version)
-      currentColumns.push_back(columns[i]);
+  for(uint i=0; i < projectedColumns.size(); i++){
+    if(projectedColumns[i].version == (int)version){
+      currentColumns.push_back(projectedColumns[i]);
+    }
   }
+
   
   return RM::translateTuple(data, buffer, currentColumns, projectedColumns);
 }

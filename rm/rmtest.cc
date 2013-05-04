@@ -409,7 +409,7 @@ void secA_6(const string tablename)
 
   cout << "Scanned Data:" << endl;
     
-  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
+  while(rmsi.getNextTuple(rid, data_returned) == 0)
     {
       cout << "Age: " << *(int *)data_returned << endl;
     }
@@ -452,8 +452,8 @@ void Tests()
   secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
 
   // Simple Scan
-  //createTable("tbl_employee3");
-  //secA_6("tbl_employee3");
+  createTable("tbl_employee3");
+  secA_6("tbl_employee3");
     
   return;
 }
