@@ -174,7 +174,8 @@ RC CLI::process(const string input)
 			else
 				help("all");
 		}
-		else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0) {
+		else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0 || 
+						 expect(tokenizer, "q") == 0 || expect(tokenizer, "e") == 0) {
 			code = -1;
 		}
 		else {
@@ -256,10 +257,43 @@ RC CLI::createTable(const string name, char * tokenizer)
 	return 0;
 }
 
-RC CLI::drop(const string type, const string name)
+RC CLI::drop(const string type, const string tableName)
 {
 	if (type.compare("table") == 0) {
-		return rm->deleteTable(name);
+	  // delete tableName from CLI_TABLES
+	  Attribute attr;
+	  vector<Attribute> attributes;
+	  this->getAttributesFromCatalog(CLI_TABLES, attributes);
+
+	  // Set up the iterator
+	  RM_ScanIterator rmsi;
+	  RID rid;
+	  void *data_returned = malloc(PF_PAGE_SIZE);
+
+	  // convert attributes to vector<string>
+	  vector<string> stringAttributes;
+	  stringAttributes.push_back("table_name");
+	  
+	  if( rm->scan(CLI_TABLES, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
+	    return -1;
+	  
+	  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
+	    if(rm->deleteTuple(CLI_TABLES, rid) != 0)
+	      return -1;
+	  }
+	  rmsi.close();
+
+	  // Delete columns	  
+	  if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
+	    return -1;
+	  
+	  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
+	    if(rm->deleteTuple(CLI_COLUMNS, rid) != 0)
+	      return -1;
+	  }
+
+	  free(data_returned);
+	  return rm->deleteTable(tableName);
 	}
 	else if (type.compare("index") == 0) {
 		// TODO: drop index here
@@ -409,26 +443,30 @@ RC CLI::printTuple(void *data, vector<Attribute> &attrs)
 		switch(it->type) {
 			case TypeInt:
 			case TypeReal:
-			number = 0;
-			memcpy(&number, (char *)data+offset, sizeof(int));
-			offset += sizeof(int);
-			cout << setw(sizeof(int)) << left << number;
-			break;
+			  number = 0;
+			  memcpy(&number, (char *)data+offset, sizeof(int));
+			  offset += sizeof(int);
+			  cout << setw(sizeof(int)) << left << number;
+			  break;
 			case TypeVarChar:
-			length = 0;
-			memcpy(&length, (char *)data+offset, sizeof(int));
-			offset += sizeof(int);
+			  length = 0;
+			  memcpy(&length, (char *)data+offset, sizeof(int));
+			  offset += sizeof(int);
 
-			str = (char *)malloc(length+1);
-			memcpy(str, (char *)data+offset, length);
-			str[length] = '\0';
-			offset += length;
-			cout << setw(length) << left << str;
-			free(str);
-			break;
-			case TypeShort:
+			  str = (char *)malloc(length+1);
+			  memcpy(str, (char *)data+offset, length);
+			  str[length] = '\0';
+			  offset += length;
+			  cout << setw(length) << left << str;
+			  free(str);
+			  break;
+			case TypeShort:			 
+			  cout << setw(3) << left << (int)(*((char*)data+offset));
+			  offset += 1;
+			  break;
 			case TypeBoolean:
-			error ("should not see this, in printTuple, type is: " + it->type);
+			  error ("should not see this, in printTuple, type is: " + (it->type)+47);
+			  break;
 			break;
 		}
 	}
@@ -477,7 +515,7 @@ RC CLI::help(const string input)
 
 RC CLI::getAttributesFromCatalog(const string tableName, vector<Attribute> &columns)
 {
-	// this should return attributes from CLI_COLUMNS when scanIterator works
+	//TODO: this should return attributes from CLI_COLUMNS when scanIterator works
 	return rm->getAttributes(tableName, columns);
 }
 
@@ -541,9 +579,6 @@ RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, con
   memcpy((char *)buffer + offset, &attr.length, sizeof(attr.length));
   offset += sizeof(attr.length);
 
-  memcpy((char *)buffer + offset, &attr.nullable, sizeof(attr.nullable));
-  offset += sizeof(attr.nullable);  
-
   RID rid;
   RC ret = rm->insertTuple(CLI_COLUMNS, buffer, rid);
 
@@ -583,7 +618,7 @@ void CLI::printAttributes(vector<Attribute> &attributes)
 		length += used;
 	}
 	cout << endl;
-	for (uint i = 0; i < length; i++)
+	for (int i = 0; i < length; i++)
 		cout << "=";
 	cout << endl;
 }

@@ -114,11 +114,6 @@ void RM::init()
   attr.type = TypeInt;
   attr.length = 4;
   column_attrs.push_back(attr);
-
-  attr.name = "nullable";
-  attr.type = TypeBoolean;
-  attr.length = 1;
-  column_attrs.push_back(attr);
   
   attr.name = "version";
   attr.type = TypeShort;
@@ -145,7 +140,7 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
 {
   RID rid;
 
-  int num_fields = 7;
+  int num_fields = 6;
 
   int offset = 0;
   void *buffer = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
@@ -186,11 +181,6 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
   offset += 2;
   field_offset += sizeof(attr.length);
 
-  // Pointer to nullable
-  memcpy((char *)buffer + offset, &field_offset, 2);
-  offset += 2;
-  field_offset += sizeof(attr.nullable);
-
   // Pointer to version
   memcpy((char *)buffer + offset, &field_offset, 2);
   offset += 2;
@@ -214,9 +204,6 @@ RC RM::addAttributeToCatalog(const string tableName, uint position, const Attrib
 
   memcpy((char *)buffer + offset, &attr.length, sizeof(attr.length));
   offset += sizeof(attr.length);
-
-  memcpy((char *)buffer + offset, &attr.nullable, sizeof(attr.nullable));
-  offset += sizeof(attr.nullable);  
 
   memcpy((char *)buffer + offset, &version, 1);
   offset += 1;  
@@ -387,12 +374,6 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
       memcpy(&column.length, data+field_offset,next_field-field_offset);
       offset += 2;
 
-      // Copy the nullable attribute
-      field_offset = next_field;
-      memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
-      memcpy(&column.nullable, data+field_offset,next_field-field_offset);
-      offset += 2;
-
       // Copy the version
       field_offset = next_field;
       memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
@@ -522,13 +503,13 @@ RC RM::deleteTable(const string tableName)
 
   // Delete the table info from the columns table
   RM_ScanFormattedIterator columnsScanIterator;
-  scanFormatted(TABLES_TABLE, 0, TypeVarChar, EQ_OP, tableName.c_str(), columnsScanIterator);
+  scanFormatted(COLUMNS_TABLE, 1, TypeVarChar, EQ_OP, tableName.c_str(), columnsScanIterator);
 
   data = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
 
   while (columnsScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
-      if(deleteTuple(TABLES_TABLE, rid) != 0)
+      if(deleteTuple(COLUMNS_TABLE, rid) != 0)
 	return -1;
     }
   free(data);
@@ -581,7 +562,6 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useR
   int directory_offset = 2; // offset into the start of the directory 
   uint16_t field_offset = (columns.size()+1)*DIRECTORY_ENTRY_SIZE + 2; // offset to the start of the fields
   
-  // TODO: Deal with nullable
   for(uint i=0; i < columns.size(); i++){
     if(columns[i].type == TypeVarChar){
       // Set the pointer
@@ -888,7 +868,6 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 	{
 	  return -1;
 	}
-
       // Read record offset
       uint16_t recordOffset;
       memcpy(&recordOffset, (char*)data + PF_PAGE_SIZE - 4 - ((slotNum+1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
@@ -910,7 +889,7 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 	  uint16_t firstAttributeOffset;
 	  memcpy(&firstAttributeOffset, (char*)data + recordOffset + 2, 2);
 	  memcpy(&recordLength, (char*)data + recordOffset + firstAttributeOffset - 2, 2);
-	  
+
 	  done = true;
 	}
       else
@@ -1270,7 +1249,6 @@ RC RM::scan(const string tableName,
   if(getAttributesFromCatalog(tableName, columns) != 0)
     return -1;
 
-
   vector<Column> projectedColumns;
   vector<Column> conditionColumns;
 
@@ -1282,7 +1260,6 @@ RC RM::scan(const string tableName,
       if( columns[i].column_name == attributeNames[j] )
 	projectedColumns.push_back(columns[i]);
   }
-  
 
   rm_ScanIterator.projectedColumns = projectedColumns;
   if(conditionColumns.size() == 0 && conditionAttribute != ""){
@@ -1355,7 +1332,7 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	memset(lvalue,0,length+1); // Make sure strings have a null terminator
 	
 	memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
-	
+
 	switch(compOp){
 	case EQ_OP:
 	case NE_OP:
@@ -1369,6 +1346,7 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	  case TypeVarChar:
 	    if( strcmp((char *)lvalue,(char *)value ) == 0 )
 	      condition = true;
+
 	    break;
 	  case TypeShort:
 	    condition = (*(char*)lvalue == *(char*)value);
@@ -1565,10 +1543,6 @@ RC RM::dropAttribute(const string tableName, const string attributeName)
       memcpy((char*)tuple + offset, &(latest_columns[i].length), sizeof(latest_columns[i].length));
       offset += sizeof(latest_columns[i].length);
       
-      // Copy the nullable
-      memcpy((char*)tuple + offset, &(latest_columns[i].nullable), sizeof(latest_columns[i].nullable));
-      offset += sizeof(latest_columns[i].nullable);
-
       // Copy the version
       memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
       offset += sizeof(new_version);
@@ -1642,9 +1616,6 @@ RC RM::addAttribute(const string tableName, const Attribute attr)
       memcpy((char*)tuple + offset, &(latest_columns[i].length), sizeof(latest_columns[i].length));
       offset += sizeof(latest_columns[i].length);
       
-      // Copy the nullable
-      memcpy((char*)tuple + offset, &(latest_columns[i].nullable), sizeof(latest_columns[i].nullable));
-      offset += sizeof(latest_columns[i].nullable);
 
       // Copy the version
       memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
@@ -1687,17 +1658,12 @@ RC RM::addAttribute(const string tableName, const Attribute attr)
   memcpy((char*)tuple + offset, &(attr.length), sizeof(attr.length));
   offset += sizeof(attr.length);
       
-  // Copy the nullable
-  memcpy((char*)tuple + offset, &(attr.nullable), sizeof(attr.nullable));
-  offset += sizeof(attr.nullable);
-
   // Copy the version
   memcpy((char*)tuple + offset, &new_version, sizeof(new_version));
   offset += sizeof(new_version);
 
   // Add the tuple to the catalog
   insertTuple(COLUMNS_TABLE, tuple, rid);
-
 
   // Write the new version number to the tables table
   if (updateTablesTableLatestVersion(tableName, new_version) != 0)
