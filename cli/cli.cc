@@ -363,10 +363,10 @@ RC CLI::printColumns(char * tokenizer)
 
 	// print attributes
 	//cout << setw(20) << left << "attr.name" << setw(15) << "attr.type" << setw(15) << "attr.length" << endl;
-	cout << "==============================================" << endl;
+	//cout << "==============================================" << endl;
 	printAttributes(attributes);
 	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
-		cout << setw(20) << left << it->name << setw(15) << left << it->type << setw(15) << it->length << endl;
+		cout << setw(20) << left << it->name << setw(20) << left << it->type << setw(20) << it->length << endl;
 
 	return 0;
 }
@@ -374,7 +374,7 @@ RC CLI::printColumns(char * tokenizer)
 // print every tuples in given tableName
 RC CLI::printTable(const string tableName)
 {
-	cout << "print every tuples in table <" << tableName << ">" << endl;
+	//cout << "print every tuples in table <" << tableName << ">" << endl;
 	// Set up the iterator
   RM_ScanIterator rmsi;
   RID rid;
@@ -576,9 +576,9 @@ void CLI::printAttributes(vector<Attribute> &attributes)
 {
 	int length = 0, used = 0;
 	for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
-		used = it->length + 5;
+		used = it->length;
 		if (it->length > 20)
-			used = 20 + 5;
+			used = 20;
 		cout << setw(used) << left << it->name;
 		length += used;
 	}
