@@ -174,7 +174,8 @@ RC CLI::process(const string input)
 			else
 				help("all");
 		}
-		else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0) {
+		else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0
+						 expect(tokenizer, "q") == 0 || expect(tokenizer, "e") == 0) {
 			code = -1;
 		}
 		else {
@@ -256,10 +257,42 @@ RC CLI::createTable(const string name, char * tokenizer)
 	return 0;
 }
 
-RC CLI::drop(const string type, const string name)
+RC CLI::drop(const string type, const string tableName)
 {
 	if (type.compare("table") == 0) {
-		return rm->deleteTable(name);
+		// delete tableName from CLI_TABLES
+		Attribute attr;
+		vector<Attribute> attributes;
+		this->getAttributesFromCatalog(tableName, attributes);
+
+		// Set up the iterator
+	  RM_ScanIterator rmsi;
+	  RID rid;
+	  void *data_returned = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+
+	  // convert attributes to vector<string>
+	  vector<string> stringAttributes;
+		for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
+	    stringAttributes.push_back(it->name);
+
+
+		int	length = tableName.size(), offset = 0;
+		void *buffer = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+		memcpy((char *)buffer + offset, &length, sizeof(int));
+		offset += sizeof(int);
+		memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
+		offset += tableName.size();
+
+		RC rc = rm->scan(CLI_TABLES, "table_name", EQ_OP, buffer, stringAttributes, rmsi);
+	  if (rc != 0)
+	  	return rc;
+	  
+	  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
+	  	rm->deleteTuple(tableName, rid);
+	  rmsi.close();
+	  free(buffer);
+	  free(data_returned);
+		return rm->deleteTable(tableName);
 	}
 	else if (type.compare("index") == 0) {
 		// TODO: drop index here

@@ -25,13 +25,25 @@ void Test01()
   cout << ">>> " << command << endl;
   cli->process(command);
 
-  command = "print columns cli_tables";
+  command = "print columns cli_columns";
   cout << ">>> " << command << endl;
   cli->process(command);
 
-  command = "print cli_columns";
+  command = "print cli_tables";
   cout << ">>> " << command << endl;
   cli->process(command);
+
+  command = "drop table tbl_employee";
+  cout << ">>> " << command << endl;
+  cli->process(command);
+
+  command = "print cli_tables";
+  cout << ">>> " << command << endl;
+  cli->process(command);
+
+  // command = "print columns tables";
+  // cout << ">>> " << command << endl;
+  // cli->process(command);  
 }
 
 int main()
