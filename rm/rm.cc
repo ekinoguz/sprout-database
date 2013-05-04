@@ -1245,15 +1245,48 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
     uint16_t offset, first_field, end_offset;
     memcpy(&offset,(char*)page+PF_PAGE_SIZE-4-((current.slotNum+1)*DIRECTORY_ENTRY_SIZE),2);
   
-    // Was this record deleted
-    if(offset != (uint16_t)-1) {
+    // If this record wasn't deleted
+    if((offset != 0xFFFF)) {
       memcpy(&first_field,(char*)page+offset+2,2);
       memcpy(&end_offset,(char*)page+offset+first_field-DIRECTORY_ENTRY_SIZE,2);
-
+      
       // Copy in the data
       memcpy(data,(char*)page+offset,end_offset);
-    }  
+          
+      // Make sure the forward pointer isn't set
+      if(*(char *)data != 0) {
+	
+	// Grab the field offset at position +1 and then subtract the offset at position
+	uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
 
+	void *lvalue = malloc(length+1);
+	memset(lvalue,0,length+1); // Make sure strings have a null terminator
+	
+	memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
+	
+	// TODO: Fill out the other operators
+	//   for now we assume everything is an equals
+	switch(type){
+	case TypeInt:
+	  condition = ( *(int*)lvalue == *(int*)value );
+	  break;
+	case TypeReal:
+	  condition = (*(float*)lvalue == *(float*)value); 
+	  break;
+	case TypeVarChar:
+	  if( strcmp((char *)lvalue,(char *)value ) == 0 )
+	    condition = true;
+	  break;
+	case TypeShort:
+	  condition = (*(char*)lvalue == *(char*)value);
+	  break;  
+	case TypeBoolean:
+	  condition = (*(bool*)lvalue == *(bool*)value);
+	  break;  
+	}    
+      }
+    }
+  
     // increment current
     uint16_t number_of_records;
     memcpy(&number_of_records,(char*)page+PF_PAGE_SIZE-4,2);
@@ -1264,35 +1297,6 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
       current.pageNum++;
     }
     
-    
-    // Grab the field offset at position +1 and then subtract the offset at position
-    uint16_t length = *((uint16_t *)data+1+position+1) - *((uint16_t *)data+1+position);
-
-    void *lvalue = malloc(length+1);
-    memset(lvalue,0,length+1); // Make sure strings have a null terminator
-
-    memcpy(lvalue,(char*)data + *((uint16_t*)data+1+position),length);
-    
-    // TODO: Fill out the other operators
-    //   for now we assume everything is an equals
-    switch(type){
-    case TypeInt:
-      condition = ( *(int*)lvalue == *(int*)value );
-      break;
-    case TypeReal:
-      condition = (*(float*)lvalue == *(float*)value); 
-      break;
-    case TypeVarChar:
-      if( strcmp((char *)lvalue,(char *)value ) == 0 )
-	condition = true;
-      break;
-    case TypeShort:
-      condition = (*(char*)lvalue == *(char*)value);
-      break;  
-    case TypeBoolean:
-      condition = (*(bool*)lvalue == *(bool*)value);
-      break;  
-    }    
   }
 
   return 0;
