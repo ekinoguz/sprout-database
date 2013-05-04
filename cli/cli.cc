@@ -138,13 +138,13 @@ RC CLI::process(const string input)
       }
       string name = string(tokenizer);
       // if type equals table, then create table
-      createTable(name, tokenizer);
+      code = createTable(name, tokenizer);
       // TODO: create index
     }
     else if (expect(tokenizer, "add") == 0) {
       tokenizer = next();
       if (expect(tokenizer, "attribute") == 0) {
-        addAttribute(tokenizer);
+        code = addAttribute(tokenizer);
       }
       else
         return error ("I can only add attribute");
@@ -158,10 +158,10 @@ RC CLI::process(const string input)
           return error ("I expect <name> to be dropped");
 
         string name = string(tokenizer);
-        drop(type, name);
+        code = drop(type, name);
       }
       else if (expect(tokenizer, "attribute") == 0) {
-        dropAttribute(tokenizer);
+        code = dropAttribute(tokenizer);
       }
       else
         return error ("I expect <tableName>, <indexName>, <attribute>");
@@ -178,29 +178,29 @@ RC CLI::process(const string input)
         return error ("I expect <fileName> to be loaded");
       }
       string fileName = string(tokenizer);
-      load(name, fileName);
+      code = load(name, fileName);
     }
     else if (expect(tokenizer, "print") == 0) {
       tokenizer = next();
       if (expect(tokenizer, "body") == 0 || expect(tokenizer, "attributes") == 0)
-        printColumns(tokenizer);
+        code = printColumns(tokenizer);
       else if (tokenizer != NULL)
-        printTable(string(tokenizer));
+        code = printTable(string(tokenizer));
       else
         error ("I expect <tableName>");
     }
     else if (expect(tokenizer, "help") == 0) {
       tokenizer = next();
       if (tokenizer != NULL)
-        help(string(tokenizer));
+        code = help(string(tokenizer));
       else
-        help("all");
+        code = help("all");
     }
     else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0 || 
              expect(tokenizer, "q") == 0 || expect(tokenizer, "e") == 0) {
       code = -1;
     }
-    else if (expect(tokenizer, "make")) {
+    else if (expect(tokenizer, "make") == 0) {
       return error ("this is for you Sky...");
     }
     else {
@@ -448,8 +448,7 @@ RC CLI::dropAttribute(char * tokenizer)
       return -1;
   }
   free(data_returned);
-  if (rm->deleteTable(tableName) != 0)
-    return -1;
+  
   return rm->dropAttribute(tableName, attrName);
 }
 
@@ -605,6 +604,10 @@ RC CLI::printTuple(void *data, vector<Attribute> &attrs)
       case TypeVarChar:
         length = 0;
         memcpy(&length, (char *)data+offset, sizeof(int));
+	if(length == 0){
+	  cout << setw(w) << left << "--";
+	  break;
+	}
         offset += sizeof(int);
 
         str = (char *)malloc(length+1);

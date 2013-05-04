@@ -11,6 +11,7 @@ using namespace std;
 #define SUCCESS 0
 #define MODE 0  // 0 = TEST MODE
                 // 1 = INTERACTIVE MODE
+                // 3 = TEST + INTERACTIVE MODE
 
 CLI *cli;
 
@@ -78,6 +79,10 @@ void Test03()
 {
   string command;
 
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  cli->process(command);
+
   // test drop attribute
   // test quit
   command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
@@ -87,15 +92,15 @@ void Test03()
   command = "create table tbl_employeeReal EmpName=varchar(30), Age=int, Height=real, Salary=int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
+  
+  command = "load tbl_employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
 
-  // command = "load tbl_employee employee_5";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
-
-  // cout << "Before dropping attibute salary: " << endl;
-  // command = "print tbl_employee";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
+  cout << "Before dropping attibute salary: " << endl;
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
 
   command = "print columns";
   cout << ">>> " << command << endl;
@@ -104,41 +109,45 @@ void Test03()
   command = "drop attribute Salary from tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
-
-  // cout << "After dropping attibute Salary: " << endl;
-  // command = "print tbl_employee";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
-
-  // command = "print cli_columns";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
-
-  // cout << "Before dropping attibute EmpName: " << endl;
-  // command = "print tbl_employee";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
-
-  // command = "drop attribute EmpName from tbl_employee";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
-
-  // cout << "After dropping attibute EmpName: " << endl;
-  // command = "print tbl_employee";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
-
-  command = "quit";
+  
+  cout << "After dropping attibute Salary: " << endl;
+  command = "print tbl_employee";
   cout << ">>> " << command << endl;
-  assert (cli->process(command) != SUCCESS);
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print cli_columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  cout << "Before dropping attibute EmpName: " << endl;
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "drop attribute EmpName from tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  cout << "After dropping attibute EmpName: " << endl;
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
 }
 
 void Test04()
 {
   string command;
-
+  
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  cli->process(command);
+  
   // test add attribute
   command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_5";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -165,6 +174,23 @@ void Test04()
   assert (cli->process(command) == SUCCESS);
 
   command = "print columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+  
+
+  command = "load tbl_employee employee_Year_1";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+  
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "drop attribute Major from tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 }
@@ -197,13 +223,13 @@ int main()
 
   cli = CLI::Instance();
 
-  if (MODE == 0) {
-    //Test01();
-    //Test02();
+  if (MODE == 0 || MODE == 3) {
+    Test01();
+    Test02();
     Test03();
-    // Test04();
-    // Test05();
-  } else if (MODE == 1) {
+    Test04();
+    //Test05();
+  } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
   

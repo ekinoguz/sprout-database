@@ -990,7 +990,7 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
   getAttributesFromCatalog(tableName, currentColumns, false, version);
 
   vector<Column> latestColumns;
-  getAttributesFromCatalog(tableName, latestColumns, false);
+  getAttributesFromCatalog(tableName, latestColumns, true);
 
   RM::translateTuple(data,record, currentColumns, latestColumns);
   
@@ -1269,7 +1269,7 @@ RC RM::scan(const string tableName,
 
   vector<Column> projectedColumns;
   vector<Column> conditionColumns;
-
+  
   for(uint i=0;i<columns.size();i++){
     if( columns[i].column_name == conditionAttribute )
       conditionColumns.push_back(columns[i]);
@@ -1463,16 +1463,19 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
 
 
   char version = *((char *)buffer+1);
-
+  int latest_version = projectedColumns[projectedColumns.size()-1].version;
   vector<Column> currentColumns;
+  vector<Column> latestColumns;
   for(uint i=0; i < projectedColumns.size(); i++){
     if(projectedColumns[i].version == (int)version){
       currentColumns.push_back(projectedColumns[i]);
     }
+
+    if(projectedColumns[i].version == (int)latest_version)
+      latestColumns.push_back(projectedColumns[i]);
   }
 
-  
-  return RM::translateTuple(data, buffer, currentColumns, projectedColumns);
+  return RM::translateTuple(data, buffer, currentColumns, latestColumns);
 }
 
 PF_FileHandle * RM::getFileHandle(const string tableName) 
