@@ -133,6 +133,42 @@ void Test03()
   assert (cli->process(command) != SUCCESS);
 }
 
+void Test04()
+{
+  string command;
+
+  // test add attribute
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  cout << "Before adding attibute major=varhar(40) and year=int: " << endl;
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "add attribute Major=varchar(40) to tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "add attribute Year=int to tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  cout << "After adding attibute major=varhar(40) and year=int: " << endl;
+  command = "print cli_columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+}
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -142,7 +178,8 @@ int main()
   if (MODE == 0) {
     //Test01();
     //Test02();
-    Test03();  
+    //Test03();
+    Test04();
   } else if (MODE == 1) {
     cli->start();
   }
