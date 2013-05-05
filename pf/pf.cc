@@ -157,22 +157,38 @@ PF_FileHandle::~PF_FileHandle()
 
 RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)
 {
+#ifdef FUCK_CACHE
+  return ReadPageFromDisk(pageNum, data);
+#else
   return cache->ReadPage(this, pageNum, data);
+#endif
 }
 
 RC PF_FileHandle::WritePage(PageNum pageNum, const void *data)
 {
+#ifdef FUCK_CACHE
+  return WritePageToDisk(pageNum, data);
+#else
   return cache->WritePage(this, pageNum, data);
+#endif
 }
 
 RC PF_FileHandle::AppendPage(const void *data)
 {
+#ifdef FUCK_CACHE
+  return AppendPageToDisk(data);
+#else
   return cache->AppendPage(this, data);
+#endif
 }
 
 unsigned PF_FileHandle::GetNumberOfPages()
 {
+#ifdef FUCK_CACHE
+  return GetNumberOfPagesFromDisk();
+#else
   return cache->GetNumberOfPages(this);
+#endif
 }
 
 // This method reads the page into the memory block pointed by data.

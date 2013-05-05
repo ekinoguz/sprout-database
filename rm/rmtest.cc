@@ -645,8 +645,8 @@ void secA_9()
 
   RID rid;    
   int tuple_size = 0;
-  void *tuple = malloc(100);
-  void *data_returned = malloc(100);
+  void *tuple = malloc(255);
+  void *data_returned = malloc(255);
 
   for (int i = 0; i < 500; i++)
     {
@@ -659,22 +659,31 @@ void secA_9()
     }
 
   RID rid_to_update;
-  rid_to_update.pageNum = 3;
-  rid_to_update.slotNum = 10;
+  rid_to_update.pageNum = 2;
+  rid_to_update.slotNum = 3;
 
   // Given the rid, read the tuple from table
   RC rc = rm->readTuple(tablename, rid_to_update, data_returned);
   assert(rc == success);
 
-  printTuple(data_returned, tuple_size);
+  printTuple(data_returned, tuple_size); // This could fail since tuple_size is not the same for all records
+  
+  // This will find the cache error
+  // assert( rm->readTuple(tablename, rid_to_update, data_returned) == 0 );
+  // assert( rm->readTuple(tablename, rid_to_update, data_returned) == 0 );
+  // assert( rm->deleteTuple(tablename, rid_to_update) == 0 ) ;
 
-  void *tuple_updated = malloc(100);
+  // assert( rm->readTuple(tablename, rid_to_update, data_returned) != 0 );
+  
+  void *tuple_updated = malloc(255);
   int tuple_size_updated;
   name = "Testingtestingtestingtestingtestingtestingtesting";
   prepareTuple(name.size(), name, age, height, 100, tuple_updated, &tuple_size_updated);
-  rc = rm->updateTuple(tablename, tuple_updated, rid);
+  rc = rm->updateTuple(tablename, tuple_updated, rid_to_update);
   assert(rc == success);
-  cout << "Updated PID:S# = " << rid.pageNum << ":" << rid.slotNum << endl;
+
+  assert(rid_to_update.pageNum == 2);
+  assert(rid_to_update.slotNum == 3);
   
   memset(data_returned, 0, 100);
 
@@ -684,14 +693,12 @@ void secA_9()
 
   printTuple(data_returned, tuple_size);
 
+  printTuple(tuple_updated, tuple_size);
 
-  memset(data_returned, 0, 100);
+  // Assert that the correct record is read
 
-  // Given the rid, read the tuple from table
-  rc = rm->readTuple(tablename, rid, data_returned);
-  assert(rc == success);
-
-  printTuple(data_returned, tuple_size);
+  // TODO: Continue testing to make sure deleting a forward pointer record works
+  // Write a test to see if multiple forward pointer chains work
 
 }
 
@@ -699,36 +706,36 @@ void secA_9()
 void Tests()
 {
   // GetAttributes
-  //  secA_0("tbl_employee");
+  secA_0("tbl_employee");
 
   // Insert/Read Tuple
-  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
+  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
 
   // Delete Tuple
-  // secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
+  secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
 
   // Update Tuple
-  // secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
+  secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
 
   // TODO: need to test update forward pointers
 
   //  Read Attributes
-  // secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
+  secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
 
   // Delete Tuples
-  // secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
-  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
+  secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
+  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
 
   // Simple Scan
-  // createTable("tbl_employee3");
-  // secA_6("tbl_employee3");
-
+  createTable("tbl_employee3");
+  secA_6("tbl_employee3");
+  
   // Reorganize page
-  // createTable("tbl_employee4");
-  // secA_7("tbl_employee4");
+  createTable("tbl_employee4");
+  secA_7("tbl_employee4");
   
   // Test drop and add attributes
-  // secA_8();
+  secA_8();
 
   // Test forward pointer
   secA_9();

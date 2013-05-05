@@ -645,7 +645,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     }
   }
 
-
+  uint16_t slotNum = -1;
   // Even if we need a forward pointer we still continue inserting as normal
   if(!found) {
     // No page with enough space existed, create a new page
@@ -702,7 +702,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     memcpy(&number_of_records, (char*)page+PF_PAGE_SIZE-4,2);
 
     // These will help with update
-    uint16_t slotNum = number_of_records;
+    slotNum = number_of_records;
     int directory_length = DIRECTORY_ENTRY_SIZE;
 
     if(useRid && free_page == rid.pageNum){
@@ -754,8 +754,9 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     
     *forward_pointer = 1; // Free pointer
     *(forward_pointer+1) = 0; // Version
-    memcpy(forward_pointer+2,&rid.pageNum,2);
-    memcpy(forward_pointer+4,&rid.slotNum,2);
+
+    memcpy(forward_pointer+2,&free_page,2);
+    memcpy(forward_pointer+4,&slotNum,2);
     
     // read in the free page again and update the free_space info
     if( fh->ReadPage(0,page) != 0 )
@@ -859,15 +860,20 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
       // Read page
       if(fh->ReadPage(pageNum, data) != 0)
 	return -1;
+
       // Read number of records on the page
       uint16_t numOfRecords;
+
       //Last two bytes contain the offset of the free space on the page
       memcpy(&numOfRecords, (char*)data + PF_PAGE_SIZE - 4, DIRECTORY_ENTRY_SIZE);
+
       // No such record
       if (slotNum >= numOfRecords)
 	{
+	  cout << "Not enough records to perofrm delete " << endl;
 	  return -1;
 	}
+
       // Read record offset
       uint16_t recordOffset;
       memcpy(&recordOffset, (char*)data + PF_PAGE_SIZE - 4 - ((slotNum+1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
@@ -998,7 +1004,7 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
 }
 RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 {
-  PF_FileHandle *fh = getFileHandle(tableName);
+  PF_FileHandle *fh = getFileHandle(tableName); 
   void *page = malloc(PF_PAGE_SIZE);
 
   int pageNum = rid.pageNum;
@@ -1032,7 +1038,6 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 
       if (forwardPointer == 0)
 	{
-	  cout << "local" << endl;
 	  // Read the record length
 	  uint16_t firstAttributeOffset;
 	  memcpy(&firstAttributeOffset, (char*)page + recordOffset + 2, DIRECTORY_ENTRY_SIZE);
@@ -1046,7 +1051,6 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 	}
       else
 	{
-	  cout << "remote" << endl;
 	  memcpy(&pageNum, (char*)page + recordOffset + 2, DIRECTORY_ENTRY_SIZE);
 	  memcpy(&slotNum, (char*)page + recordOffset + 4, DIRECTORY_ENTRY_SIZE);
 	}
