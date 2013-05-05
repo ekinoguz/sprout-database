@@ -9,6 +9,8 @@
 #define CLI_TABLES "cli_tables"
 #define CLI_COLUMNS "cli_columns"
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
+#define OUTPUT_MIN_WIDTH 10
+#define OUTPUT_MAX_WIDTH 25
 
 CLI * CLI::_cli = 0;
 
@@ -587,13 +589,18 @@ RC CLI::printTuple(void *data, vector<Attribute> &attrs)
   char *str;
   string record = "";
   for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
+    int w = it->name.size();
+    if (w >= OUTPUT_MIN_WIDTH)
+    	w = OUTPUT_MAX_WIDTH;
+    else
+    	w += 2;
     switch(it->type) {
       case TypeInt:
       case TypeReal:
         number = 0;
         memcpy(&number, (char *)data+offset, sizeof(int));
         offset += sizeof(int);
-        cout << setw(sizeof(int)) << left << number;
+        cout << setw(w) << left << number;
         break;
       case TypeVarChar:
         length = 0;
@@ -604,11 +611,12 @@ RC CLI::printTuple(void *data, vector<Attribute> &attrs)
         memcpy(str, (char *)data+offset, length);
         str[length] = '\0';
         offset += length;
-        cout << setw(length) << left << str;
+
+        cout << setw(w) << left << str;
         free(str);
         break;
       case TypeShort:       
-        cout << setw(3) << left << (int)(*((char*)data+offset));
+        cout << setw(it->name.size()) << left << (int)(*((char*)data+offset));
         offset += 1;
         break;
       case TypeBoolean:
@@ -827,13 +835,18 @@ RC CLI::error(const string errorMessage)
 
 void CLI::printAttributes(vector<Attribute> &attributes)
 {
-  int length = 0, used = 20;
+  int length = 0, used = 0;
   for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
-    used = 20;//it->length;
-    if (it->length > 20)
-      used = 20;
+    used = it->name.size();
+    if (used >= OUTPUT_MIN_WIDTH)
+      used = OUTPUT_MAX_WIDTH;
+    else
+    	used += 2;
     cout << setw(used) << left << it->name;
     length += used;
+    if (it == attributes.end()) {
+    	length = length - used + it->length;
+    }
   }
   cout << endl;
   for (int i = 0; i < length; i++)
