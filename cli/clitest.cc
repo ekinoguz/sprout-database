@@ -9,7 +9,7 @@
 using namespace std;
 
 #define SUCCESS 0
-#define MODE 0  // 0 = TEST MODE
+#define MODE 1  // 0 = TEST MODE
                 // 1 = INTERACTIVE MODE
                 // 3 = TEST + INTERACTIVE MODE
 
@@ -217,6 +217,24 @@ void Test05()
   assert (cli->process(command) == SUCCESS);
 }
 
+void Test06()
+{
+  string command;
+
+  // test forward pointer
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_200";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);  
+}
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -224,11 +242,12 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    Test01();
-    Test02();
-    Test03();
-    Test04();
-    //Test05();
+    // Test01();
+    // Test02();
+    // Test03();
+    // Test04();
+    // Test05();
+    Test06();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

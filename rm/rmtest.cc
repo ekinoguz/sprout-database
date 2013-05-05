@@ -85,7 +85,7 @@ void createTable(const string tablename)
   Attribute attr;
   attr.name = "EmpName";
   attr.type = TypeVarChar;
-  attr.length = (AttrLength)30;
+  attr.length = (AttrLength)100;
   attrs.push_back(attr);
 
   attr.name = "Age";
@@ -628,40 +628,110 @@ void secA_8()
 }
 
 
+void secA_9()
+{
+  string tablename = "forward";
+  createTable(tablename);
+
+  string name = "ekin";
+  int age = 5;
+  int height = 36;
+  int salary = 8;
+
+  // Functions Tested
+  // 1. Insert tuple
+  // 2. Read Attributes **
+  cout << "****In Test Case 9****" << endl;
+
+  RID rid;    
+  int tuple_size = 0;
+  void *tuple = malloc(100);
+  void *data_returned = malloc(100);
+
+  for (int i = 0; i < 500; i++)
+    {
+      std::stringstream sstm;
+      sstm << i;
+      string full_name = name + sstm.str();
+      prepareTuple(full_name.size(), full_name, age + i, height + i, salary + i, tuple, &tuple_size);
+      RC rc = rm->insertTuple(tablename, tuple, rid);
+      assert(rc == success);
+    }
+
+  RID rid_to_update;
+  rid_to_update.pageNum = 3;
+  rid_to_update.slotNum = 10;
+
+  // Given the rid, read the tuple from table
+  RC rc = rm->readTuple(tablename, rid_to_update, data_returned);
+  assert(rc == success);
+
+  printTuple(data_returned, tuple_size);
+
+  void *tuple_updated = malloc(100);
+  int tuple_size_updated;
+  name = "Testingtestingtestingtestingtestingtestingtesting";
+  prepareTuple(name.size(), name, age, height, 100, tuple_updated, &tuple_size_updated);
+  rc = rm->updateTuple(tablename, tuple_updated, rid);
+  assert(rc == success);
+  cout << "Updated PID:S# = " << rid.pageNum << ":" << rid.slotNum << endl;
+  
+  memset(data_returned, 0, 100);
+
+  // Given the rid, read the tuple from table
+  rc = rm->readTuple(tablename, rid_to_update, data_returned);
+  assert(rc == success);
+
+  printTuple(data_returned, tuple_size);
+
+
+  memset(data_returned, 0, 100);
+
+  // Given the rid, read the tuple from table
+  rc = rm->readTuple(tablename, rid, data_returned);
+  assert(rc == success);
+
+  printTuple(data_returned, tuple_size);
+
+}
+
 
 void Tests()
 {
   // GetAttributes
-  secA_0("tbl_employee");
+  //  secA_0("tbl_employee");
 
   // Insert/Read Tuple
-  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
+  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000);
 
   // Delete Tuple
-  secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
+  // secA_2("tbl_employee", 6, "Victor", 22, 180.2, 6000);
 
   // Update Tuple
-  secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
+  // secA_3("tbl_employee", 6, "Thomas", 28, 187.3, 4000);
 
   // TODO: need to test update forward pointers
 
   //  Read Attributes
-  secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
+  // secA_4("tbl_employee", 6, "Veekay", 27, 171.4, 9000);
 
   // Delete Tuples
-  secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
-  secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
+  // secA_5("tbl_employee", 6, "Dillon", 29, 172.5, 7000);
+  // secA_1("tbl_employee", 6, "Peters", 24, 170.1, 5000); // Make sure delete tuples doesn't kill the db
 
   // Simple Scan
-  createTable("tbl_employee3");
-  secA_6("tbl_employee3");
+  // createTable("tbl_employee3");
+  // secA_6("tbl_employee3");
 
   // Reorganize page
-  createTable("tbl_employee4");
-  secA_7("tbl_employee4");
+  // createTable("tbl_employee4");
+  // secA_7("tbl_employee4");
   
-  secA_8();
+  // Test drop and add attributes
+  // secA_8();
 
+  // Test forward pointer
+  secA_9();
     
   return;
 }

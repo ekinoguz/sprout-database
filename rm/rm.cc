@@ -1032,6 +1032,7 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 
       if (forwardPointer == 0)
 	{
+	  cout << "local" << endl;
 	  // Read the record length
 	  uint16_t firstAttributeOffset;
 	  memcpy(&firstAttributeOffset, (char*)page + recordOffset + 2, DIRECTORY_ENTRY_SIZE);
@@ -1045,6 +1046,7 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 	}
       else
 	{
+	  cout << "remote" << endl;
 	  memcpy(&pageNum, (char*)page + recordOffset + 2, DIRECTORY_ENTRY_SIZE);
 	  memcpy(&slotNum, (char*)page + recordOffset + 4, DIRECTORY_ENTRY_SIZE);
 	}
