@@ -33,9 +33,13 @@ The first page contains information about the free spaces on each page of the fi
 
 4. Altering the Database
 ------------------------
-The columns table of the catalog contains information about all the columns in each table in the database. When a new column is added to a table, the latest (in terms of version) catalog information about this table is read, then reinserted with a new version number. When a column is deleted, all the old versioned information is reinserted with a new version but without the deleted column. Note that reading records or scanning a table will take care of converting all the filed to the latest version on the fly. Records are not reformatted and stored in the file unless the whole table is reorganized.
+The columns table of the catalog contains information about all the columns in each table in the database. When a new column is added to a table, the latest (in terms of version) catalog information about this table is read, then reinserted with a new version number. When a column is deleted, all the old versioned information is reinserted with a new version but without the deleted column. Note that reading records or scanning a table will take care of converting all the fields to the latest version. Records are not reformatted and stored in the file unless the whole table is reorganized.
 
 
 5. Table Reorganization
 -----------------------
 When a table version reaches a certain predefined threshold, e.g. 10, the whole table is reorganized. At this point, all records are read, converted to the latest version and reinserted in a temp table in the database. Then, the table that we are reorganizing is replaces with the temp table. Unfortunately, this feature is not implemented.
+
+6. Command Line Access
+-----------------------
+We have also added a frontend layer. This layer uses a custom language (SecSQL) to allow a user to interact with the database. Currently, we have support for all functions implemented in the RM layer except for delete, and update. These functions will be handled in later portions of the project. For more information build and run cli/clitest, then type help and enjoy :)
