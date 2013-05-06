@@ -65,48 +65,48 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
   ostringstream convert;
   convert << pageNum;
   // cout << fileHandle->fileName << "|" << pageNum << endl;
-  std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());
+  std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());;
+  
   if (element == existingPages.end())
     {
       // Read the page from disk because it is not in the cache
-      RC result = fileHandle->ReadPageFromDisk(pageNum, data);
-      if (result == 0)
+      if(fileHandle->ReadPageFromDisk(pageNum, data)!= 0)
+	 return -1;
+
+      // Locate a page to flush
+      int frameToFlush = GetFrameWithLowestUsage();
+
+      // If frame is dirty write it to disk
+      if (isDirty(frameToFlush))
 	{
-    	  // Locate a page to flush
-    	  int frameToFlush = GetFrameWithLowestUsage();
-    	  // If frame is dirty write it to disk
-    	  if (isDirty(frameToFlush))
-    	    {
-    	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
-    	      UnsetDirty(frameToFlush);
-
-	      // Remove the mapping of evicted page from the existingPage map
-	      ostringstream flushedPageNum;
-	      flushedPageNum << (framesInfo + frameToFlush)->pageNum;
-	      existingPages.erase((framesInfo + frameToFlush)->fileHandle->fileName + flushedPageNum.str());
-    	    }
-	  
-	  // Read the data from disk
-	  fileHandle->ReadPageFromDisk(pageNum, data);
-	  
-          // Add the data to the cache and set the forward mapping
-      	  memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
-      	  (framesInfo + frameToFlush)->fileHandle = fileHandle;
-      	  (framesInfo + frameToFlush)->pageNum = pageNum;
-
-	  // Add the appropriate mapping to the existingPages map
-	  std::pair<std::string, int> newMapping (fileHandle->fileName + convert.str(), frameToFlush);
-	  existingPages.insert(newMapping);
-
-      	  // Set usage to 1
-      	  *(frameUsage + frameToFlush) = 1;
-	  
-      	  return 0;
+	  (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	  UnsetDirty(frameToFlush);
 	}
-      else
+
+      // Remove the mapping of evicted page from the existingPage map
+      if ((framesInfo + frameToFlush)->fileHandle != NULL)
 	{
-	  return result;
+	  ostringstream flushedPageNum;
+	  flushedPageNum << (framesInfo + frameToFlush)->pageNum;
+	  existingPages.erase((framesInfo + frameToFlush)->fileHandle->fileName + flushedPageNum.str());
 	}
+      	  
+      // Read the data from disk
+      fileHandle->ReadPageFromDisk(pageNum, data);
+	  
+      // Add the data to the cache and set the forward mapping
+      memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
+      (framesInfo + frameToFlush)->fileHandle = fileHandle;
+      (framesInfo + frameToFlush)->pageNum = pageNum;
+
+      // Add the appropriate mapping to the existingPages map
+      std::pair<std::string, int> newMapping (fileHandle->fileName + convert.str(), frameToFlush);
+      existingPages.insert(newMapping);
+
+      // Set usage to 1
+      *(frameUsage + frameToFlush) = 1;
+	  
+      return 0;
     }
   else
     {
