@@ -626,7 +626,13 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     memcpy(&freespace, (char *)page+((rid.pageNum)*2), 2);
   }
 
-  // If we have enough room don't bother looking for free space
+  if(length == 0){
+    cout << "This should never happen. tuple of length 0" << endl;
+    return -1;
+  }
+    
+
+  // If we have enough room (for an update) don't bother looking for free space
   if(freespace >= ((uint16_t)length)){
     free_page = rid.pageNum;
     found = true;
@@ -712,11 +718,17 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
      
     // Do we have enough room as is
     if(PF_PAGE_SIZE - offset - 4 - number_of_records*DIRECTORY_ENTRY_SIZE< length + directory_length){
-      if(reorganizePage(tableName, free_page) != 0)
+      if(reorganizePage(tableName, free_page) != 0){
 	return -1;
+      }
       
+      // Refresh the page after the reorg.
+      fh->ReadPage(free_page, page);
+
       // Where does the new free block begin
       memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
+      //      cout <<"O: "<< offset << endl;
+      //      cout <<"N: " << number_of_records << endl;
     }
 
     // Insert the record
@@ -763,6 +775,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
       return -1;
 
     ((uint16_t *)page)[rid.pageNum] = ((uint16_t *)page)[rid.pageNum] - 6;
+
     if(fh->WritePage(0, page))
       return -1;
     
@@ -781,7 +794,11 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     if(PF_PAGE_SIZE - offset  - 4 - number_of_records*DIRECTORY_ENTRY_SIZE < forward_pointer_length){
       if(reorganizePage(tableName, rid.pageNum) != 0)
 	return -1;
-      
+
+      // Reload the page
+      if(fh->ReadPage(rid.pageNum, page) != 0)
+	return -1;
+
       // Where does the new free block begin
       memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
     }
@@ -799,7 +816,6 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     if(fh->WritePage(rid.pageNum,page) != 0)
       return -1;
   }
-
   free(page);
   return 0;
 }
@@ -886,7 +902,7 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 
       // Read records forward pointer bit
       uint8_t forwardPointer;
-      memcpy(&forwardPointer, data, 1);
+      memcpy(&forwardPointer, (char*)data+recordOffset, 1);
 
       uint16_t recordLength;
       if (forwardPointer == 0)
@@ -905,8 +921,8 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 
       // Update the free space on the first page
       uint16_t freeSpace;
-      memcpy(&freeSpace, (char*)firstPage + 2 + (pageNum * 2), 2);
-      memset((char*)firstPage + 2 + (pageNum * 2), freeSpace - recordLength, 2);
+      memcpy(&freeSpace, (char*)firstPage + (pageNum * 2), 2);      
+      ((uint16_t *)firstPage)[pageNum] = freeSpace + recordLength;
 
       if (forwardPointer != 0)
 	{
@@ -1164,6 +1180,8 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
 
   PF_FileHandle *fh =  getFileHandle(tableName);
   void *page = malloc(PF_PAGE_SIZE);
+
+  cout << "Reorganizing : " << pageNumber << endl;
   if (fh->ReadPage(pageNumber, page) != 0)
     {
       return -1;
@@ -1222,6 +1240,7 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
       return -1;
     }
 
+  //  cout <<"A: " <<  page << ":" << reorganized_page << endl;
   free(page);
   free(reorganized_page);
 

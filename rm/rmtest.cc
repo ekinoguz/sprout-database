@@ -647,6 +647,7 @@ void secA_9()
   int tuple_size = 0;
   void *tuple = malloc(255);
   void *data_returned = malloc(255);
+  memset(tuple, 0, 255);
 
   for (int i = 0; i < 500; i++)
     {
@@ -668,38 +669,76 @@ void secA_9()
 
   printTuple(data_returned, tuple_size); // This could fail since tuple_size is not the same for all records
   
-  // This will find the cache error
-  // assert( rm->readTuple(tablename, rid_to_update, data_returned) == 0 );
-  // assert( rm->readTuple(tablename, rid_to_update, data_returned) == 0 );
-  // assert( rm->deleteTuple(tablename, rid_to_update) == 0 ) ;
-
-  // assert( rm->readTuple(tablename, rid_to_update, data_returned) != 0 );
-  
   void *tuple_updated = malloc(255);
+  memset(tuple_updated, 0, 255);
+
   int tuple_size_updated;
   name = "Testingtestingtestingtestingtestingtestingtesting";
   prepareTuple(name.size(), name, age, height, 100, tuple_updated, &tuple_size_updated);
+  //rc = rm->deleteTuple(tablename,  rid_to_update);
   rc = rm->updateTuple(tablename, tuple_updated, rid_to_update);
   assert(rc == success);
 
   assert(rid_to_update.pageNum == 2);
   assert(rid_to_update.slotNum == 3);
   
-  memset(data_returned, 0, 100);
+  memset(data_returned, 0, 255);
+
+  // Given the rid, read the tuple from table
+  rc = rm->readTuple(tablename, rid_to_update, data_returned);
+  assert(rc == success);
+
+  //printTuple(data_returned, tuple_size);
+  //printTuple(tuple_updated, tuple_size);
+
+  assert(memcmp(data_returned, tuple_updated, tuple_size) == 0);
+  
+  name = "h";
+  prepareTuple(name.size(), name, age, height, salary, tuple, &tuple_size);
+
+  name = "sky";
+  for (int i = 0; i < 500; i++)
+    {
+      std::stringstream sstm;
+      sstm << i;
+      string full_name = name + sstm.str();
+      prepareTuple(full_name.size(), full_name, age + i, height + i, salary + i, tuple, &tuple_size);
+      RC rc = rm->insertTuple(tablename, tuple, rid);
+      assert(rc == success);
+    }
+  
+  
+  name = "short string";
+  prepareTuple(name.size(), name, age, height, 100, tuple_updated, &tuple_size_updated);
+
+  //rc = rm->deleteTuple(tablename, rid_to_update);
+  rc = rm->updateTuple(tablename, tuple_updated, rid_to_update);
+  assert(rc == success);
+
+  assert(rid_to_update.pageNum == 2);
+  assert(rid_to_update.slotNum == 3);
+  
+  memset(data_returned, 0, 255);
 
   // Given the rid, read the tuple from table
   rc = rm->readTuple(tablename, rid_to_update, data_returned);
   assert(rc == success);
 
   printTuple(data_returned, tuple_size);
+  assert(memcmp(data_returned, tuple_updated, tuple_size) == 0);
 
-  printTuple(tuple_updated, tuple_size);
 
-  // Assert that the correct record is read
+  rc = rm->deleteTuple(tablename, rid_to_update);
+  assert(rc == success);
+  
+  rc = rm->readTuple(tablename, rid_to_update, data_returned);
+  assert(rc != success);
+  
+  free(tuple);
+  free(tuple_updated);
+  free(data_returned);
 
-  // TODO: Continue testing to make sure deleting a forward pointer record works
-  // Write a test to see if multiple forward pointer chains work
-
+  cout << "Test 9 Passed" << endl;
 }
 
 
