@@ -118,7 +118,7 @@ module ::Guard
   end
 end
 
-guard 'gtest', :test_paths => ['rm', 'pf'] do
+guard 'gtest', :test_paths => ['pf', 'cli', 'rm'] do
   # Uncomment this line if you have a flat compile system
   #watch(%r{(((?!\/).)+)\.(h|c|hxx|cxx|cpp)$}) { |m|
   watch(%r{(.+)\.(h|cc|c|hxx|cxx|cpp)$}) { |m|
