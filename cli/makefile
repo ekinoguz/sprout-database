@@ -12,11 +12,14 @@ cli.o: cli.h
 clitest.o: cli.h
 
 # binary dependencies
-clitest: clitest.o libcli.a $(CODEROOT)/rm/librm.a $(CODEROOT)/pf/libpf.a
+clitest: clitest.o libcli.a $(CODEROOT)/ix/libix.a $(CODEROOT)/rm/librm.a $(CODEROOT)/pf/libpf.a
 
 
 # dependencies to compile used libraries
 .PHONY: $(CODEROOT)/pf/libpf.a $(CODEROOT)/rm/librm.a
+$(CODEROOT)/ix/libix.a:
+	$(MAKE) -C $(CODEROOT)/ix libix.a
+
 $(CODEROOT)/rm/librm.a:
 	$(MAKE) -C $(CODEROOT)/rm librm.a
 
@@ -28,4 +31,5 @@ $(CODEROOT)/pf/libpf.a:
 clean:
 	-rm clitest *.a *.o *~
 	$(MAKE) -C $(CODEROOT)/pf clean
-	$(MAKE) -C $(CODEROOT)/rm clean	
+	$(MAKE) -C $(CODEROOT)/rm clean
+	$(MAKE) -C $(CODEROOT)/ix clean	
