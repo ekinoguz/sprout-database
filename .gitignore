@@ -16,6 +16,7 @@
 pf/pftest
 rm/rmtest
 cli/clitest
+ix/ixtest
 
 #db files
 db/
