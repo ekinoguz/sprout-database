@@ -120,6 +120,9 @@ public:
 
   RC deleteTable(const string tableName);
 
+  // Assume the rid does not change after update
+  RC updateTuple(const string tableName, const void *data, const RID &rid);
+  
   RC getAttributes(const string tableName, vector<Attribute> &attrs);
 
   //  Format of the data passed into the function is the following:
@@ -128,18 +131,12 @@ public:
   //     For varchar: use 4 bytes to store the length of characters, then store the actual characters.
   //  !!!The same format is used for updateTuple(), the returned data of readTuple(), and readAttribute()
   RC insertTuple(const string tableName, const void *data, RID &rid, bool useRid = false);
-  // Like insertTuple but data is formated appropriately to be stored on disk.
-  RC insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid, bool useRid = false);
 
   RC deleteTuples(const string tableName);
 
   RC deleteTuple(const string tableName, const RID &rid);
 
-  // Assume the rid does not change after update
-  RC updateTuple(const string tableName, const void *data, const RID &rid);
-
   RC readTuple(const string tableName, const RID &rid, void *data);
-  RC readFormattedTuple(const string tabkeName, const RID &rid, void *data);
 
   RC readAttribute(const string tableName, const RID &rid, const string attributeName, void *data);
 
@@ -153,6 +150,13 @@ public:
       const vector<string> &attributeNames, // a list of projected attributes
       RM_ScanIterator &rm_ScanIterator);
 
+  static RC translateTuple(void * data, const void * record, const vector<Column> & currentColumns, const vector<Column> & targetColumns);
+
+private:
+  // Like insertTuple but data is formated appropriately to be stored on disk.
+  RC insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid, bool useRid = false);
+
+  RC readFormattedTuple(const string tabkeName, const RID &rid, void *data);
   // scanFormatted returns an iterator tp allow the caller to go through the results one by one
   // by calling getNextTupleFormatted of the iterator
   RC scanFormatted(const string tableName,
@@ -162,14 +166,12 @@ public:
       const void *value,                    // used in the comparison
       RM_ScanFormattedIterator &rm_ScanIterator);
   RC scanFormatted(const string tableName,
-		   const vector<Column> columns,         // All versions of search column
-		   const CompOp compOp,                  // comparision type such as "<" and "="
-		   const void *value,                    // used in the comparison
-		   RM_ScanFormattedIterator &rm_ScanIterator);
+       const vector<Column> columns,         // All versions of search column
+       const CompOp compOp,                  // comparision type such as "<" and "="
+       const void *value,                    // used in the comparison
+       RM_ScanFormattedIterator &rm_ScanIterator);
 
-  static RC translateTuple(void * data, const void * record, const vector<Column> & currentColumns, const vector<Column> & targetColumns);
- private:
-
+  
 // Extra credit
 public:
   // Because of the implementaiton choices drop followed by add will *NOT* causee loss of data.
