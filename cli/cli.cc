@@ -11,6 +11,7 @@
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
 #define OUTPUT_MIN_WIDTH 10
 #define OUTPUT_MAX_WIDTH 25
+#define EXIT_CODE -99
 
 CLI * CLI::_cli = 0;
 
@@ -108,7 +109,7 @@ RC CLI::start()
   do {
     cout << ">>> ";
     getline (cin, input);
-  } while ((this->process(input)) == 0);
+  } while ((this->process(input)) != EXIT_CODE);
   cout << "Goodbye :(" << endl;
 
   return 0;
@@ -129,12 +130,12 @@ RC CLI::process(const string input)
     if (expect(tokenizer, "create") == 0) {
       tokenizer = next();
       if (tokenizer == NULL) {
-        return error ("I expect <table>");
+        code = error ("I expect <table>");
       }
       string type = string(tokenizer);
       tokenizer = next();
       if (tokenizer == NULL) {
-        return error ("I expect <name> to be created");
+        code = error ("I expect <name> to be created");
       }
       string name = string(tokenizer);
       // if type equals table, then create table
@@ -147,7 +148,7 @@ RC CLI::process(const string input)
         code = addAttribute(tokenizer);
       }
       else
-        return error ("I can only add attribute");
+        code = error ("I can only add attribute");
     }
     else if (expect(tokenizer, "drop") == 0) {
       tokenizer = next();
@@ -155,7 +156,7 @@ RC CLI::process(const string input)
         string type = string(tokenizer);
         tokenizer = next();
         if (tokenizer == NULL)
-          return error ("I expect <name> to be dropped");
+          code = error ("I expect <name> to be dropped");
 
         string name = string(tokenizer);
         code = drop(type, name);
@@ -164,18 +165,18 @@ RC CLI::process(const string input)
         code = dropAttribute(tokenizer);
       }
       else
-        return error ("I expect <tableName>, <indexName>, <attribute>");
+        code = error ("I expect <tableName>, <indexName>, <attribute>");
     }
     else if (expect(tokenizer, "load") == 0) {
       tokenizer = next();
       
       if (tokenizer == NULL)
-        return error ("I expect <tableName>");
+        code = error ("I expect <tableName>");
       
       string name = string(tokenizer);
       tokenizer = next();
       if (tokenizer == NULL) {
-        return error ("I expect <fileName> to be loaded");
+        code = error ("I expect <fileName> to be loaded");
       }
       string fileName = string(tokenizer);
       code = load(name, fileName);
@@ -198,13 +199,13 @@ RC CLI::process(const string input)
     }
     else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0 || 
              expect(tokenizer, "q") == 0 || expect(tokenizer, "e") == 0) {
-      code = -1;
+      code = EXIT_CODE;
     }
     else if (expect(tokenizer, "make") == 0) {
-      return error ("this is for you Sky...");
+      code = error ("this is for you Sky...");
     }
     else {
-      return error ("i have no idea about this command, sorry");
+      code = error ("i have no idea about this command, sorry");
     }
   }
   delete[] a;
