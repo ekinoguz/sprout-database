@@ -127,7 +127,7 @@ RC CLI::process(const string input)
   char * tokenizer = strtok(a, DELIMITERS);
   if (tokenizer != NULL)
   {
-    if (expect(tokenizer, "create") == 0) {
+    if (expect(tokenizer, "create")) {
       tokenizer = next();
       if (tokenizer == NULL) {
         code = error ("I expect <table>");
@@ -142,17 +142,17 @@ RC CLI::process(const string input)
       code = createTable(name, tokenizer);
       // TODO: create index
     }
-    else if (expect(tokenizer, "add") == 0) {
+    else if (expect(tokenizer, "add")) {
       tokenizer = next();
-      if (expect(tokenizer, "attribute") == 0) {
+      if (expect(tokenizer, "attribute")) {
         code = addAttribute(tokenizer);
       }
       else
         code = error ("I can only add attribute");
     }
-    else if (expect(tokenizer, "drop") == 0) {
+    else if (expect(tokenizer, "drop")) {
       tokenizer = next();
-      if (expect(tokenizer, "index") == 0 || expect(tokenizer, "table") == 0) {
+      if (expect(tokenizer, "index") || expect(tokenizer, "table")) {
         string type = string(tokenizer);
         tokenizer = next();
         if (tokenizer == NULL)
@@ -161,13 +161,13 @@ RC CLI::process(const string input)
         string name = string(tokenizer);
         code = drop(type, name);
       }
-      else if (expect(tokenizer, "attribute") == 0) {
+      else if (expect(tokenizer, "attribute")) {
         code = dropAttribute(tokenizer);
       }
       else
         code = error ("I expect <tableName>, <indexName>, <attribute>");
     }
-    else if (expect(tokenizer, "load") == 0) {
+    else if (expect(tokenizer, "load")) {
       tokenizer = next();
       
       if (tokenizer == NULL)
@@ -181,27 +181,27 @@ RC CLI::process(const string input)
       string fileName = string(tokenizer);
       code = load(name, fileName);
     }
-    else if (expect(tokenizer, "print") == 0) {
+    else if (expect(tokenizer, "print")) {
       tokenizer = next();
-      if (expect(tokenizer, "body") == 0 || expect(tokenizer, "attributes") == 0)
+      if (expect(tokenizer, "body") || expect(tokenizer, "attributes"))
         code = printColumns(tokenizer);
       else if (tokenizer != NULL)
         code = printTable(string(tokenizer));
       else
         error ("I expect <tableName>");
     }
-    else if (expect(tokenizer, "help") == 0) {
+    else if (expect(tokenizer, "help")) {
       tokenizer = next();
       if (tokenizer != NULL)
         code = help(string(tokenizer));
       else
         code = help("all");
     }
-    else if (expect(tokenizer,"quit") == 0 || expect(tokenizer,"exit") == 0 || 
-             expect(tokenizer, "q") == 0 || expect(tokenizer, "e") == 0) {
+    else if (expect(tokenizer,"quit") || expect(tokenizer,"exit") || 
+             expect(tokenizer, "q") || expect(tokenizer, "e")) {
       code = EXIT_CODE;
     }
-    else if (expect(tokenizer, "make") == 0) {
+    else if (expect(tokenizer, "make")) {
       code = error ("this is for you Sky...");
     }
     else {
@@ -232,25 +232,25 @@ RC CLI::createTable(const string name, char * tokenizer)
       cout << "expecting type" << endl;
       break;
     }
-    if (expect(tokenizer, "int") == 0) {
+    if (expect(tokenizer, "int")) {
       attr.type = TypeInt;
       attr.length = 4;
     }
-    else if (expect(tokenizer, "real") == 0) {
+    else if (expect(tokenizer, "real")) {
       attr.type = TypeReal;
       attr.length = 4;
     }
-    else if (expect(tokenizer, "varchar") == 0) {
+    else if (expect(tokenizer, "varchar")) {
       attr.type = TypeVarChar;
       // read length
       tokenizer = next();
       attr.length = atoi(tokenizer);
     }
-    else if (expect(tokenizer, "boolean") == 0) {
+    else if (expect(tokenizer, "boolean")) {
       attr.type = TypeBoolean;
       attr.length = 1;
     }
-    else if (expect(tokenizer, "short") == 0) {
+    else if (expect(tokenizer, "short")) {
       attr.type = TypeShort;
       attr.length = 1;
     }
@@ -292,15 +292,15 @@ RC CLI::addAttribute(char * tokenizer)
     return error ("I expect type for attribute");
 
   tokenizer = next(); // type
-  if (expect(tokenizer, "int") == 0) {
+  if (expect(tokenizer, "int")) {
     attr.type = TypeInt;
     attr.length = 4;
   }
-  else if (expect(tokenizer, "real") == 0) {
+  else if (expect(tokenizer, "real")) {
     attr.type = TypeReal;
     attr.length = 4;
   }
-  else if (expect(tokenizer, "varchar") == 0) {
+  else if (expect(tokenizer, "varchar")) {
     attr.type = TypeVarChar;
     // read length
     if (tokenizer == NULL)
@@ -308,17 +308,17 @@ RC CLI::addAttribute(char * tokenizer)
     tokenizer = next();
     attr.length = atoi(tokenizer);
   }
-  else if (expect(tokenizer, "boolean") == 0) {
+  else if (expect(tokenizer, "boolean")) {
     attr.type = TypeBoolean;
     attr.length = 1;
   }
-  else if (expect(tokenizer, "short") == 0) {
+  else if (expect(tokenizer, "short")) {
     attr.type = TypeShort;
     attr.length = 1;
   }
 
   tokenizer = next();
-  if (expect(tokenizer, "to") != 0) {
+  if (expect(tokenizer, "to") == false) {
     return error ("expect to");
   }
   tokenizer = next(); //tableName
@@ -404,7 +404,7 @@ RC CLI::dropAttribute(char * tokenizer)
   tokenizer = next(); // attributeName
   string attrName = string(tokenizer);
   tokenizer = next();
-  if (expect(tokenizer, "from") != 0) {
+  if (expect(tokenizer, "from")) {
     return error ("expect from");
   }
   tokenizer = next(); //tableName
@@ -822,13 +822,13 @@ char * CLI::next()
 }
 
 // return 0 if tokenizer is equal to expected string
-RC CLI::expect(char * tokenizer, const string expected)
+bool CLI::expect(char * tokenizer, const string expected)
 {
   if (tokenizer == NULL) {
     error ("tokenizer is null, expecting: " + expected);
     return -1;
   }
-  return expected.compare(string(tokenizer));
+  return expected.compare(string(tokenizer)) == 0;
 }
 
 RC CLI::error(const string errorMessage)

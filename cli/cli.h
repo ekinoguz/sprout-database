@@ -46,7 +46,7 @@ private:
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
   
   char *  next();
-  RC expect(char * tokenizer, const string expected);
+  bool expect(char * tokenizer, const string expected);
   RC error(const string errorMessage);
   void printAttributes(vector<Attribute> &attributes);
 
