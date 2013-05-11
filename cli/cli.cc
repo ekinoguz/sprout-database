@@ -110,15 +110,6 @@ RC CLI::start()
   using_history();
   // auto-complete = TAB
   rl_bind_key('\t', rl_complete);
-  // // movement = emacs movement bindings, left-right arrows, CNTRL+A, CNTRL+E
-  // rl_bind_key('\t', beginning-of-line);
-  // rl_bind_key('\t', end-of-line);
-  // rl_bind_key('\t', forward-char);
-  // rl_bind_key('\t', backward-char);
-  // rl_bind_key('\t', forward-word);
-  // rl_bind_key('\t', backward-word);
-  // rl_bind_key('\t', clear-screen);
-  // show the history? 'h', 'history'
   // 
 
   char* input, shell_prompt[100];
