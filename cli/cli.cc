@@ -1,5 +1,8 @@
 #include "cli.h"
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 // Command parsing delimiters
 // TODO: update delimiters later
 #define DELIMITERS " =,()\""
@@ -102,14 +105,43 @@ CLI::~CLI()
 
 RC CLI::start()
 {
-  string input;
+
+  // what do we want from readline?
+  using_history();
+  // auto-complete = TAB
+  rl_bind_key('\t', rl_complete);
+  // // movement = emacs movement bindings, left-right arrows, CNTRL+A, CNTRL+E
+  // rl_bind_key('\t', beginning-of-line);
+  // rl_bind_key('\t', end-of-line);
+  // rl_bind_key('\t', forward-char);
+  // rl_bind_key('\t', backward-char);
+  // rl_bind_key('\t', forward-word);
+  // rl_bind_key('\t', backward-word);
+  // rl_bind_key('\t', clear-screen);
+  // show the history? 'h', 'history'
+  // 
+
+  char* input, shell_prompt[100];
   cout << "************************" << endl;
   cout << "SecSQL CLI started" << endl;
   cout << "Enjoy!" << endl;
-  do {
-    cout << ">>> ";
-    getline (cin, input);
-  } while ((this->process(input)) != EXIT_CODE);
+  for(;;) {
+
+    // Create prompt string from user name and current working directory.
+    snprintf(shell_prompt, sizeof(shell_prompt), "%s >>> ", getenv("USER"));
+
+    // Display prompt and read input (n.b. input must be freed after use)...
+    input = readline(shell_prompt);
+
+    // check for EOF
+    if (!input)
+      break;
+    if ((this->process(string(input))) == EXIT_CODE)
+      break;
+    add_history(input);
+    // Free Input
+    free(input);
+  }
   cout << "Goodbye :(" << endl;
 
   return 0;
