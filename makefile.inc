@@ -3,6 +3,8 @@ CODEROOT = "$(realpath $(dir $(lastword $(MAKEFILE_LIST))))"
 #CC = gcc
 #CC = g++
 
+LDLIBS = -lreadline
+
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)
      CC = g++
