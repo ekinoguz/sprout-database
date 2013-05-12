@@ -12,7 +12,7 @@ ix.o: ix.h
 ixtest.o: ix.h
 
 # binary dependencies
-ixtest: ixtest.o libix.a $(CODEROOT)/pf/libpf.a $(CODEROOT)/rm/librm.a
+ixtest: ixtest.o libix.a $(CODEROOT)/rm/librm.a $(CODEROOT)/pf/libpf.a 
 
 # dependencies to compile used libraries
 .PHONY: $(CODEROOT)/pf/libpf.a
@@ -20,7 +20,7 @@ $(CODEROOT)/pf/libpf.a:
 	$(MAKE) -C $(CODEROOT)/pf libpf.a
 
 
-.PHONY: $(CODEROOT)/pf/librm.a
+.PHONY: $(CODEROOT)/rm/librm.a
 $(CODEROOT)/rm/librm.a:
 	$(MAKE) -C $(CODEROOT)/rm librm.a
 
