@@ -18,8 +18,11 @@ PF_Manager* PF_Manager::_pf_manager = 0;
 // Access to the _pf_manager instance
 PF_Manager* PF_Manager::Instance(int cacheNumPages)
 {
-  if(!_pf_manager)
+  if(!_pf_manager){
+    if(cacheNumPages == -1)
+      return NULL;
     _pf_manager = new PF_Manager(cacheNumPages);
+  }
   
   return _pf_manager;
 }

@@ -944,7 +944,6 @@ RC RM::updateTuple(const string tableName, const void *data, const RID &rid)
   // Hackery to get around the way we modify insertTuple to also do updates
   return insertTuple(tableName, data, *(const_cast<RID*>(&rid)), true);
 }
-
 // Translate record in page format into fucked up data format
 RC RM::translateTuple(void * data, const void *record, const vector<Column> &currentColumns, const vector<Column> &targetColumns){
   // Read record version

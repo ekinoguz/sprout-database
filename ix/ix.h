@@ -35,8 +35,14 @@ class IX_Manager {
   ~IX_Manager  ();                             // Destructor
 
  // Private API
+ public:
+  RC buildIndex(IX_IndexHandle & iHandle);
  private:
+  bool initialized;
   static IX_Manager _ix_manager;
+  RM* rm;
+  PF_Manager* pfm;
+  string database_folder;
 };
 
 
@@ -53,7 +59,6 @@ class IX_IndexHandle {
   RC DeleteEntry(void *key, const RID &rid);  // Delete index entry
 
   // Private API
-  
 };
 
 
