@@ -1,0 +1,31 @@
+Demo
+====
+create table "tbl_employee" (EmpName=varchar(30), Age=int, Height=real, Salary=int)
+print cli_columns
+print tbl_employee
+
+load tbl_employee "employee_5"
+print tbl_employee
+
+drop attribute "Height" from tbl_employee
+print tbl_employee
+
+load tbl_employee "employee_5_no_height"
+print tbl_employee
+
+add attribute Major=varchar(80) to tbl_employee
+print tbl_employee
+load tbl_employee "employee_major"
+print tbl_employee
+
+Random Data
+-----------
+cs200_students
+cs222_students
+employee_200
+employee_5
+employee_50
+employee_50_no_salary
+employee_5_no_salary
+employee_Year_1
+names
