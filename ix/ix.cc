@@ -27,6 +27,8 @@ IX_Manager::~IX_Manager()
 
 RC IX_Manager::init()
 {
+
+  initialized = true;
   rm = RM::Instance();
   pfm = PF_Manager::Instance();
 
@@ -46,7 +48,6 @@ RC IX_Manager::init()
   if(rm->createTable(INDEX_TABLE, index_attr) != 0)
     return -1;
   
-  initialized = true;
   return 0;
 }
 

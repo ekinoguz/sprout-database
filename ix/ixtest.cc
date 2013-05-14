@@ -14,7 +14,7 @@
 using namespace std;
 
 //Global Initializations
-IX_Manager *ixManager = IX_Manager::Instance();
+IX_Manager *ixManager;
 const int success = 0;
 
 
@@ -1448,6 +1448,7 @@ void testCase_extra_2(const string tablename, const string attrname)
 
 int main()
 {
+  ixManager = IX_Manager::Instance();
   cout << "****Starting Test Cases****" << endl;
     
   system("rm -r " DATABASE_FOLDER " 2> /dev/null");
