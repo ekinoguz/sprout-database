@@ -9,7 +9,7 @@
 using namespace std;
 
 #define SUCCESS 0
-#define MODE 1  // 0 = TEST MODE
+#define MODE 0  // 0 = TEST MODE
                 // 1 = INTERACTIVE MODE
                 // 3 = TEST + INTERACTIVE MODE
 
