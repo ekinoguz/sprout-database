@@ -404,7 +404,6 @@ RC CLI::dropAttribute(char * tokenizer)
   tokenizer = next(); // attributeName
   string attrName = string(tokenizer);
   tokenizer = next();
-  cout << tokenizer << endl;
   if (expect(tokenizer, "from") == false) {
     return error ("expect from");
   }
