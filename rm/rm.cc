@@ -554,7 +554,11 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useR
   int max_length = 0;
   for(uint i=0; i < columns.size(); i++){
     max_length += columns[i].length;
+    max_length += 2; // Account for the size of the directory
   }
+
+  // First two bytes, and last directory
+  max_length +=  4;
 
   void *buffer = malloc(max_length);
   
@@ -668,7 +672,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     free_page = num_pages; 
     // Again note free_page needs to be in actual pages. 
     //  (e.g. if we have 2 free pages and want to add a new one free_page 
-    //                         should equal 3. page 0 is the directory)
+   //                         should equal 3. page 0 is the directory)
 
     // Increment the number of pages and set the free length.
     memcpy((char *)page,&num_pages,2);
@@ -699,8 +703,9 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
       return -1;
   }
   else{ // We have enough space so insert at the correct location
-      
     // First update free_space information on the first page
+
+    // TODO: Check that we won't walk off the end of the first page
     ((uint16_t *)page)[free_page] = ((uint16_t *)page)[free_page] - length - DIRECTORY_ENTRY_SIZE;
     if(fh->WritePage(0, page))
       return -1;
@@ -711,7 +716,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     // Where does the free block begin
     uint16_t offset;
     memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
-    
+
     uint16_t number_of_records;
     memcpy(&number_of_records, (char*)page+PF_PAGE_SIZE-4,2);
 
@@ -751,7 +756,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     
     // Store the offset pointer in slotNum
     memcpy((char*)page+PF_PAGE_SIZE-4-(slotNum+1)*DIRECTORY_ENTRY_SIZE, &offset,2);
-    
+
     // Update the free pointer
     offset += length;
     memcpy((char *)page+PF_PAGE_SIZE-2,&offset, 2);
@@ -810,7 +815,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
       // Where does the new free block begin
       memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
     }
-    
+
     // Insert the record
     memcpy((char *)page+offset,forward_pointer,forward_pointer_length);
 
@@ -824,7 +829,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     if(fh->WritePage(rid.pageNum,page) != 0)
       return -1;
   }
-  free(page);
+  free(page); // TODO: Free will not be called if we have a failure
   return 0;
 }
 
@@ -1289,7 +1294,6 @@ RC RM::scanFormatted(const string tableName,
     return -1;
   rm_ScanIterator.compOp = compOp;
   rm_ScanIterator.value = value;
-  rm_ScanIterator.page = malloc(PF_PAGE_SIZE);
 
   if(rm_ScanIterator.fh == NULL)
     return -1;
