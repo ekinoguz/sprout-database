@@ -72,6 +72,8 @@ void RM::init()
     return;
 
   PF_FileHandle * fh = getFileHandle(COLUMNS_TABLE);
+  if(fh == NULL)
+    return;
   
   // Add the free space page to the newly created file
   void *data = malloc(PF_PAGE_SIZE);
@@ -411,6 +413,8 @@ RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
     return ret;
 
   PF_FileHandle * fh = getFileHandle(tableName);
+  if(fh == NULL)
+    return -1;
   
   // Add the free space page
   void *data = malloc(PF_PAGE_SIZE);
@@ -445,6 +449,8 @@ RC RM::createTable(const string tableName)
     return ret;
 
   PF_FileHandle * fh = getFileHandle(tableName);
+  if(fh == NULL)
+    return -1;
   
   // Add the free space page
   void *data = malloc(PF_PAGE_SIZE);
@@ -610,6 +616,8 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useR
 RC RM::insertFormattedTuple(const string tableName, const void *data, const int length, RID &rid, bool useRid)
 {
   PF_FileHandle * fh = this->getFileHandle(tableName);
+  if(fh == NULL)
+    return -1;
   
   void *page = malloc(PF_PAGE_SIZE);
   if( fh->ReadPage(0, page) != 0 )
@@ -862,6 +870,8 @@ RC RM::deleteTuples(const string tableName)
 RC RM::deleteTuple(const string tableName, const RID &rid)
 {
   PF_FileHandle *fh = getFileHandle(tableName);
+  if(fh == NULL)
+    return -1;
   void* data = malloc(PF_PAGE_SIZE);
 
   // Read first page
@@ -1181,6 +1191,8 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
   memset(reorganized_page, 0, PF_PAGE_SIZE);
 
   PF_FileHandle *fh =  getFileHandle(tableName);
+  if(fh == NULL)
+    return -1;
   void *page = malloc(PF_PAGE_SIZE);
 
   // cout << "Reorganizing : " << pageNumber << endl;
@@ -1273,6 +1285,8 @@ RC RM::scanFormatted(const string tableName,
 { 
   rm_ScanIterator.columns = columns;
   rm_ScanIterator.fh = getFileHandle(tableName);
+  if(fh == NULL)
+    return -1;
   rm_ScanIterator.compOp = compOp;
   rm_ScanIterator.value = value;
   rm_ScanIterator.page = malloc(PF_PAGE_SIZE);
@@ -1511,9 +1525,11 @@ PF_FileHandle * RM::getFileHandle(const string tableName)
 
   if ( got == fileHandles.end() )
     {
-      fileHandles[tableName] = new PF_FileHandle();
-      if(pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fileHandles[tableName]) != 0)
+      PF_FileHandle * fh = new PF_FileHandle(); 
+      if(pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fh) != 0)
 	return NULL;
+
+      fileHandles[tableName] = fh;
     }
 
   return fileHandles[tableName];
@@ -1632,6 +1648,8 @@ RC RM::updateTablesTableLatestVersion(const string tableName, uint8_t new_versio
   void * page = (void *) malloc(PF_PAGE_SIZE);
   
   PF_FileHandle * fh = getFileHandle(TABLES_TABLE);
+  if(fh == NULL)
+    return -1;
   if(fh->ReadPage(tables_rid.pageNum, page)!=0){
     return -1;
   }
