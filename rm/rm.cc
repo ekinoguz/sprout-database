@@ -694,9 +694,11 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
     // Set the first slot to point to the right place
     *((uint16_t *)((char*)page+PF_PAGE_SIZE- DIRECTORY_ENTRY_SIZE*2 - 2)) = 0;
    
+    slotNum = 0; // Slot numbers are zero based, we jsut can't forget about the first two bytes storing length
+
     if(!useRid){
       rid.pageNum = free_page;
-      rid.slotNum = 0; // Slot numbers are zero based, we jsut can't forget about the first two bytes storing length
+      rid.slotNum = slotNum; 
     }
 
     if(fh->AppendPage(page)!=0)
@@ -740,8 +742,6 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
 
       // Where does the new free block begin
       memcpy(&offset,(char *)page+PF_PAGE_SIZE-2, 2);
-      //      cout <<"O: "<< offset << endl;
-      //      cout <<"N: " << number_of_records << endl;
     }
 
     // Insert the record
@@ -1038,6 +1038,7 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
   PF_FileHandle *fh = getFileHandle(tableName); 
   if(fh==NULL)
     return -1;
+
   void *page = malloc(PF_PAGE_SIZE);
 
   int pageNum = rid.pageNum;
@@ -1055,6 +1056,7 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
       // No such record
       if (slotNum >= numOfRecords)
 	{
+	  cout << "Not enough records on this page [" << slotNum << ":" << numOfRecords << "]" << endl;
 	  return -1;
 	}
 
@@ -1084,8 +1086,8 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 	}
       else
 	{
-	  memcpy(&pageNum, (char*)page + recordOffset + 2, DIRECTORY_ENTRY_SIZE);
-	  memcpy(&slotNum, (char*)page + recordOffset + 4, DIRECTORY_ENTRY_SIZE);
+	  memcpy(&pageNum, (char*)page + recordOffset + 2, 2);
+	  memcpy(&slotNum, (char*)page + recordOffset + 4, 2);
 	}
     }
 
@@ -1200,7 +1202,6 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
     return -1;
   void *page = malloc(PF_PAGE_SIZE);
 
-  // cout << "Reorganizing : " << pageNumber << endl;
   if (fh->ReadPage(pageNumber, page) != 0)
     {
       return -1;
@@ -1228,9 +1229,10 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
 
       // Read records forward pointer bit
       uint8_t forward_pointer;
-      memcpy(&forward_pointer, page, 1);
+      memcpy(&forward_pointer, page+record_offset, 1);
 
       uint16_t record_length;
+      // It is not a forward_pointer
       if (forward_pointer == 0)
 	{
 	  // Read record length
@@ -1259,7 +1261,6 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
       return -1;
     }
 
-  //  cout <<"A: " <<  page << ":" << reorganized_page << endl;
   free(page);
   free(reorganized_page);
 
