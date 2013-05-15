@@ -2,6 +2,8 @@
 #include "ix.h"
 
 #define INDEX_TABLE "indexes"
+#define INDEX_TABLE_RECORD_MAX_LENGTH 160   // Actual value is 80
+#define DIRECTORY_ENTRY_SIZE 2
 
 typedef enum { LEAF_NODE, IX_NODE } nodeType;
 
@@ -78,7 +80,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
   if(OpenIndex(tableName,attributeName, ixh)!=0)
     return -3;
 
-  if(buildIndex(ixh)!=0)
+  if(buildIndex(tableName, attributeName, ixh)!=0)
     return -3;
   
   CloseIndex(ixh);
@@ -107,18 +109,73 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
 RC IX_Manager::DestroyIndex(const string tableName, const string attributeName)
 {
-  return -1;
+  // TODO: do we have to care about opened file handles to the index file
+
+  // Delete the index file
+  string file_url = DATABASE_FOLDER"/" + tableName + "_" + attributeName+".idx"; 
+  if(pfm->DestroyFile(file_url) != 0)
+    return -2;
+  
+  // Delete the index from the index table
+  vector<string> attributeNames;
+  attributeNames.push_back("table_name");
+  attributeNames.push_back("column_name");
+  RM_ScanIterator rm_ScanIterator;
+  rm->scan(INDEX_TABLE, "column_name", EQ_OP, tableName.c_str(), attributeNames, rm_ScanIterator);
+  RID rid;
+  char *data = (char*)(malloc(INDEX_TABLE_RECORD_MAX_LENGTH));
+  bool found = false;
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
+    {
+      uint16_t tableName_size;
+      memcpy(&tableName_size, data, 4);
+
+      uint16_t attributeName_size;
+      memcpy(&attributeName_size, data + 4 + tableName_size, 4);
+
+      char *attributeName_intable = ((char*)(malloc(attributeName_size + 1)));
+      memset(attributeName_intable, 0, attributeName_size + 1);
+      memcpy(attributeName_intable, data + 4 + tableName_size + 4, attributeName_size);
+      string strAttr (attributeName_intable);
+      if (strAttr == attributeName)
+	{
+	  found = true;
+	  break;
+	}
+    }
+
+  if (found == false)
+    {
+      return -3;
+    }
+
+  if (rm->deleteTuple(INDEX_TABLE, rid) != 0)
+    {
+      return -1;
+    }
+
+  return 0;
 }
 
 RC IX_Manager::OpenIndex(const string tableName,
 	       const string attributeName,
 	       IX_IndexHandle &indexHandle)
 {
+  string file_url = DATABASE_FOLDER"/" + tableName + "_" + attributeName+".idx"; 
+  if(pfm->OpenFile(file_url.c_str(), indexHandle.fileHandle) != 0)
+    return -2;
+
+  return 0;
 }
 
 RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle)
 {
-  return -1;
+  if (pfm->CloseFile(indexHandle.fileHandle) != 0)
+    {
+      return -2;
+    }
+
+  return 0;
 }
 
 IX_IndexHandle::IX_IndexHandle()
@@ -131,7 +188,14 @@ IX_IndexHandle::~IX_IndexHandle()
 
 RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   // Key is in "their" format
-  // Return 1 if (key,rid) already exists
+  // Return 1 if (key,rid) already exists or cope with duplicate keys
+  // This is gonna be a pain in the ass implementation
+  // Search the file and insert the key in the leaf page
+  // Split all pages while searching
+  // Split the leaf page if needed
+  // We have to have a way to locate the root page on our file, I don't think we can have page 0 to be the root all the time, because when we create a new root, we have to put it on page 0, shift all pages and reorganize the whole index pointers
+
+
   return -1;
 }
 RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
@@ -196,7 +260,11 @@ void IX_PrintError (RC rc)
 
 
 // Private API
-RC IX_Manager::buildIndex(IX_IndexHandle & ih)
+RC IX_Manager::buildIndex(string tableName, string attributeName, IX_IndexHandle & ih)
 {
-  return -1;
+  // Scann the whole tableName file and project the attributeName only
+  // For each record found insert that record in ih
+  // Check insert in ih for further details
+
+  return 0;
 }

@@ -429,7 +429,10 @@ RC RM::createTable(const string tableName, const vector<Attribute> &attrs)
     return ret;
   
   for(uint i=0; i < attrs.size(); i ++) {
-    this->addAttributeToCatalog(tableName,i,attrs[i]);
+    if (this->addAttributeToCatalog(tableName,i,attrs[i]) != 0)
+      {
+	return -1;
+      }
   }
   
   return 0;

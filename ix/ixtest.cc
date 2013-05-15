@@ -64,6 +64,7 @@ void testCase_1(const string tablename, const string attrname)
   RC rc;
   // Test CreateIndex
   rc = ixManager->CreateIndex(tablename, attrname);
+  cout << rc << endl;
   if(rc == success) 
     {
       cout << "Index Created!" << endl;
@@ -1448,10 +1449,9 @@ void testCase_extra_2(const string tablename, const string attrname)
 
 int main()
 {
+  system("rm -r " DATABASE_FOLDER " 2> /dev/null");
   ixManager = IX_Manager::Instance();
   cout << "****Starting Test Cases****" << endl;
-    
-  system("rm -r " DATABASE_FOLDER " 2> /dev/null");
     
   RM *rm = RM::Instance();
   createTable(rm, "tbl_employee");

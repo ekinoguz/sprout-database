@@ -36,7 +36,7 @@ class IX_Manager {
 
  // Private API
  public:
-  RC buildIndex(IX_IndexHandle & iHandle);
+  RC buildIndex(string tableName, string attributeName, IX_IndexHandle & ih);
  private:
   bool initialized;
   static IX_Manager _ix_manager;
@@ -59,6 +59,9 @@ class IX_IndexHandle {
   RC DeleteEntry(void *key, const RID &rid);  // Delete index entry
 
   // Private API
+
+ public:
+  PF_FileHandle fileHandle;
 };
 
 
