@@ -306,6 +306,8 @@ char RM::getLatestVersionFromCatalog(const string tableName)
   memcpy(&field_offset,data+offset,2);
   memcpy(&latest_version, data+field_offset,1);
 
+  free(data);
+  
   return latest_version;
 }
 
@@ -400,6 +402,8 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
     }
   } mycomp;
   std::sort(columns.begin(), columns.end(), mycomp);
+  
+  free(data);
 
   return 0;
 }
@@ -543,8 +547,9 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useR
 {  
   // Get information on the latest attributes
   vector<Column> columns;
-  if( getAttributesFromCatalog(tableName, columns, false) != 0)
+  if( getAttributesFromCatalog(tableName, columns, false) != 0){
     return -1;
+  }
   
   if(columns.size() < 1) {
     cout << "catalog read error" << endl;
@@ -610,9 +615,13 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useR
   // End pointer
   memcpy((char *)buffer + directory_offset, &field_offset, 2);
   directory_offset += 2;
-   
-  return insertFormattedTuple(tableName, buffer, field_offset, rid, useRid);
-  
+
+  if(insertFormattedTuple(tableName, buffer, field_offset, rid, useRid)!=0)
+    return -1;
+
+  free(buffer);
+
+  return 0;
 }
 
 // In order to make use of useRid the rid must have been previously been deleted
@@ -828,6 +837,8 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
 
     if(fh->WritePage(rid.pageNum,page) != 0)
       return -1;
+
+    free(forward_pointer);
   }
   free(page); // TODO: Free will not be called if we have a failure
   return 0;
@@ -866,6 +877,7 @@ RC RM::deleteTuples(const string tableName)
     return -1;
 
   free(data);
+  free(fileLoc);
 
   // Create the table file again
   createTable(tableName);
@@ -948,6 +960,8 @@ RC RM::deleteTuple(const string tableName, const RID &rid)
 
   fh->WritePage(0, firstPage);
 
+  free(firstPage);
+  free(data);
   return 0;
 }
 // Assume the rid does not change after update
@@ -1017,8 +1031,10 @@ RC RM::translateTuple(void * data, const void *record, const vector<Column> &cur
 RC RM::readTuple(const string tableName, const RID &rid, void *data)
 {
   void *record = malloc(PF_PAGE_SIZE);
-  if(readFormattedTuple(tableName, rid, record) != 0)
+  if(readFormattedTuple(tableName, rid, record) != 0){
+    free(record);
     return -1;
+  }
 
   uint8_t version;
   memcpy(&version, (char*)record + 1, 1);
@@ -1030,7 +1046,8 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
   getAttributesFromCatalog(tableName, latestColumns, false);
 
   RM::translateTuple(data,record, currentColumns, latestColumns);
-  
+
+  free(record);
   return 0;
 }
 RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
@@ -1047,8 +1064,10 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
   while (!done)
     {
       // Read page
-      if(fh->ReadPage(pageNum, page) != 0)
+      if(fh->ReadPage(pageNum, page) != 0){
+	free(page);
 	return -1;
+      }
 
       uint16_t numOfRecords;
       //Last two bytes contain the offset of the free space on the page
@@ -1057,6 +1076,7 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
       if (slotNum >= numOfRecords)
 	{
 	  cout << "Not enough records on this page [" << slotNum << ":" << numOfRecords << "]" << endl;
+	  free(page);
 	  return -1;
 	}
 
@@ -1064,8 +1084,10 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
       uint16_t recordOffset;
       memcpy(&recordOffset, (char*)page + PF_PAGE_SIZE - 4 - ((slotNum+1) * DIRECTORY_ENTRY_SIZE), DIRECTORY_ENTRY_SIZE);
 
-      if(recordOffset == 0xFFFF)
+      if(recordOffset == 0xFFFF){
+	free(page);
 	return -1;
+      }
 
       // Read forward pointer bit
       uint8_t forwardPointer;
@@ -1091,13 +1113,16 @@ RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 	}
     }
 
+  free(page);
   return 0;
 }
 RC RM::readAttribute(const string tableName, const RID &rid, const string attributeName, void *data)
 {
   void *record = malloc(PF_PAGE_SIZE);
-  if(readFormattedTuple(tableName, rid, record) != 0)
+  if(readFormattedTuple(tableName, rid, record) != 0){
+    free(record);
     return -1;
+  }
 
   // Read record version
   uint8_t version;
@@ -1106,6 +1131,7 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
   vector<Column> columns;
   if( getAttributesFromCatalog(tableName, columns, false, version) != 0)
     {
+      free(record);
       return -1;
     }
 
@@ -1131,6 +1157,7 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
       columns.clear();
       if( getAttributesFromCatalog(tableName, columns, false) != 0)
 	{
+	  free(record);
 	  return -1;
 	}
 
@@ -1146,18 +1173,23 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
 		memset(data,0,columns[i].length);
 	      }	    
 	      
+	      free(record);
 	      return 0;
 	    }
 	}
       
       // We didn't find it in latest columns either
+
+      free(record);
       return -1;
     }
 
   // Make sure it still exists in the latest version
   columns.clear();
-  if( getAttributesFromCatalog(tableName, columns, false) != 0)
+  if( getAttributesFromCatalog(tableName, columns, false) != 0){
+    free(record);
     return -1;
+  }
 
   bool not_in_latest = true;
   for (uint i = 0; i < columns.size(); i++)
@@ -1169,6 +1201,7 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
     }
 
   if(not_in_latest){
+    free(record);
     return -1;
   }
   
@@ -1190,6 +1223,7 @@ RC RM::readAttribute(const string tableName, const RID &rid, const string attrib
       memcpy(data, (char*)record + attributeOffset, length);
     }
 
+  free(record);
   return 0;
 }
 RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
@@ -1229,7 +1263,7 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
 
       // Read records forward pointer bit
       uint8_t forward_pointer;
-      memcpy(&forward_pointer, page+record_offset, 1);
+      memcpy(&forward_pointer, (char *)page+record_offset, 1);
 
       uint16_t record_length;
       // It is not a forward_pointer
@@ -1471,8 +1505,10 @@ RC RM_ScanFormattedIterator::getNextTuple(RID &rid, void *data){
 	  break;
 	default:
 	  cout << "Op not supported" << endl;
+	  free(lvalue);
 	  return -3;
 	}
+	free(lvalue);
       }
     } 
 
@@ -1502,8 +1538,10 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
   case 0:
     break;
   case RM_EOF:
+    free(buffer);
     return RM_EOF;
   default:
+    free(buffer);
     return -2;
   }
 
@@ -1521,7 +1559,11 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
       latestColumns.push_back(projectedColumns[i]);
   }
 
-  return RM::translateTuple(data, buffer, currentColumns, latestColumns);
+  
+  RC rc = RM::translateTuple(data, buffer, currentColumns, latestColumns);
+  free(buffer);
+
+  return rc;
 }
 
 PF_FileHandle * RM::getFileHandle(const string tableName) 
@@ -1550,7 +1592,8 @@ RC RM::closeFileHandle(const string tableName)
 	{
 	  return -1;
 	}
-
+      
+      delete fileHandles[tableName];
       fileHandles.erase(tableName);
     }
 
