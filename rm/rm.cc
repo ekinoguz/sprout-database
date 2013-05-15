@@ -1022,7 +1022,7 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
   getAttributesFromCatalog(tableName, currentColumns, false, version);
 
   vector<Column> latestColumns;
-  getAttributesFromCatalog(tableName, latestColumns, true);
+  getAttributesFromCatalog(tableName, latestColumns, false);
 
   RM::translateTuple(data,record, currentColumns, latestColumns);
   
@@ -1285,7 +1285,7 @@ RC RM::scanFormatted(const string tableName,
 { 
   rm_ScanIterator.columns = columns;
   rm_ScanIterator.fh = getFileHandle(tableName);
-  if(fh == NULL)
+  if(rm_ScanIterator.fh == NULL)
     return -1;
   rm_ScanIterator.compOp = compOp;
   rm_ScanIterator.value = value;
