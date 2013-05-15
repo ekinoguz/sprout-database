@@ -46,6 +46,7 @@ class Cache
 
  private:
   int GetFrameWithLowestUsage();
+  static bool freed;
 
  protected:
   Cache();

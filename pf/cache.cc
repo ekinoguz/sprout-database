@@ -2,6 +2,8 @@
 
 Cache Cache::_cache;
 
+bool Cache::freed = false;
+
 Cache* Cache::Instance(int numCachePages)
 {
   if (!_cache.initialized)
@@ -38,6 +40,8 @@ void Cache::init(int cacheNumPages)
 Cache::~Cache()
 {
   EvictAllPagesToFiles();
+
+  freed = true;
 
   free(buffer);
   free(framesInfo);
@@ -266,6 +270,9 @@ void Cache::UnsetDirty(unsigned frameNum)
 // This should only be closed for closing fileHandles
 int Cache::ClosingFile(PF_FileHandle *fileHandle)
 {
+  if(freed)
+    return 0;
+
   for (int i = 0; i < numCachePages; i++)
     {
       // If the fileHandle associated with the frame is the same one passed to this function (same one that is been closed)
