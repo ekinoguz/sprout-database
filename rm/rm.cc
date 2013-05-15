@@ -1021,6 +1021,8 @@ RC RM::readTuple(const string tableName, const RID &rid, void *data)
 RC RM::readFormattedTuple(const string tableName, const RID &rid, void *data)
 {
   PF_FileHandle *fh = getFileHandle(tableName); 
+  if(fh==NULL)
+    return -1;
   void *page = malloc(PF_PAGE_SIZE);
 
   int pageNum = rid.pageNum;
@@ -1181,7 +1183,7 @@ RC RM::reorganizePage(const string tableName, const unsigned pageNumber)
   PF_FileHandle *fh =  getFileHandle(tableName);
   void *page = malloc(PF_PAGE_SIZE);
 
-  cout << "Reorganizing : " << pageNumber << endl;
+  // cout << "Reorganizing : " << pageNumber << endl;
   if (fh->ReadPage(pageNumber, page) != 0)
     {
       return -1;
