@@ -13,7 +13,7 @@ using namespace std;
 
 const int success = 0;
 
-RM *rm = RM::Instance();
+RM *rm;
 
 
 // Function to prepare the data in the correct form to be inserted/read/updated.
@@ -158,6 +158,11 @@ void printTupleAfterAdd(const void *buffer, const int tuple_size)
     offset += sizeof(float);
     cout << "height: " << height << endl;
     
+    int salary = 0;
+    memcpy(&salary, (char *)buffer+offset, sizeof(int));
+    offset += sizeof(int);
+    cout << "Salary: " << salary << endl;
+
     int ssn = 0;   
     memcpy(&ssn, (char *)buffer+offset, sizeof(int));
     offset += sizeof(int);
@@ -274,18 +279,27 @@ void secB_2(const string tablename, const int name_length, const string name, co
 
     // Test Insert Tuple
     prepareTupleAfterAdd(name_length, name, age, height, salary, ssn, tuple, &tuple_size);
+    cout << "First" << tuple_size << endl;
     rc = rm->insertTuple(tablename, tuple, rid);
     assert(rc == success);
-
+    
     // Test Read Tuple
     rc = rm->readTuple(tablename, rid, data_returned);
     assert(rc == success);
+
+    cout << tablename << endl;
 
     cout << "Insert Data:" << endl;
     printTupleAfterAdd(tuple, tuple_size);
 
     cout << "Returned Data:" << endl;
     printTupleAfterAdd(data_returned, tuple_size);
+
+    // cout << memcmp(data_returned, tuple, tuple_size - 4) << endl;
+    // cout << memcmp(data_returned + tuple_size - 2, tuple + tuple_size -2, 2) << endl;
+    // cout << (int)*(char *)(data_returned + tuple_size - 3) << endl;
+    // cout << (int)*(char *)(tuple + tuple_size - 3) << endl;
+    // cout << tuple_size << endl;
 
     if (memcmp(data_returned, tuple, tuple_size) != 0)
     {
@@ -302,69 +316,71 @@ void secB_2(const string tablename, const int name_length, const string name, co
 }
 
 
-void secB_3(const string tablename)
-{
-    // Functions Tested
-    // 1. Reorganize Table **
-    cout << "****In Extra Credit Test Case 3****" << endl;
+// void secB_3(const string tablename)
+// {
+//     // Functions Tested
+//     // 1. Reorganize Table **
+//     cout << "****In Extra Credit Test Case 3****" << endl;
     
-    int tuple_size = 0;
-    void *tuple = malloc(100);
-    void *data_returned = malloc(100);
+//     int tuple_size = 0;
+//     void *tuple = malloc(100);
+//     void *data_returned = malloc(100);
    
-    RID rid; 
-    int num_records = 200;
-    RID rids[num_records];
+//     RID rid; 
+//     int num_records = 200;
+//     RID rids[num_records];
    
-    int rc = 0; 
-    for(int i=0; i < num_records; i++)
-    {
-        // Insert Tuple
-        prepareTuple(6, "Tester", 100+i, i, 123, tuple, &tuple_size);
-        rc = rm->insertTuple(tablename, tuple, rid);
-        assert(rc == success);
+//     int rc = 0; 
+//     for(int i=0; i < num_records; i++)
+//     {
+//         // Insert Tuple
+//         prepareTuple(6, "Tester", 100+i, i, 123, tuple, &tuple_size);
+//         rc = rm->insertTuple(tablename, tuple, rid);
+//         assert(rc == success);
 
-        rids[i] = rid;
-    }
+//         rids[i] = rid;
+//     }
 	
-	// Delete the first 100 records
-    for(int i = 0; i < 100; i++)
-    {
-        rc = rm->deleteTuple(tablename, rids[i]);
-        assert(rc == success);
+// 	// Delete the first 100 records
+//     for(int i = 0; i < 100; i++)
+//     {
+//         rc = rm->deleteTuple(tablename, rids[i]);
+//         assert(rc == success);
 
-        rc = rm->readTuple(tablename, rids[i], data_returned);
-        assert(rc != success);
-    }
-    cout << "After deletion!" << endl;
+//         rc = rm->readTuple(tablename, rids[i], data_returned);
+//         assert(rc != success);
+//     }
+//     cout << "After deletion!" << endl;
 
-    // Reorganize Table
-    rc = rm->reorganizeTable(tablename);
-    assert(rc == success);
+//     // Reorganize Table
+//     rc = rm->reorganizeTable(tablename);
+//     assert(rc == success);
 
-    for(int i = 0; i < 100; i++)
-    {
-        // Read Tuple
-        rc = rm->readTuple(tablename, rids[i], data_returned);
-        assert(rc == success);
+//     for(int i = 0; i < 100; i++)
+//     {
+//         // Read Tuple
+//         rc = rm->readTuple(tablename, rids[i], data_returned);
+//         assert(rc == success);
 
-        // Print the tuple
-        printTuple(data_returned, tuple_size);
-    }
+//         // Print the tuple
+//         printTuple(data_returned, tuple_size);
+//     }
 
-    // Delete the table
-    rc = rm->deleteTable(tablename);
-    assert(rc == success);
+//     // Delete the table
+//     rc = rm->deleteTable(tablename);
+//     assert(rc == success);
 
-    free(tuple);
-    free(data_returned);
+//     free(tuple);
+//     free(data_returned);
 
-    cout<<"****Extra Credit Test Case 3  passed*****"<<endl;
-    return;
-}   
+//     cout<<"****Extra Credit Test Case 3  passed*****"<<endl;
+//     return;
+// }   
     
 int main()
 {
+  system("rm -r " DATABASE_FOLDER " 2> /dev/null");
+  rm = RM::Instance();
     string name1 = "Peters";
     string name2 = "Victors";
     
