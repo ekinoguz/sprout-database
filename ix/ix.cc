@@ -266,5 +266,52 @@ RC IX_Manager::buildIndex(string tableName, string attributeName, IX_IndexHandle
   // For each record found insert that record in ih
   // Check insert in ih for further details
 
+  vector<Column> columns;
+  if (rm->getAttributesFromCatalog(tableName, columns, false) != 0)
+    {
+      return -1;
+    }
+
+  int max_size = 0;
+  bool is_variable = false;
+  for (int i = 0; o < columns.size(); i++)
+    {
+      if (columns[i].column_name == attributeName)
+	{
+	  if (columns[i].type == TypeVarChar)
+	    {
+	      max_size = columns[i].length + 4;
+	      is_variable = true;
+	    }
+	  else
+	    {
+	      max_size = columns[i].length;
+	      is_variable = false;
+	    }
+	}
+
+      break;
+    }
+
+  vector<string> attributeNames;
+  attributeNames.push_back(attributeName);
+  RM_ScanIterator rm_ScanIterator;
+  if (rm->scan(tablename, "", NO_OP, NULL, attributeNames, rm_ScanIterator) != 0)
+    {
+      return -1;
+    }
+
+  RID rid;
+  void* data = malloc(max_size);
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
+    {
+      if (ix.InsertEntry(data, rid) != 0)
+	{
+	  free(data);
+	  return -3;
+	}
+    }
+
+  free(data);
   return 0;
 }
