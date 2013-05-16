@@ -2,7 +2,7 @@
 #include "ix.h"
 
 #define INDEX_TABLE "indexes"
-#define INDEX_TABLE_RECORD_MAX_LENGTH 160   // Actual value is 80
+#define INDEX_TABLE_RECORD_MAX_LENGTH 160   // Actual value is 93
 #define DIRECTORY_ENTRY_SIZE 2
 
 typedef enum { LEAF_NODE, IX_NODE } nodeType;
@@ -73,7 +73,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
       return -1;
     }
 
-  int max_size = 0;
+  int max_size = -1;
   bool is_variable = false;
   for (uint i = 0; i < columns.size(); i++)
     {
@@ -81,7 +81,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 	{
 	  if (columns[i].type == TypeVarChar)
 	    {
-	      max_size = columns[i].length + 4;
+	      max_size = columns[i].length + 2;
 	      is_variable = true;
 	    }
 	  else
@@ -89,13 +89,40 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 	      max_size = columns[i].length;
 	      is_variable = false;
 	    }
+	  break;
 	}
-
-      break;
     }
 
+  if(max_size == -1)
+    return -3;
+
+  
+  // Create the index file on disk
+  string file_url = DATABASE_FOLDER"/" + tableName + "_" + attributeName+".idx"; 
+  if(pfm->CreateFile(file_url) != 0)
+    return -2;
+
+  // Open the index file
+  PF_FileHandle fh;
+  if(pfm->OpenFile(file_url.c_str(),fh)!=0)
+     return -2;
+
+  void *data = malloc(PF_PAGE_SIZE);
+  memset((char *)data, 0, PF_PAGE_SIZE);
+  *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
+  // Note: Free pointer starts at 0
+  if(fh.AppendPage(data)!=0)
+    {
+      free(data);
+      return -2;
+    }
+  free(data);
+  
+  if(pfm->CloseFile(fh) != 0)
+    return -2;
+
   // Add index to INDEX_TABLE
-  char * buffer = new char[tableName.size() + attributeName.size()+8];
+  char * buffer = (char*)(malloc(tableName.size() + attributeName.size()+8+4+1));
   int offset = 0;
   int size = tableName.size();
   memcpy(buffer+offset, &size, 4);
@@ -124,31 +151,9 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
   free(buffer);
   
-  // Create the index file on disk
-  string file_url = DATABASE_FOLDER"/" + tableName + "_" + attributeName+".idx"; 
-  if(pfm->CreateFile(file_url) != 0)
-    return -2;
-
-  // Open the index file
-  PF_FileHandle fh;
-  if(pfm->OpenFile(file_url.c_str(),fh)!=0)
-     return -2;
-
-  void *data = malloc(PF_PAGE_SIZE);
-  memset((char *)data, 0, PF_PAGE_SIZE);
-  *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
-  // Note: Free pointer starts at 0
-  if(fh.AppendPage(data)!=0)
-    {
-      free(data);
-      return -2;
-    }
-  free(data);
-  
-  if(pfm->CloseFile(fh) != 0)
-    return -2;
     
-     
+
+  // Build the index
   IX_IndexHandle ixh;
   if(OpenIndex(tableName,attributeName, ixh)!=0)
     return -3;
@@ -163,8 +168,6 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
 RC IX_Manager::DestroyIndex(const string tableName, const string attributeName)
 {
-  // TODO: do we have to care about opened file handles to the index file
-
   // Delete the index file
   string file_url = DATABASE_FOLDER"/" + tableName + "_" + attributeName+".idx"; 
   if(pfm->DestroyFile(file_url) != 0)
@@ -175,7 +178,7 @@ RC IX_Manager::DestroyIndex(const string tableName, const string attributeName)
   attributeNames.push_back("table_name");
   attributeNames.push_back("column_name");
   RM_ScanIterator rm_ScanIterator;
-  rm->scan(INDEX_TABLE, "column_name", EQ_OP, tableName.c_str(), attributeNames, rm_ScanIterator);
+  rm->scan(INDEX_TABLE, "table_name", EQ_OP, tableName.c_str(), attributeNames, rm_ScanIterator);
   RID rid;
   char *data = (char*)(malloc(INDEX_TABLE_RECORD_MAX_LENGTH));
   bool found = false;
@@ -223,12 +226,13 @@ RC IX_Manager::OpenIndex(const string tableName,
   vector<string> attributeNames;
   attributeNames.push_back("table_name");
   attributeNames.push_back("column_name");
-  attributeNames.push_back("max_key_size");
+  attributeNames.push_back("max_key_length");
   attributeNames.push_back("is_variable_length");
   RM_ScanIterator rm_ScanIterator;
-  rm->scan(INDEX_TABLE, "column_name", EQ_OP, tableName.c_str(), attributeNames, rm_ScanIterator);
+  rm->scan(INDEX_TABLE, "table_name", EQ_OP, tableName.c_str(), attributeNames, rm_ScanIterator);
   RID rid;
   char *data = (char*)(malloc(INDEX_TABLE_RECORD_MAX_LENGTH));
+  bool found = false;
   while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
       uint16_t tableName_size;
@@ -241,17 +245,19 @@ RC IX_Manager::OpenIndex(const string tableName,
       memset(attributeName_intable, 0, attributeName_size + 1);
       memcpy(attributeName_intable, data + 4 + tableName_size + 4, attributeName_size);
       string strAttr (attributeName_intable);
+      free(attributeName_intable);
       if (strAttr == attributeName)
 	{
 	  memcpy(&indexHandle.max_key_size, data + 4 + tableName_size + 4 + attributeName_size, 4);
 	  memcpy(&indexHandle.is_variable_length, data + 4 + tableName_size + 4 + attributeName_size + 4, 1);
-	  break;
+	  found = true;
 	}
-
-      free(attributeName_intable);
     }
 
   free(data);
+
+  if(!found)
+    return -3;
 
   return 0;
 }
@@ -363,7 +369,7 @@ RC IX_Manager::buildIndex(string tableName, string attributeName, IX_IndexHandle
     }
 
   RID rid;
-  void* data = malloc(indexHandle.max_key_size);
+  void* data = malloc(indexHandle.max_key_size+2);
   while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
       if (indexHandle.InsertEntry(data, rid) != 0)

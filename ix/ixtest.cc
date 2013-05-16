@@ -100,7 +100,7 @@ void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, i
   createTuples(tuples,number);
   
   RID rid;
-  for(uint i=0; i < rids.size(); i++){
+  for(uint i=0; i < tuples.size(); i++){
     RM::Instance()->insertTuple(tablename, tuples[i], rid);
 
     rids.push_back(rid);
@@ -126,7 +126,6 @@ void testCase_1(const string tablename, const string attrname)
   RC rc;
   // Test CreateIndex
   rc = ixManager->CreateIndex(tablename, attrname);
-  cout << rc << endl;
   if(rc == success) 
     {
       cout << "Index Created!" << endl;
@@ -154,6 +153,10 @@ void testCase_1(const string tablename, const string attrname)
 
       cout << "Failed Opening Index..." << endl;
     }  
+
+  assert( !ixHandle.is_variable_length );
+  assert( ixHandle.max_key_size == 4);
+
     
   // Test create duplicate index
   rc = ixManager->CreateIndex(tablename, attrname);
@@ -185,8 +188,6 @@ void testCase_1(const string tablename, const string attrname)
       cout << "Failed Closing Index..." << endl;
     }  
 
-  assert( !ixHandle.is_variable_length );
-  assert( ixHandle.max_key_size == 4);
   return;
 }
 
@@ -1524,7 +1525,8 @@ void testCase_O1()
   assert(rc == success);
 
   assert( ixHandle.is_variable_length );
-  assert( ixHandle.max_key_size == 100);
+  assert( ixHandle.max_key_size == 102);
+
 
   rc = ixManager->CloseIndex(ixHandle);
   assert(rc == success);
@@ -1557,8 +1559,7 @@ void testCase_O2()
   vector<void *>tuples;
   insertTuples(tablename, rids,tuples,200);
   
-  RC
-    rc = ixManager->CreateIndex(tablename, attrname);
+  RC rc = ixManager->CreateIndex(tablename, attrname);
   assert(rc == success);
     
   IX_IndexHandle ixHandle;
@@ -1590,7 +1591,7 @@ void testCase_O3() {
   // test DestroyIndex()
   // test OpenIndex which has valid attributes however index is not created yet
   // test closing unopened IX_IndexHandle
-  string tablename = "emptestO1";
+  string tablename = "emptestO3";
   string attrname = "EmpName";
   createTable(RM::Instance(), tablename);
   
@@ -1639,8 +1640,8 @@ void testCase_O3() {
 void ourTests()
 {
   testCase_O1();
-  testCase_O2();
   testCase_O3();
+  testCase_O2();
 }
 int main()
 {
