@@ -339,7 +339,8 @@ void Cache::DeleteFileInfo(PF_FileHandle* fileHandle)
       element->second->numberOfUsers--;
       if (element->second->numberOfUsers == 0)
 	{
-	  filesInfo.erase(fileHandle->fileName);
+	  free(element->second);
+	  filesInfo.erase(fileHandle->fileName);	 
 	}
     }
 }

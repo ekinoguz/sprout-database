@@ -20,8 +20,7 @@ void memProfile()
 {
     int who = RUSAGE_SELF;
     struct rusage usage;
-    int ret;
-    ret=getrusage(who,&usage);
+    getrusage(who,&usage);
     cout<<usage.ru_maxrss<<"KB"<<endl;
 }
 
@@ -81,6 +80,7 @@ void printTuple(const void *buffer, const int tuple_size)
     cout << "salary: " << salary << endl;
 
     cout << "****Printing Buffer: End****" << endl << endl;    
+    free(name);
 }
 
 
@@ -695,7 +695,7 @@ void secA_8(const string tablename)
     void *tuple;
     void *data_returned = malloc(100);
 
-    int sizes[num_records];
+    //    int sizes[num_records];
     RID rids[num_records];
     vector<char *> tuples;
 
@@ -711,7 +711,7 @@ void secA_8(const string tablename)
         assert(rc == success);
 
         tuples.push_back((char *)tuple);
-        sizes[i] = tuple_size;
+	//    sizes[i] = tuple_size;
         rids[i] = rid;
     }
     cout << "After Insertion!" << endl;
