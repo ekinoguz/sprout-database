@@ -50,6 +50,68 @@ void createTable(RM *rm, const string tablename)
   cout << "****Table Created: " << tablename << " ****" << endl << endl;
 }
 
+void prepareTuple(const int index, void *buffer, int *tuple_size)
+{
+  string name = "";
+  char letter = index % 26 + 97;
+  int count = index % 20 + 1;
+  for(int i = 0; i < count; i++){
+    name += letter;
+  }
+
+  int age = index;
+  float height = index / 7.0;
+  int salary = index * 10000 % 102079;
+  int name_length = count;
+
+  int offset = 0;
+    
+  memcpy((char *)buffer + offset, &name_length, sizeof(int));
+  offset += sizeof(int);    
+  memcpy((char *)buffer + offset, name.c_str(), name_length);
+  offset += name_length;
+    
+  memcpy((char *)buffer + offset, &age, sizeof(int));
+  offset += sizeof(int);
+    
+  memcpy((char *)buffer + offset, &height, sizeof(float));
+  offset += sizeof(float);
+    
+  memcpy((char *)buffer + offset, &salary, sizeof(int));
+  offset += sizeof(int);
+    
+  *tuple_size = offset;
+}
+
+
+void createTuples(vector<void *> &tuples, int number){
+  for(int i=0; i < number; i++){
+    // Test insert Tuple
+    void * tuple = malloc(1000);
+    int size = 0;
+    memset(tuple, 0, 1000);
+    prepareTuple(i, tuple, &size);
+  
+    tuples.push_back(tuple);
+  }
+}
+
+void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, int number){
+  createTuples(tuples,number);
+  
+  RID rid;
+  for(uint i=0; i < rids.size(); i++){
+    RM::Instance()->insertTuple(tablename, tuples[i], rid);
+
+    rids.push_back(rid);
+  }
+}
+
+void freeTuples(vector<void *> &tuples){
+  for(uint i=0; i < tuples.size(); i++)
+    free(tuples[i]);
+  tuples.clear();
+}
 
 void testCase_1(const string tablename, const string attrname)
 {    
@@ -122,9 +184,11 @@ void testCase_1(const string tablename, const string attrname)
 
       cout << "Failed Closing Index..." << endl;
     }  
+
+  assert( !ixHandle.is_variable_length );
+  assert( ixHandle.max_key_size == 4);
   return;
 }
-
 
 void testCase_2(const string tablename, const string attrname)
 {    
@@ -1446,7 +1510,88 @@ void testCase_extra_2(const string tablename, const string attrname)
   return;
 }
 
+void testCase_O1()
+{
+  string tablename = "emptestO1";
+  string attrname = "EmpName";
+  createTable(RM::Instance(), tablename);
+  RC rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+    
+  // Test OpenIndex
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc == success);
 
+  assert( ixHandle.is_variable_length );
+  assert( ixHandle.max_key_size == 100);
+
+  rc = ixManager->CloseIndex(ixHandle);
+  assert(rc == success);
+
+  rc = ixManager->CreateIndex("fakebullshit", attrname);
+  assert(rc != success);
+  
+  rc = ixManager->CreateIndex(tablename, "morefakeshit");
+  assert(rc != success);
+
+  rc = ixManager->OpenIndex(tablename, "morefakeshit", ixHandle);
+  assert(rc != success);
+ 
+  rc = ixManager->OpenIndex("fakebullshit", attrname, ixHandle);
+  assert(rc != success);
+
+  rc = ixManager->CloseIndex(ixHandle);
+  assert(rc != success);
+}
+
+// Test that create builds the index
+void testCase_O2()
+{
+  string tablename = "emptestO2";
+  string attrname = "EmpName";
+  createTable(RM::Instance(), tablename);
+
+  // Insert Data
+  vector<RID> rids;
+  vector<void *>tuples;
+  insertTuples(tablename, rids,tuples,200);
+  
+  RC
+    rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+    
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc == success);
+
+  // Test that we can correctly retrieve a record
+  IX_IndexScan ixs;
+  RID rid;
+  void * key;
+  for(uint i=0; i < rids.size(); i+= 15){
+    key = tuples[i];
+    rc = ixs.OpenScan(ixHandle, key, key, true, true);
+    assert(rc == success);
+
+    rc = ixs.GetNextEntry(rid);
+    assert(rc == success);
+
+    assert(rid.slotNum == rids[i].slotNum);
+    assert(rid.pageNum == rids[i].pageNum);
+    ixs.CloseScan();
+  }
+  
+
+  freeTuples(tuples);
+}
+
+
+void ourTests()
+{
+  testCase_O1();
+  testCase_O2();
+}
 int main()
 {
   system("rm -r " DATABASE_FOLDER " 2> /dev/null");
@@ -1457,6 +1602,7 @@ int main()
   createTable(rm, "tbl_employee");
     
   testCase_1("tbl_employee", "Age");
+  ourTests();
   testCase_2("tbl_employee", "Age");
   testCase_3("tbl_employee", "Age");
   testCase_4("tbl_employee", "Age");
@@ -1464,6 +1610,8 @@ int main()
   testCase_6("tbl_employee", "Height");
   testCase_7("tbl_employee", "Height");
   testCase_8("tbl_employee", "Height");
+
+  
 
   // Extra Credit Work
   // Duplicat Entries
