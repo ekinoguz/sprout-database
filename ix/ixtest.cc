@@ -1649,7 +1649,6 @@ void testCase_O4()
   string attrname = "EmpName";
   createTable(RM::Instance(), tablename);
   
-  RC rc;  
   RC rc = ixManager->CreateIndex(tablename, attrname);
   assert(rc == success);
 
@@ -1672,7 +1671,7 @@ void testCase_O4()
   unsigned key = 100;
   for(uint i = 0; i < numOfTuples; i++) {
     if (random > 0) {
-      age = age + i
+      age = age + i;
       random = -1;
     } else {
       age = age - i;
