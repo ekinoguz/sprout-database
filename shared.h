@@ -3,6 +3,9 @@
 
 #ifdef __APPLE__
 #define uint uint32_t
+#define NO_HISTORY_LIST
 #endif
+
+
 
 #endif

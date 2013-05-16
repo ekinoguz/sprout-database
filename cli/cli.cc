@@ -119,8 +119,8 @@ RC CLI::start()
   for(;;) {
 
     // Create prompt string from user name and current working directory.
-    snprintf(shell_prompt, sizeof(shell_prompt), "%s >>> ", getenv("USER"));
-
+    //snprintf(shell_prompt, sizeof(shell_prompt), "%s >>> ", getenv("USER"));
+    snprintf(shell_prompt, sizeof(shell_prompt), ">>> ");
     // Display prompt and read input (n.b. input must be freed after use)...
     input = readline(shell_prompt);
 
@@ -211,7 +211,7 @@ RC CLI::process(const string input)
       else if (tokenizer != NULL)
         code = printTable(string(tokenizer));
       else
-        error ("I expect <tableName>");
+        code = error ("I expect <tableName>");
     }
     else if (expect(tokenizer, "help")) {
       tokenizer = next();
@@ -223,6 +223,9 @@ RC CLI::process(const string input)
     else if (expect(tokenizer,"quit") || expect(tokenizer,"exit") || 
              expect(tokenizer, "q") || expect(tokenizer, "e")) {
       code = EXIT_CODE;
+    }
+    else if (expect(tokenizer, "history") || expect(tokenizer, "h")) {
+      code = history();
     }
     else if (expect(tokenizer, "make")) {
       code = error ("this is for you Sky...");
@@ -427,7 +430,7 @@ RC CLI::dropAttribute(char * tokenizer)
   tokenizer = next(); // attributeName
   string attrName = string(tokenizer);
   tokenizer = next();
-  if (expect(tokenizer, "from")) {
+  if (expect(tokenizer, "from") == false) {
     return error ("expect from");
   }
   tokenizer = next(); //tableName
@@ -836,6 +839,31 @@ RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, con
 
   free(buffer);
   return ret;
+}
+
+RC CLI::history()
+{
+#ifndef NO_HISTORY_LIST
+  HIST_ENTRY **the_list;
+  int ii;
+  the_list = history_list();
+  if (the_list)
+  for (ii = 0; the_list[ii]; ii++)
+     printf ("%d: %s\n", ii + history_base, the_list[ii]->line);
+#else
+  HIST_ENTRY *the_list;
+  the_list = current_history();
+  vector<string> list;
+  while (the_list) {
+    list.push_back(the_list->line);
+    the_list = next_history();
+  }
+  int tot = list.size();
+  for (int i = tot-1; i >= 0; i--) {
+    cout << (tot-i) << ": " << list[i] << endl;
+  } 
+#endif
+  return 0;
 }
 
 // advance tokenizer to next token
