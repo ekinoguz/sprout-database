@@ -128,6 +128,7 @@ void printTupleAfterDrop( const void *buffer, const int tuple_size)
     name[name_length] = '\0';
     offset += name_length;
     cout << "name: " << name << endl;
+    free(name);
     
     int age = 0; 
     memcpy(&age, (char *)buffer+offset, sizeof(int));
@@ -158,6 +159,7 @@ void printTupleAfterAdd(const void *buffer, const int tuple_size)
     name[name_length] = '\0';
     offset += name_length;
     cout << "name: " << name << endl;
+    free(name);
     
     int age = 0; 
     memcpy(&age, (char *)buffer+offset, sizeof(int));

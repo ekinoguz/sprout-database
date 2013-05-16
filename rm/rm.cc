@@ -135,6 +135,8 @@ RM::~RM()
   // Close the file handles
   for (unordered_map<string,PF_FileHandle *>::iterator it = fileHandles.begin(); it != fileHandles.end(); ++it) {
     pfm->CloseFile(*it->second);
+    
+    delete (it->second);
   }
 }
 
@@ -584,7 +586,7 @@ RC RM::insertTuple(const string tableName, const void *data, RID &rid, bool useR
       directory_offset += DIRECTORY_ENTRY_SIZE;
 
       // Read the length
-      uint variable_length;
+      uint variable_length = 0;
       memcpy(&variable_length, (char*)data+data_offset,4);
       data_offset+=4;
 
@@ -640,7 +642,7 @@ RC RM::insertFormattedTuple(const string tableName, const void *data, const int 
   uint16_t num_pages; // This will hold the total number of pages. Not counting the first "directory" page
   uint16_t freespace = 0;
   
-  uint16_t free_page;
+  uint16_t free_page = 0;
 
   if(useRid){
     // Check if we have space on that page
@@ -1570,8 +1572,10 @@ PF_FileHandle * RM::getFileHandle(const string tableName)
   if ( got == fileHandles.end() )
     {
       PF_FileHandle * fh = new PF_FileHandle(); 
-      if(pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fh) != 0)
+      if(pfm->OpenFile((database_folder+'/'+tableName).c_str(), *fh) != 0){
+	delete fh;
 	return NULL;
+      }
 
       fileHandles[tableName] = fh;
     }
