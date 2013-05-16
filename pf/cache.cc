@@ -83,7 +83,11 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
       // If frame is dirty write it to disk
       if (isDirty(frameToFlush))
 	{
-	  (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	  // cout << frameToFlush << ":" << (framesInfo + frameToFlush)->fileHandle << ":" << (framesInfo + frameToFlush)->pageNum << endl;
+	  if ((framesInfo + frameToFlush)->fileHandle != 0)
+	    {
+	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	    }
 	  UnsetDirty(frameToFlush);
 	}
 
@@ -178,7 +182,12 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       *(frameUsage + frameToFlush) = 1;
 
       // Page will be dirty since it is new
+
+#ifdef DEBUG
+      UnsetDirty(frameToFlush);
+#else
       SetDirty(frameToFlush);
+#endif
     }
   else
     {
@@ -192,12 +201,16 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       *(frameUsage + frameNum) = *(frameUsage + frameNum) + 1;
 
       // Set the page to be dirty
+#ifdef DEBUG
+      UnsetDirty(frameNum);
+#else
       SetDirty(frameNum);
+#endif
     }
 
   // Write the page to disk to ensure fault tolerance
 #ifdef DEBUG
-    fileHandle->WritePageToDisk(pageNum, data);
+    fileHandle->WritePageToDisk(pageNum, data);    
 #endif
 
   return 0;
