@@ -549,6 +549,7 @@ RC CLI::load(const string tableName, const string fileName)
     }
     rm->insertTuple(tableName, buffer, rid);
     
+    delete [] a;
     // prepare tuple for addition
     // for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it)
     // totalLength += it->length;
