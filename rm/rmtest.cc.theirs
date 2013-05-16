@@ -20,35 +20,10 @@ void memProfile()
 {
     int who = RUSAGE_SELF;
     struct rusage usage;
-    getrusage(who,&usage);
+    int ret;
+    ret=getrusage(who,&usage);
     cout<<usage.ru_maxrss<<"KB"<<endl;
 }
-// Function to get the data in the correct form to be inserted/read after adding
-// the attribute ssn
-void prepareTupleAfterAdd(const int name_length, const string name, const int age, const float height, const int salary, const int ssn, void *buffer, int *tuple_size)
-{
-    int offset=0;
-    
-    memcpy((char*)buffer + offset, &(name_length), sizeof(int));
-    offset += sizeof(int);    
-    memcpy((char*)buffer + offset, name.c_str(), name_length);
-    offset += name_length;
-    
-    memcpy((char*)buffer + offset, &age, sizeof(int));
-    offset += sizeof(int);
-        
-    memcpy((char*)buffer + offset, &height, sizeof(float));
-    offset += sizeof(float);
-        
-    memcpy((char*)buffer + offset, &salary, sizeof(int));
-    offset += sizeof(int);
-    
-    memcpy((char*)buffer + offset, &ssn, sizeof(int));
-    offset += sizeof(int);
-
-    *tuple_size = offset;
-}
-
 
 // Function to prepare the data in the correct form to be inserted/read/updated
 void prepareTuple(const int name_length, const string name, const int age, const float height, const int salary, void *buffer, int *tuple_size)
@@ -106,12 +81,35 @@ void printTuple(const void *buffer, const int tuple_size)
     cout << "salary: " << salary << endl;
 
     cout << "****Printing Buffer: End****" << endl << endl;    
-    free(name);
 }
 
 
 // Function to get the data in the correct form to be inserted/read after adding
 // the attribute ssn
+void prepareTupleAfterAdd(const int name_length, const string name, const int age, const float height, const int salary, const int ssn, void *buffer, int *tuple_size)
+{
+    int offset=0;
+    
+    memcpy((char*)buffer + offset, &(name_length), sizeof(int));
+    offset += sizeof(int);    
+    memcpy((char*)buffer + offset, name.c_str(), name_length);
+    offset += name_length;
+    
+    memcpy((char*)buffer + offset, &age, sizeof(int));
+    offset += sizeof(int);
+        
+    memcpy((char*)buffer + offset, &height, sizeof(float));
+    offset += sizeof(float);
+        
+    memcpy((char*)buffer + offset, &salary, sizeof(int));
+    offset += sizeof(int);
+    
+    memcpy((char*)buffer + offset, &ssn, sizeof(int));
+    offset += sizeof(int);
+
+    *tuple_size = offset;
+}
+
 
 void printTupleAfterDrop( const void *buffer, const int tuple_size)
 {
@@ -128,7 +126,6 @@ void printTupleAfterDrop( const void *buffer, const int tuple_size)
     name[name_length] = '\0';
     offset += name_length;
     cout << "name: " << name << endl;
-    free(name);
     
     int age = 0; 
     memcpy(&age, (char *)buffer+offset, sizeof(int));
@@ -159,7 +156,6 @@ void printTupleAfterAdd(const void *buffer, const int tuple_size)
     name[name_length] = '\0';
     offset += name_length;
     cout << "name: " << name << endl;
-    free(name);
     
     int age = 0; 
     memcpy(&age, (char *)buffer+offset, sizeof(int));
@@ -196,7 +192,7 @@ void createTable(const string tablename)
     Attribute attr;
     attr.name = "EmpName";
     attr.type = TypeVarChar;
-    attr.length = (AttrLength)100;
+    attr.length = (AttrLength)30;
     attrs.push_back(attr);
 
     attr.name = "Age";
@@ -699,7 +695,7 @@ void secA_8(const string tablename)
     void *tuple;
     void *data_returned = malloc(100);
 
-    //    int sizes[num_records];
+    int sizes[num_records];
     RID rids[num_records];
     vector<char *> tuples;
 
@@ -715,7 +711,7 @@ void secA_8(const string tablename)
         assert(rc == success);
 
         tuples.push_back((char *)tuple);
-	//    sizes[i] = tuple_size;
+        sizes[i] = tuple_size;
         rids[i] = rid;
     }
     cout << "After Insertion!" << endl;
@@ -1049,484 +1045,6 @@ void secA_15(const string tablename) {
     cout << "****Test case 15 passed****" << endl << endl;
 }
 
-void secO_1(const string tablename)
-{
-  // Functions tested
-  // 1. Create Table ** -- made separate now.
-  // 2. Insert Tuple **
-  // 3. Read Tuple **
-  // NOTE: "**" signifies the new functions being tested in this test case. 
-  cout << "****In Test Case 7****" << endl;
-
-  string name = "Cesar";
-  int name_length = name.size();
-  int age = 20;
-  int height = 200;
-  float salary = 200.0;
-   
-  RID rid1; 
-  int tuple_size = 0;
-  void *tuple1 = malloc(100);
-  void *data_returned = malloc(100);
-
-  // Insert a tuple into a table
-  prepareTuple(name_length, name, age, height, salary, tuple1, &tuple_size);
-  cout << "Insert Data:" << endl;
-  printTuple(tuple1, tuple_size);
-  RC rc = rm->insertTuple(tablename, tuple1, rid1);
-  assert(rc == success);
-
-  
-  name = "Sky";
-  name_length = name.size();
-  age = 30;
-  height = 300;
-  salary = 300.0;
-
-  tuple_size = 0;
-  void *tuple2 = malloc(100);
-  RID rid2;
-
-  prepareTuple(name_length, name, age, height, salary, tuple2, &tuple_size);
-  cout << "Insert Data:" << endl;
-  printTuple(tuple2, tuple_size);
-  rc = rm->insertTuple(tablename, tuple2, rid2);
-  assert(rc == success);
-
-
-
-  name = "Ekin";
-  name_length = name.size();
-  age = 40;
-  height = 400;
-  salary = 400.0;
-
-  tuple_size = 0;
-  void *tuple3 = malloc(100);
-  RID rid3;
-
-  prepareTuple(name_length, name, age, height, salary, tuple3, &tuple_size);
-  cout << "Insert Data:" << endl;
-  printTuple(tuple3, tuple_size);
-  rc = rm->insertTuple(tablename, tuple3, rid3);
-  assert(rc == success);
-  
-  // Test Delete Tuple
-  rc = rm->deleteTuple(tablename, rid2);
-  assert(rc == success);
-
-  // Reorganize page
-  rc = rm->reorganizePage(tablename, rid2.pageNum);
-  assert(rc == success);
-
-
-
-  name = "Mike";
-  name_length = name.size();
-  age = 50;
-  height = 500;
-  salary = 500.0;
-
-  tuple_size = 0;
-  void *tuple4 = malloc(100);
-  RID rid4;
-
-  prepareTuple(name_length, name, age, height, salary, tuple4, &tuple_size);
-  cout << "Insert Data:" << endl;
-  printTuple(tuple4, tuple_size);
-  rc = rm->insertTuple(tablename, tuple4, rid4);
-  assert(rc == success);
-
-
-  // Given the rid, read the tuple from table
-  rc = rm->readTuple(tablename, rid3, data_returned);
-  assert(rc == success);
-
-  cout << "Returned Data:" << endl;
-  printTuple(data_returned, tuple_size);
-
-  // Compare whether the two memory blocks are the same
-  if(memcmp(tuple3, data_returned, tuple_size) == 0)
-    {
-      cout << "****Test case 7 passed****" << endl << endl;
-    }
-  else
-    {
-      cout << "****Test case 7 failed****" << endl << endl;
-    }
-
-  free(tuple1);
-  free(tuple2);
-  free(tuple3);
-  free(tuple4);
-  free(data_returned);
-  return;
-}
-
-void secO_2()
-{
-  string tablename = "droptest";
-  createTable(tablename);
-
-  string name = "ekin";
-  int age = 5;
-  int height = 36;
-  int salary = 8;
-  int name_length = name.size();
-
-
-  // Functions Tested
-  // 1. Insert tuple
-  // 2. Read Attributes **
-  cout << "****In Test Case 8****" << endl;
-    
-  RID rid;    
-  int tuple_size = 0;
-  void *tuple = malloc(100);
-  void *data_returned = malloc(100);
-    
-  // Test Insert Tuple 
-  prepareTuple(name_length, name, age, height, salary, tuple, &tuple_size);
-  RC rc = rm->insertTuple(tablename, tuple, rid);
-  assert(rc == success);
-
-  // Test Read Attribute
-  rc = rm->readAttribute(tablename, rid, "Salary", data_returned);
-  assert(rc == success);
-
-  rc = rm->dropAttribute(tablename, "Salary");
-  assert(rc == success);
-  
-  rc = rm->readAttribute(tablename, rid, "Salary", data_returned);
-  assert(rc != success);
-
-  memset(data_returned, 0,100);
-
-  rc = rm->readAttribute(tablename, rid, "Age", data_returned);
-  assert(rc == success);
-
-  assert( memcmp((char *)data_returned, (char *)&age, 4) == 0 );
-  
-  rc = rm->readTuple(tablename, rid, data_returned);
-  assert(rc == success);
-  
-  // This will still print salary but it should be 0
-  printTuple(data_returned, tuple_size);  
-
-  // Add attribute back in
-  Attribute attr;
-  attr.name = "Salary";
-  attr.type = TypeInt;
-  attr.length = 4;
-    
-  rc = rm->addAttribute(tablename, attr);
-  assert(rc == success);
-
-  rc = rm->readAttribute(tablename, rid, "Salary", data_returned);
-  assert(rc == success);
-
-  // TODO: Add another attribute and make sure it is initialized to 0
-  
-  assert(*(int *)data_returned == 8);
-  
-  printTuple(tuple, tuple_size);
-  if (memcmp((char *)data_returned, (char *)tuple+4+4+4+name_length, 4) != 0)
-    {
-      cout << "****Test case 8 failed" << endl << endl;
-    }
-  else
-    {
-      cout << "****Test case 8 passed" << endl << endl;
-    }
-    
-  free(tuple);
-  free(data_returned);
-  return;
-}
-
-
-void secO_3()
-{
-  string tablename = "forward";
-  createTable(tablename);
-
-  string name = "ekin";
-  int age = 5;
-  int height = 36;
-  int salary = 8;
-
-  // Functions Tested
-  // 1. Insert tuple
-  // 2. Read Attributes **
-  cout << "****In Test Case 9****" << endl;
-
-  RID rid;    
-  int tuple_size = 0;
-  void *tuple = malloc(255);
-  void *data_returned = malloc(255);
-  memset(tuple, 0, 255);
-
-  for (int i = 0; i < 500; i++)
-    {
-      std::stringstream sstm;
-      sstm << i;
-      string full_name = name + sstm.str();
-      prepareTuple(full_name.size(), full_name, age + i, height + i, salary + i, tuple, &tuple_size);
-      RC rc = rm->insertTuple(tablename, tuple, rid);
-      assert(rc == success);
-    }
-
-  RID rid_to_update;
-  rid_to_update.pageNum = 2;
-  rid_to_update.slotNum = 3;
-
-  // Given the rid, read the tuple from table
-  RC rc = rm->readTuple(tablename, rid_to_update, data_returned);
-  assert(rc == success);
-
-  printTuple(data_returned, tuple_size); // This could fail since tuple_size is not the same for all records
-  
-  void *tuple_updated = malloc(255);
-  memset(tuple_updated, 0, 255);
-
-  int tuple_size_updated;
-  name = "Testingtestingtestingtestingtestingtestingtesting";
-  prepareTuple(name.size(), name, age, height, 100, tuple_updated, &tuple_size_updated);
-  //rc = rm->deleteTuple(tablename,  rid_to_update);
-  rc = rm->updateTuple(tablename, tuple_updated, rid_to_update);
-  assert(rc == success);
-
-  assert(rid_to_update.pageNum == 2);
-  assert(rid_to_update.slotNum == 3);
-  
-  memset(data_returned, 0, 255);
-
-  // Given the rid, read the tuple from table
-  rc = rm->readTuple(tablename, rid_to_update, data_returned);
-  assert(rc == success);
-
-  //printTuple(data_returned, tuple_size);
-  //printTuple(tuple_updated, tuple_size);
-
-  assert(memcmp(data_returned, tuple_updated, tuple_size) == 0);
-  
-  name = "h";
-  prepareTuple(name.size(), name, age, height, salary, tuple, &tuple_size);
-
-  name = "sky";
-  for (int i = 0; i < 500; i++)
-    {
-      std::stringstream sstm;
-      sstm << i;
-      string full_name = name + sstm.str();
-      prepareTuple(full_name.size(), full_name, age + i, height + i, salary + i, tuple, &tuple_size);
-      RC rc = rm->insertTuple(tablename, tuple, rid);
-      assert(rc == success);
-    }
-  
-  
-  name = "short string";
-  prepareTuple(name.size(), name, age, height, 100, tuple_updated, &tuple_size_updated);
-
-  //rc = rm->deleteTuple(tablename, rid_to_update);
-  rc = rm->updateTuple(tablename, tuple_updated, rid_to_update);
-  assert(rc == success);
-
-  assert(rid_to_update.pageNum == 2);
-  assert(rid_to_update.slotNum == 3);
-  
-  memset(data_returned, 0, 255);
-
-  // Given the rid, read the tuple from table
-  rc = rm->readTuple(tablename, rid_to_update, data_returned);
-  assert(rc == success);
-
-  printTuple(data_returned, tuple_size);
-  assert(memcmp(data_returned, tuple_updated, tuple_size) == 0);
-
-
-  rc = rm->deleteTuple(tablename, rid_to_update);
-  assert(rc == success);
-  
-  rc = rm->readTuple(tablename, rid_to_update, data_returned);
-  assert(rc != success);
-  
-  free(tuple);
-  free(tuple_updated);
-  free(data_returned);
-
-  cout << "Test 9 Passed" << endl;
-}
-
-// Advanced Features:
-void secB_1(const string tablename, const int name_length, const string name, const int age, const int height, const int salary)
-{
-    // Functions Tested
-    // 1. Insert tuple
-    // 2. Read Attributes
-    // 3. Drop Attributes **
-    cout << "****In Extra Credit Test Case 1****" << endl;
-
-    RID rid;    
-    int tuple_size = 0;
-    void *tuple = malloc(100);
-    void *data_returned = malloc(100);
-   
-    // Insert Tuple 
-    prepareTuple(name_length, name, age, height, salary, tuple, &tuple_size);
-    int rc = rm->insertTuple(tablename, tuple, rid);
-    assert(rc == success);
-
-    // Read Attribute
-    rc = rm->readAttribute(tablename, rid, "Salary", data_returned);
-    assert(rc == success);
-    cout << "Salary: " << *(int *)data_returned << endl;
- 
-    if(memcmp((char *)data_returned, (char *)tuple+18, 4) != 0)
-    {
-        cout << "Read attribute failed!" << endl; 
-    }
-    else
-    {
-        //cout << "Read attribute passed!" << endl; 
-
-        // Drop the attribute
-        rc = rm->dropAttribute(tablename, "Salary");
-        assert(rc == success);
-
-        // Read Tuple and print the tuple
-        rc = rm->readTuple(tablename, rid, data_returned);
-        assert(rc == success);
-        printTupleAfterDrop(data_returned, tuple_size);
-    }
-    
-    free(tuple);
-    free(data_returned);
-
-    cout<<"****Extra Credit Test Case 1 passed****"<<endl;
-    return;
-}
-
-
-void secB_2(const string tablename, const int name_length, const string name, const int age, const int height, const int salary, const int ssn)
-{
-    // Functions Tested
-    // 1. Add Attribute **
-    // 2. Insert Tuple
-    cout << "****In Extra Credit Test Case 2****" << endl;
-   
-    RID rid; 
-    int tuple_size=0;
-    void *tuple = malloc(100);
-    void *data_returned = malloc(100);
-   
-    // Test Add Attribute
-    Attribute attr;
-    attr.name = "SSN";
-    attr.type = TypeInt;
-    attr.length = 4;
-    int rc = rm->addAttribute(tablename, attr);
-    assert(rc == success);
-
-    // Test Insert Tuple
-    prepareTupleAfterAdd(name_length, name, age, height, salary, ssn, tuple, &tuple_size);
-    cout << "First" << tuple_size << endl;
-    rc = rm->insertTuple(tablename, tuple, rid);
-    assert(rc == success);
-    
-    // Test Read Tuple
-    rc = rm->readTuple(tablename, rid, data_returned);
-    assert(rc == success);
-
-    cout << tablename << endl;
-
-    cout << "Insert Data:" << endl;
-    printTupleAfterAdd(tuple, tuple_size);
-
-    cout << "Returned Data:" << endl;
-    printTupleAfterAdd(data_returned, tuple_size);
-
-    // cout << memcmp(data_returned, tuple, tuple_size - 4) << endl;
-    // cout << memcmp(data_returned + tuple_size - 2, tuple + tuple_size -2, 2) << endl;
-    // cout << (int)*(char *)(data_returned + tuple_size - 3) << endl;
-    // cout << (int)*(char *)(tuple + tuple_size - 3) << endl;
-    // cout << tuple_size << endl;
-
-    if (memcmp(data_returned, tuple, tuple_size) != 0)
-    {
-        cout << "****Extra Credit Test Case 2 failed****" << endl << endl; 
-    }
-    else
-    {
-        cout << "****Extra Credit Test Case 2 passed****" << endl << endl; 
-    }
-
-    free(tuple);
-    free(data_returned);
-    return;   
-}
-
-
-// void secB_3(const string tablename)
-// {
-//     // Functions Tested
-//     // 1. Reorganize Table **
-//     cout << "****In Extra Credit Test Case 3****" << endl;
-    
-//     int tuple_size = 0;
-//     void *tuple = malloc(100);
-//     void *data_returned = malloc(100);
-   
-//     RID rid; 
-//     int num_records = 200;
-//     RID rids[num_records];
-   
-//     int rc = 0; 
-//     for(int i=0; i < num_records; i++)
-//     {
-//         // Insert Tuple
-//         prepareTuple(6, "Tester", 100+i, i, 123, tuple, &tuple_size);
-//         rc = rm->insertTuple(tablename, tuple, rid);
-//         assert(rc == success);
-
-//         rids[i] = rid;
-//     }
-	
-// 	// Delete the first 100 records
-//     for(int i = 0; i < 100; i++)
-//     {
-//         rc = rm->deleteTuple(tablename, rids[i]);
-//         assert(rc == success);
-
-//         rc = rm->readTuple(tablename, rids[i], data_returned);
-//         assert(rc != success);
-//     }
-//     cout << "After deletion!" << endl;
-
-//     // Reorganize Table
-//     rc = rm->reorganizeTable(tablename);
-//     assert(rc == success);
-
-//     for(int i = 0; i < 100; i++)
-//     {
-//         // Read Tuple
-//         rc = rm->readTuple(tablename, rids[i], data_returned);
-//         assert(rc == success);
-
-//         // Print the tuple
-//         printTuple(data_returned, tuple_size);
-//     }
-
-//     // Delete the table
-//     rc = rm->deleteTable(tablename);
-//     assert(rc == success);
-
-//     free(tuple);
-//     free(data_returned);
-
-//     cout<<"****Extra Credit Test Case 3  passed*****"<<endl;
-//     return;
-// }   
 
 void Tests()
 {
@@ -1591,35 +1109,7 @@ void Tests()
     // Scan with conditions
     createTable("tbl_b_employee4");  
     secA_15("tbl_b_employee4");
-
-    // Reorganize page
-    createTable("tbl_employee5");
-    secO_1("tbl_employee5");
-  
-    // Test drop and add attributes
-    secO_2();
-
-    // Test forward pointer
-    secO_3();
- 
-    string name1 = "Peters";
-    string name2 = "Victors";
-
-    // Extra Credits
-    cout << "Test Extra Credits...." << endl;
-
-    // Drop Attribute
-    createTable("tbl_employee");
-    secB_1("tbl_employee", 6, name1, 24, 170, 5000);
-
-    // Add Attributes
-    createTable("tbl_employee2");
-    secB_2("tbl_employee2", 6, name2, 22, 180, 6000, 999);
-
-    // Reorganize Table
-    createTable("tbl_employee3");  
-    //secB_3("tbl_employee3");
-
+    
     memProfile();
     return;
 }

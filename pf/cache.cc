@@ -2,6 +2,8 @@
 
 Cache Cache::_cache;
 
+bool Cache::freed = false;
+
 Cache* Cache::Instance(int numCachePages)
 {
   if (!_cache.initialized)
@@ -38,6 +40,8 @@ void Cache::init(int cacheNumPages)
 Cache::~Cache()
 {
   EvictAllPagesToFiles();
+
+  freed = true;
 
   free(buffer);
   free(framesInfo);
@@ -79,7 +83,11 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
       // If frame is dirty write it to disk
       if (isDirty(frameToFlush))
 	{
-	  (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	  // cout << frameToFlush << ":" << (framesInfo + frameToFlush)->fileHandle << ":" << (framesInfo + frameToFlush)->pageNum << endl;
+	  if ((framesInfo + frameToFlush)->fileHandle != 0)
+	    {
+	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
+	    }
 	  UnsetDirty(frameToFlush);
 	}
 
@@ -174,7 +182,12 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       *(frameUsage + frameToFlush) = 1;
 
       // Page will be dirty since it is new
+
+#ifdef DEBUG
+      UnsetDirty(frameToFlush);
+#else
       SetDirty(frameToFlush);
+#endif
     }
   else
     {
@@ -188,12 +201,16 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
       *(frameUsage + frameNum) = *(frameUsage + frameNum) + 1;
 
       // Set the page to be dirty
+#ifdef DEBUG
+      UnsetDirty(frameNum);
+#else
       SetDirty(frameNum);
+#endif
     }
 
   // Write the page to disk to ensure fault tolerance
 #ifdef DEBUG
-    fileHandle->WritePageToDisk(pageNum, data);
+    fileHandle->WritePageToDisk(pageNum, data);    
 #endif
 
   return 0;
@@ -266,6 +283,9 @@ void Cache::UnsetDirty(unsigned frameNum)
 // This should only be closed for closing fileHandles
 int Cache::ClosingFile(PF_FileHandle *fileHandle)
 {
+  if(freed)
+    return 0;
+
   for (int i = 0; i < numCachePages; i++)
     {
       // If the fileHandle associated with the frame is the same one passed to this function (same one that is been closed)
@@ -319,7 +339,8 @@ void Cache::DeleteFileInfo(PF_FileHandle* fileHandle)
       element->second->numberOfUsers--;
       if (element->second->numberOfUsers == 0)
 	{
-	  filesInfo.erase(fileHandle->fileName);
+	  free(element->second);
+	  filesInfo.erase(fileHandle->fileName);	 
 	}
     }
 }

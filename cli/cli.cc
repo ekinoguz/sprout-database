@@ -1,5 +1,8 @@
 #include "cli.h"
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 // Command parsing delimiters
 // TODO: update delimiters later
 #define DELIMITERS " =,()\""
@@ -102,14 +105,34 @@ CLI::~CLI()
 
 RC CLI::start()
 {
-  string input;
+
+  // what do we want from readline?
+  using_history();
+  // auto-complete = TAB
+  rl_bind_key('\t', rl_complete);
+  // 
+
+  char* input, shell_prompt[100];
   cout << "************************" << endl;
   cout << "SecSQL CLI started" << endl;
   cout << "Enjoy!" << endl;
-  do {
-    cout << ">>> ";
-    getline (cin, input);
-  } while ((this->process(input)) != EXIT_CODE);
+  for(;;) {
+
+    // Create prompt string from user name and current working directory.
+    //snprintf(shell_prompt, sizeof(shell_prompt), "%s >>> ", getenv("USER"));
+    snprintf(shell_prompt, sizeof(shell_prompt), ">>> ");
+    // Display prompt and read input (n.b. input must be freed after use)...
+    input = readline(shell_prompt);
+
+    // check for EOF
+    if (!input)
+      break;
+    if ((this->process(string(input))) == EXIT_CODE)
+      break;
+    add_history(input);
+    // Free Input
+    free(input);
+  }
   cout << "Goodbye :(" << endl;
 
   return 0;
@@ -188,7 +211,7 @@ RC CLI::process(const string input)
       else if (tokenizer != NULL)
         code = printTable(string(tokenizer));
       else
-        error ("I expect <tableName>");
+        code = error ("I expect <tableName>");
     }
     else if (expect(tokenizer, "help")) {
       tokenizer = next();
@@ -200,6 +223,9 @@ RC CLI::process(const string input)
     else if (expect(tokenizer,"quit") || expect(tokenizer,"exit") || 
              expect(tokenizer, "q") || expect(tokenizer, "e")) {
       code = EXIT_CODE;
+    }
+    else if (expect(tokenizer, "history") || expect(tokenizer, "h")) {
+      code = history();
     }
     else if (expect(tokenizer, "make")) {
       code = error ("this is for you Sky...");
@@ -370,7 +396,6 @@ RC CLI::drop(const string type, const string tableName)
     // convert attributes to vector<string>
     vector<string> stringAttributes;
     stringAttributes.push_back("table_name");
-    
     if( rm->scan(CLI_TABLES, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
       return -1;
     
@@ -383,11 +408,16 @@ RC CLI::drop(const string type, const string tableName)
     // Delete columns    
     if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
       return -1;
-    
-    while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
+
+    // We rely on the fact that RM_EOF is not 0. 
+    // we want to return -1 when getNext tuple errors
+    RC ret = -10;
+    while((ret = rmsi.getNextTuple(rid, data_returned)) == 0){
       if(rm->deleteTuple(CLI_COLUMNS, rid) != 0)
         return -1;
     }
+    if(ret!=RM_EOF)
+      return -1;
 
     free(data_returned);
     return rm->deleteTable(tableName);
@@ -404,7 +434,7 @@ RC CLI::dropAttribute(char * tokenizer)
   tokenizer = next(); // attributeName
   string attrName = string(tokenizer);
   tokenizer = next();
-  if (expect(tokenizer, "from")) {
+  if (expect(tokenizer, "from") == false) {
     return error ("expect from");
   }
   tokenizer = next(); //tableName
@@ -519,6 +549,7 @@ RC CLI::load(const string tableName, const string fileName)
     }
     rm->insertTuple(tableName, buffer, rid);
     
+    delete [] a;
     // prepare tuple for addition
     // for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it)
     // totalLength += it->length;
@@ -678,73 +709,6 @@ RC CLI::help(const string input)
 
 RC CLI::getAttributesFromCatalog(const string tableName, vector<Attribute> &columns)
 {
-  // //TODO: this should return attributes from CLI_COLUMNS when scanIterator works
-  // Attribute attr;
- //  vector<Attribute> attributes;
- //  rm->getAttributes(CLI_COLUMNS, attributes);
-
- //  // Set up the iterator
- //  RM_ScanIterator rmsi;
- //  RID rid;
- //  void *data = malloc(PF_PAGE_SIZE);
-
- //  // convert attributes to vector<string>
- //  vector<string> stringAttributes;
-  // for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
- //    stringAttributes.push_back(it->name);
-  
- //  if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
- //    return -1;
-  
- //  while(rmsi.getNextTuple(rid, data) != RM_EOF){
- //    int offset = 0;
-  //   Attribute attr;
-  //   int position;
-  //   int length;
-
- //    uint16_t field_offset;
- //    uint16_t next_field;
- //    char * name;
- //    // Copy the column_name
- //    memcpy(&field_offset,data+offset,2);
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    name = (char *)malloc(next_field-field_offset+1);
- //    name[next_field-field_offset] = '\0';
- //    memcpy(name, data+field_offset,next_field-field_offset);
- //    attr.column_name = string(name);
- //    free(name);
- //    offset += 2;
-
- //    // Copy the table_name
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    name = (char *)malloc(next_field-field_offset+1);
- //    name[next_field-field_offset] = '\0';
- //    memcpy(name, data+field_offset,next_field-field_offset);
- //    column.table_name = string(name);
- //    free(name);
- //    offset += 2;
-
- //    // Copy the position
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    memcpy(&column.position, data+field_offset,next_field-field_offset);
- //    offset += 2;
-
- //    // Copy the type
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    memcpy(&column.type, data+field_offset,next_field-field_offset);
- //    offset += 2;
-
- //    // Copy the length
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    memcpy(&column.length, data+field_offset,next_field-field_offset);
- //    offset += 2;
-
- //  }
- //  rmsi.close();
   return rm->getAttributes(tableName, columns);
 }
 
@@ -813,6 +777,31 @@ RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, con
 
   free(buffer);
   return ret;
+}
+
+RC CLI::history()
+{
+#ifndef NO_HISTORY_LIST
+  HIST_ENTRY **the_list;
+  int ii;
+  the_list = history_list();
+  if (the_list)
+  for (ii = 0; the_list[ii]; ii++)
+     printf ("%d: %s\n", ii + history_base, the_list[ii]->line);
+#else
+  HIST_ENTRY *the_list;
+  the_list = current_history();
+  vector<string> list;
+  while (the_list) {
+    list.push_back(the_list->line);
+    the_list = next_history();
+  }
+  int tot = list.size();
+  for (int i = tot-1; i >= 0; i--) {
+    cout << (tot-i) << ": " << list[i] << endl;
+  } 
+#endif
+  return 0;
 }
 
 // advance tokenizer to next token

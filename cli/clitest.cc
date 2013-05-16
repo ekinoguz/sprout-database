@@ -35,9 +35,13 @@ void Test01()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "drop table ekin";
+  command = "print cli_columns";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
+
+   command = "drop table ekin";
+   cout << ">>> " << command << endl;
+   assert (cli->process(command) == SUCCESS);
 
   command = "print cli_tables";
   cout << ">>> " << command << endl;
