@@ -39,6 +39,7 @@ private:
   RC printColumns(char * tokenizer);
   RC printTuple(void *data, vector<Attribute> &attrs);
   RC help(const string input);
+  RC history();
 
   // cli catalog functions
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
