@@ -1591,6 +1591,7 @@ void testCase_O3() {
   // test DestroyIndex()
   // test OpenIndex which has valid attributes however index is not created yet
   // test closing unopened IX_IndexHandle
+  cout << endl << "****In Test Case Our_3****" << endl;
   string tablename = "emptestO3";
   string attrname = "EmpName";
   createTable(RM::Instance(), tablename);
@@ -1636,12 +1637,100 @@ void testCase_O3() {
   assert(rc == success);
 }
 
+void testCase_O4()
+{    
+  // Functions tested
+  // 1. OpenIndex 
+  // 2. Insert entry: 10 Age
+  // 4. Delete entry -- when the value is not there **
+  // 5. Close Index
+  cout << endl << "****In Test Case Our_4****" << endl;
+  string tablename = "emptestO4";
+  string attrname = "EmpName";
+  createTable(RM::Instance(), tablename);
+  
+  RC rc;  
+  RC rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc == success);
+
+  unsigned numOfTuples = 10;
+
+  // fill the rids and payloads
+  vector<RID> rids;
+  RID rid;
+  vector<void *> payloads;
+  int age = 18;
+  vector<int> ages;
+  void *payload;
+
+  int random = 1;
+
+  unsigned key = 100;
+  for(uint i = 0; i < numOfTuples; i++) {
+    if (random > 0) {
+      age = age + i
+      random = -1;
+    } else {
+      age = age - i;
+      random = 1;
+    }
+    rid.pageNum = key;
+    rid.slotNum = key+1+i;
+    payload = malloc(sizeof(int));
+    memcpy(payload, &age, sizeof(int));
+    rids.push_back(rid);
+    ages.push_back(age);
+    payloads.push_back(payload);
+  }
+
+  // Test Insert Entry
+  for(unsigned i = 0; i < numOfTuples; i++) 
+    {
+      rc = ixHandle.InsertEntry(&ages[i], rids[i]);
+      assert (rc == success);
+    }
+
+  // Test Delete Entry which is not there
+  payload = malloc(sizeof(int));
+  rc = ixHandle.DeleteEntry(payload, rid);
+  assert (rc != success);
+
+  rc = ixHandle.DeleteEntry(payloads[0], rids[1]);
+  assert (rc != success);
+
+
+  for(unsigned i = 0; i < numOfTuples; i++) 
+  {
+    rc = ixHandle.DeleteEntry(payloads[i], rids[i]);
+    assert (rc == success);
+  }
+
+  // Test Delete Entry again
+  rc = ixHandle.DeleteEntry(payloads[0], rids[0]);
+  assert (rc != success);
+
+  // Test Delete Entry again
+  rc = ixHandle.DeleteEntry(payloads[numOfTuples-1], rids[numOfTuples-1]);
+  assert (rc != success);
+
+  // Test Close Index
+  rc = ixManager->CloseIndex(ixHandle);
+  assert (rc == success);
+  return;
+}
+
+// TODO: test insert varchar variables
 
 void ourTests()
 {
   testCase_O1();
   testCase_O3();
   testCase_O2();
+  testCase_O4();
 }
 int main()
 {
