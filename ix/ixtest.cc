@@ -1586,11 +1586,61 @@ void testCase_O2()
   freeTuples(tuples);
 }
 
+void testCase_O3() {
+  // test DestroyIndex()
+  // test OpenIndex which has valid attributes however index is not created yet
+  // test closing unopened IX_IndexHandle
+  string tablename = "emptestO1";
+  string attrname = "EmpName";
+  createTable(RM::Instance(), tablename);
+  
+  // this should fail since we have not created an index yet
+  RC rc = ixManager->DestroyIndex(tablename, tablename);
+  assert(rc != success);
+ 
+  rc = ixManager->DestroyIndex("fakebullshit", attrname);
+  assert(rc != success);
+
+  rc = ixManager->DestroyIndex(tablename, "fakebullshit");
+  assert(rc != success);
+
+  // test OpenIndex which has valid attribute but index is not created yet
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc != success);
+
+  // create the index now
+  rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+
+  // test closing unopened IX_IndexHandle
+  rc = ixManager->CloseIndex(ixHandle);
+  assert(rc != success);
+
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc == success);
+
+  rc = ixManager->CloseIndex(ixHandle);
+  assert(rc == success);
+
+  // test DestroyIndex again
+  rc = ixManager->DestroyIndex("fakebullshit", attrname);
+  assert(rc != success);
+
+  rc = ixManager->DestroyIndex(tablename, "fakebullshit");
+  assert(rc != success);
+
+  // now destroy the index
+  rc = ixManager->DestroyIndex(tablename, attrname);
+  assert(rc == success);
+}
+
 
 void ourTests()
 {
   testCase_O1();
   testCase_O2();
+  testCase_O3();
 }
 int main()
 {
