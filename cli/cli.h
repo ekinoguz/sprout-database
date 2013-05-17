@@ -9,6 +9,7 @@
 #include "../shared.h"
 #include "../pf/pf.h"
 #include "../rm/rm.h"
+#include "../ix/ix.h"
 
 using namespace std;
 
@@ -34,7 +35,7 @@ private:
   RC createTable();
   RC createIndex();
   RC dropTable();
-  RC dropIndex();
+  RC dropIndex(const string indexName="", bool help=false);
   RC addAttribute();
   RC dropAttribute();
   RC load();
@@ -57,6 +58,7 @@ private:
   void printAttributes(vector<Attribute> &attributes);
 
   RM * rm;
+  IX_Manager * ixManager;
   static CLI * _cli;
 };
 

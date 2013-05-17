@@ -29,6 +29,7 @@ CLI* CLI::Instance()
 CLI::CLI()
 {
   rm = RM::Instance();
+  ixManager = IX_Manager::Instance();
   Attribute attr;
 
   // create cli columns table
@@ -335,8 +336,10 @@ RC CLI::createTable()
 }
 
 // create index <columnName> on <tableName>
+// index name convention is TableName_ColumnName
 RC CLI::createIndex()
 {
+  RC rc;
   char * tokenizer = next();
   string columnName = string(tokenizer);
   cout << columnName << endl;
@@ -348,7 +351,6 @@ RC CLI::createIndex()
 
   tokenizer = next();
   string tableName = string(tokenizer);
-
   
   // check if columnName, tableName is valid
   RID rid;
@@ -356,9 +358,15 @@ RC CLI::createIndex()
     return error("Given tableName-columnName does not exist");
 
   // check if index is already there
+  IX_IndexHandle ixHandle;
+  if (ixManager->OpenIndex(tableName, columnName, ixHandle) == 0)
+    return error("index is already there");
 
   // create index
+  if (ixManager->CreateIndex(tableName, columnName) != 0)
+    return error("cannot create index, ixManager error");
 
+  // TODO: add index to cli_indexes table
 
   return 0;
 }
@@ -481,8 +489,14 @@ RC CLI::dropTable()
   return rm->deleteTable(tableName);
 }
 
-RC CLI::dropIndex()
+RC CLI::dropIndex(const string indexName, bool help)
 {
+  string willDelete;
+  if (help == true)
+    willDelete = indexName;
+  else {
+    // parse willDelete from command line
+  }
   return 0;
 }
 
@@ -507,7 +521,17 @@ RC CLI::dropAttribute()
     return rc;
 
   // drop attribute
-  return rm->dropAttribute(tableName, attrName);
+  rc = rm->dropAttribute(tableName, attrName);
+  if (rc != 0)
+    return rc;
+
+  // drop index if there is one
+  rc = this->dropIndex(tableName+"_"+attrName);
+  if (rc != 0)
+    return rc;
+
+
+  return 0;
 }
 
 // CSV reader without escaping commas
