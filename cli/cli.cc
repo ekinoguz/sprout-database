@@ -370,7 +370,6 @@ RC CLI::drop(const string type, const string tableName)
     // convert attributes to vector<string>
     vector<string> stringAttributes;
     stringAttributes.push_back("table_name");
-    
     if( rm->scan(CLI_TABLES, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
       return -1;
     
@@ -383,11 +382,16 @@ RC CLI::drop(const string type, const string tableName)
     // Delete columns    
     if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
       return -1;
-    
-    while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
+
+    // We rely on the fact that RM_EOF is not 0. 
+    // we want to return -1 when getNext tuple errors
+    RC ret = -10;
+    while((ret = rmsi.getNextTuple(rid, data_returned)) == 0){
       if(rm->deleteTuple(CLI_COLUMNS, rid) != 0)
         return -1;
     }
+    if(ret!=RM_EOF)
+      return -1;
 
     free(data_returned);
     return rm->deleteTable(tableName);
@@ -678,73 +682,6 @@ RC CLI::help(const string input)
 
 RC CLI::getAttributesFromCatalog(const string tableName, vector<Attribute> &columns)
 {
-  // //TODO: this should return attributes from CLI_COLUMNS when scanIterator works
-  // Attribute attr;
- //  vector<Attribute> attributes;
- //  rm->getAttributes(CLI_COLUMNS, attributes);
-
- //  // Set up the iterator
- //  RM_ScanIterator rmsi;
- //  RID rid;
- //  void *data = malloc(PF_PAGE_SIZE);
-
- //  // convert attributes to vector<string>
- //  vector<string> stringAttributes;
-  // for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
- //    stringAttributes.push_back(it->name);
-  
- //  if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
- //    return -1;
-  
- //  while(rmsi.getNextTuple(rid, data) != RM_EOF){
- //    int offset = 0;
-  //   Attribute attr;
-  //   int position;
-  //   int length;
-
- //    uint16_t field_offset;
- //    uint16_t next_field;
- //    char * name;
- //    // Copy the column_name
- //    memcpy(&field_offset,data+offset,2);
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    name = (char *)malloc(next_field-field_offset+1);
- //    name[next_field-field_offset] = '\0';
- //    memcpy(name, data+field_offset,next_field-field_offset);
- //    attr.column_name = string(name);
- //    free(name);
- //    offset += 2;
-
- //    // Copy the table_name
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    name = (char *)malloc(next_field-field_offset+1);
- //    name[next_field-field_offset] = '\0';
- //    memcpy(name, data+field_offset,next_field-field_offset);
- //    column.table_name = string(name);
- //    free(name);
- //    offset += 2;
-
- //    // Copy the position
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    memcpy(&column.position, data+field_offset,next_field-field_offset);
- //    offset += 2;
-
- //    // Copy the type
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    memcpy(&column.type, data+field_offset,next_field-field_offset);
- //    offset += 2;
-
- //    // Copy the length
- //    field_offset = next_field;
- //    memcpy(&next_field,data+offset+DIRECTORY_ENTRY_SIZE,2);
- //    memcpy(&column.length, data+field_offset,next_field-field_offset);
- //    offset += 2;
-
- //  }
- //  rmsi.close();
   return rm->getAttributes(tableName, columns);
 }
 

@@ -1325,13 +1325,12 @@ RC RM::scanFormatted(const string tableName,
 { 
   rm_ScanIterator.columns = columns;
   rm_ScanIterator.fh = getFileHandle(tableName);
-  if(rm_ScanIterator.fh == NULL)
+  if(rm_ScanIterator.fh == NULL){
     return -1;
+  }
+
   rm_ScanIterator.compOp = compOp;
   rm_ScanIterator.value = value;
-
-  if(rm_ScanIterator.fh == NULL)
-    return -1;
 
   return 0;
 }
@@ -1544,8 +1543,6 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
     free(buffer);
     return -2;
   }
-
-
   char version = *((char *)buffer+1);
   int latest_version = projectedColumns[projectedColumns.size()-1].version;
   vector<Column> currentColumns;

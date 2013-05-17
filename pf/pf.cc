@@ -12,6 +12,40 @@
 
 #include "../shared.h"
 
+
+std::string DescribeIosFailure(const std::ios& stream)
+{
+  std::string result;
+
+  if (stream.eof()) {
+    result = "Unexpected end of file.";
+  }
+
+#ifdef WIN32
+  // GetLastError() gives more details than errno.
+  else if (GetLastError() != 0) {
+    result = FormatSystemMessage(GetLastError());
+  }
+#endif
+
+  else if (errno) {
+#if defined(__unix__)
+    // We use strerror_r because it's threadsafe.
+    // GNU's strerror_r returns a string and may ignore buffer completely.
+    char buffer[255];
+    result = std::string(strerror_r(errno, buffer, sizeof(buffer)));
+#else
+     result = std::string(strerror(errno));
+#endif
+  }
+
+  else {
+    result = "Unknown file error.";
+  }
+
+  return result;
+}
+
 PF_Manager* PF_Manager::_pf_manager = 0;
 
 
@@ -120,6 +154,7 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 
       fileHandle.filestr.flush();
       fileHandle.filestr.close();
+      
       return 0;
     }
   else
@@ -201,6 +236,7 @@ RC PF_FileHandle::ReadPageFromDisk(PageNum pageNum, void *data)
       cout << "page number does not exist" << endl;
       return -1;
     }
+
   if (filestr)
     {
       filestr.seekg((int)(pageNum * PF_PAGE_SIZE));
@@ -209,7 +245,13 @@ RC PF_FileHandle::ReadPageFromDisk(PageNum pageNum, void *data)
 	{
 	  return 0;
 	}
+      else
+	{
+	  cout << "Bad read. Error: " << DescribeIosFailure(filestr) << endl;
+	  return -1;
+	}
     }
+
   cout << "filestr error" << endl;
   return -1;
 }
