@@ -247,6 +247,55 @@ void Test06()
   assert (cli->process(command) == SUCCESS);  
 }
 
+// create index
+// drop index
+void Test07()
+{
+  string command;
+
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  cli->process(command);
+
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Age on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Age a tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
+
+  command = "create index Agea on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
+  
+  command = "create index Age on atbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
+
+
+  command = "create table tbl_employee2 EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index EmpName on tbl_employee2";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  // check index is create for EmpName on tbl_employe2
+  command = "print cli_indexes";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);  
+
+  command = ("drop table tbl_employee2");
+  cout << ">>> " << command << endl;  
+  cli->process(command);
+}
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -260,6 +309,7 @@ int main()
     Test04();
     Test05();
     Test06();
+    Test07();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

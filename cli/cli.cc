@@ -334,8 +334,32 @@ RC CLI::createTable()
   return 0;
 }
 
+// create index <columnName> on <tableName>
 RC CLI::createIndex()
 {
+  char * tokenizer = next();
+  string columnName = string(tokenizer);
+  cout << columnName << endl;
+
+  tokenizer = next();
+  if (!expect(tokenizer, "on")) {
+    return error ("syntax error: expecting \"on\"");
+  }
+
+  tokenizer = next();
+  string tableName = string(tokenizer);
+
+  
+  // check if columnName, tableName is valid
+  RID rid;
+  if (this->checkAttribute(tableName, columnName, rid) == false)
+    return error("Given tableName-columnName does not exist");
+
+  // check if index is already there
+
+  // create index
+
+
   return 0;
 }
 
@@ -473,46 +497,16 @@ RC CLI::dropAttribute()
   tokenizer = next(); //tableName
   string tableName = string(tokenizer);
 
-  // delete entry from CLI_COLUMNS
-  Attribute attr;
-  vector<Attribute> attributes;
-  this->getAttributesFromCatalog(CLI_TABLES, attributes);
-
-  // Set up the iterator
-  RM_ScanIterator rmsi;
   RID rid;
-  void *data_returned = malloc(PF_PAGE_SIZE);
-
-  // convert attributes to vector<string>
-  vector<string> stringAttributes;
-  stringAttributes.push_back("column_name");
-  stringAttributes.push_back("table_name");
-  
-  // Delete columns    
-  if( rm->scan(CLI_COLUMNS, "column_name", EQ_OP, attrName.c_str(), stringAttributes, rmsi) != 0)
-    return -1;
-  
-  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
-    // check if tableName is what we want
-    int length, offset = 0;
-    char *str;
-    // first iteration reads the column_name
-    for (uint i = 0; i < 2; i++) {
-      length = 0;
-      memcpy(&length, (char *)data_returned+offset, sizeof(int));
-      offset += sizeof(int);
-
-      str = (char *)malloc(length+1);
-      memcpy(str, (char *)data_returned+offset, length);
-      str[length] = '\0';
-      offset += length;
-      free(str);
-    }
-    if(tableName.compare(string(str)) == 0 && rm->deleteTuple(CLI_COLUMNS, rid) != 0)
-      return -1;
+  if (!this->checkAttribute(tableName, attrName, rid)) {
+    return error("given tableName-attrName does not exist");
   }
-  free(data_returned);
-  
+  // delete entry from CLI_COLUMNS
+  RC rc = rm->deleteTuple(CLI_COLUMNS, rid) != 0;
+  if (rc != 0)
+    return rc;
+
+  // drop attribute
   return rm->dropAttribute(tableName, attrName);
 }
 
@@ -868,6 +862,50 @@ RC CLI::error(const string errorMessage)
 {
   cout << errorMessage << endl;
   return -2;
+}
+
+// checks whether given tableName-columnName exists or not
+bool CLI::checkAttribute(const string tableName, const string columnName, RID &rid)
+{
+  vector<Attribute> attributes;
+  this->getAttributesFromCatalog(CLI_COLUMNS, attributes);
+
+  // Set up the iterator
+  RM_ScanIterator rmsi;
+  void *data_returned = malloc(PF_PAGE_SIZE);
+
+  // convert attributes to vector<string>
+  vector<string> stringAttributes;
+  stringAttributes.push_back("column_name");
+  stringAttributes.push_back("table_name");
+    
+  // Find columns which is columnName
+  if( rm->scan(CLI_COLUMNS, "column_name", EQ_OP, columnName.c_str(), stringAttributes, rmsi) != 0)
+    return -1;
+  
+  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
+    // check if tableName is what we want
+    int length, offset = 0;
+    char *str;
+    // first iteration reads the column_name
+    for (uint i = 0; i < 2; i++) {
+      length = 0;
+      memcpy(&length, (char *)data_returned+offset, sizeof(int));
+      offset += sizeof(int);
+
+      str = (char *)malloc(length+1);
+      memcpy(str, (char *)data_returned+offset, length);
+      str[length] = '\0';
+      offset += length;
+      free(str);
+    }
+    if(tableName.compare(string(str)) == 0) {
+      free(data_returned);
+      return true;
+    }
+  }
+  free(data_returned);
+  return false;
 }
 
 void CLI::printAttributes(vector<Attribute> &attributes)

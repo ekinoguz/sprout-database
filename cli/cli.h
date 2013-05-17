@@ -51,6 +51,7 @@ private:
   // helper functions
   char *  next();
   bool expect(char * tokenizer, const string expected);
+  bool checkAttribute(const string tableName, const string columnName, RID &rid);
   RC error(const string errorMessage);
   RC printTuple(void *data, vector<Attribute> &attrs);
   void printAttributes(vector<Attribute> &attributes);
