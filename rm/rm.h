@@ -184,6 +184,8 @@ public:
 
   RC updateTablesTableLatestVersion(const string tableName, uint8_t new_version);
 
+  // This was made public because it is needed in the IX layer
+  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 ); // if !findAll then look for only version
 
 protected:
   RM();
@@ -192,7 +194,7 @@ protected:
 private:
   RC addAttributeToCatalog(const string tableName, uint offset, const Attribute &attr, char version = 0);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
-  RC getAttributesFromCatalog(const string tableName, vector<Column> &columns, bool findAll = true, int version = -1 ); // if !findAll then look for only version
+
   char getLatestVersionFromCatalog(const string tableName);
   
   PF_FileHandle * getFileHandle(const string tableName);

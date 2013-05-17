@@ -540,7 +540,7 @@ RC CLI::load()
 
   // read file
   ifstream ifs;
-  string file_url = string("../data/") + fileName;
+  string file_url = DATABASE_FOLDER"/../data/" + fileName;
   ifs.open (file_url, ifstream::in);
 
   if (!ifs.is_open()) {

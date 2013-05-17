@@ -32,7 +32,7 @@ class Cache;
 class PF_Manager
 {
  public:
-  static PF_Manager* Instance(int cacheNumPages);                     // Access to the _pf_manager instance
+  static PF_Manager* Instance(int cacheNumPages=-1);                     // Access to the _pf_manager instance
 
   RC CreateFile    (const string);
   RC DestroyFile   (const string);

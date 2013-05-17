@@ -1,4 +1,3 @@
-
 #ifndef _ix_h_
 #define _ix_h_
 
@@ -26,13 +25,23 @@ class IX_Manager {
 	       const string attributeName,
 	       IX_IndexHandle &indexHandle);
   RC CloseIndex(IX_IndexHandle &indexHandle);  // close index
+ 
+ private:
+  RC init();
 
  protected:
   IX_Manager   ();                             // Constructor
   ~IX_Manager  ();                             // Destructor
 
+ // Private API
+ public:
+  RC buildIndex(string tableName, string attributeName, IX_IndexHandle & ih);
  private:
-  static IX_Manager *_ix_manager;
+  bool initialized;
+  static IX_Manager _ix_manager;
+  RM* rm;
+  PF_Manager* pfm;
+  string database_folder;
 };
 
 
@@ -47,6 +56,13 @@ class IX_IndexHandle {
   //     For varchar: use 4 bytes to store the length of characters, then store the actual characters.
   RC InsertEntry(void *key, const RID &rid);  // Insert new index entry
   RC DeleteEntry(void *key, const RID &rid);  // Delete index entry
+
+  // Private API
+
+ public:
+  PF_FileHandle fileHandle;
+  int max_key_size;
+  bool is_variable_length;
 };
 
 
@@ -71,6 +87,8 @@ class IX_IndexScan {
 
   RC GetNextEntry(RID &rid);  // Get next matching entry
   RC CloseScan();             // Terminate index scan
+
+  // Private API
 };
 
 // print out the error message for a given return code
