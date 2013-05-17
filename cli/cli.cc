@@ -158,14 +158,16 @@ RC CLI::process(const string input)
     if (expect(tokenizer, "create")) {
       tokenizer = next();
       if (tokenizer == NULL) {
-        return error ("I expect <table> or <index>");
+        code = error ("I expect <table> or <index>");
       }
-      string type = string(tokenizer);
-      
-      if (type.compare("table") == 0) // if type equals table, then create table
-        code = createTable();
-      else if (type.compare("index") == 0) // else if type equals index, then create index
-        code = createIndex();
+      else {
+        string type = string(tokenizer);
+        
+        if (type.compare("table") == 0) // if type equals table, then create table
+          code = createTable();
+        else if (type.compare("index") == 0) // else if type equals index, then create index
+          code = createIndex();
+      }
     }
     ////////////////////////////////////////////
     // add attribute <attributeName=type> to <tableName>
