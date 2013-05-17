@@ -150,69 +150,82 @@ RC CLI::process(const string input)
   char * tokenizer = strtok(a, DELIMITERS);
   if (tokenizer != NULL)
   {
+
+    ////////////////////////////////////////////
+    // create table <tableName> TODO: write structure
+    // create index <columnName> on <tableName>
+    ////////////////////////////////////////////
     if (expect(tokenizer, "create")) {
       tokenizer = next();
       if (tokenizer == NULL) {
-        code = error ("I expect <table>");
+        return error ("I expect <table> or <index>");
       }
       string type = string(tokenizer);
-      tokenizer = next();
-      if (tokenizer == NULL) {
-        code = error ("I expect <name> to be created");
-      }
-      string name = string(tokenizer);
-      // if type equals table, then create table
-      code = createTable(name, tokenizer);
-      // TODO: create index
+      
+      if (type.compare("table") == 0) // if type equals table, then create table
+        code = createTable();
+      else if (type.compare("index") == 0) // else if type equals index, then create index
+        code = createIndex();
     }
+    ////////////////////////////////////////////
+    // add attribute <attributeName=type> to <tableName>
+    ////////////////////////////////////////////
     else if (expect(tokenizer, "add")) {
       tokenizer = next();
-      if (expect(tokenizer, "attribute")) {
-        code = addAttribute(tokenizer);
-      }
+      if (expect(tokenizer, "attribute"))
+        code = addAttribute();
       else
-        code = error ("I can only add attribute");
+        code = error ("I expect <attribute>");
     }
+
+    ////////////////////////////////////////////
+    // drop table <tableName>
+    // drop index <indexName>
+    // drop attribute <attributeName> from <tableName>
+    ////////////////////////////////////////////
     else if (expect(tokenizer, "drop")) {
       tokenizer = next();
-      if (expect(tokenizer, "index") || expect(tokenizer, "table")) {
-        string type = string(tokenizer);
-        tokenizer = next();
-        if (tokenizer == NULL)
-          code = error ("I expect <name> to be dropped");
-
-        string name = string(tokenizer);
-        code = drop(type, name);
+      if (expect(tokenizer, "table")) {
+        code = dropTable();
+      }
+      else if (expect(tokenizer, "index")) {
+        code = dropIndex();
       }
       else if (expect(tokenizer, "attribute")) {
-        code = dropAttribute(tokenizer);
+        code = dropAttribute();
       }
       else
         code = error ("I expect <tableName>, <indexName>, <attribute>");
     }
+
+    ////////////////////////////////////////////
+    // load <tableName> <fileName>
+    // drop index <indexName>
+    // drop attribute <attributeName> from <tableName>
+    ////////////////////////////////////////////
     else if (expect(tokenizer, "load")) {
-      tokenizer = next();
-      
-      if (tokenizer == NULL)
-        code = error ("I expect <tableName>");
-      
-      string name = string(tokenizer);
-      tokenizer = next();
-      if (tokenizer == NULL) {
-        code = error ("I expect <fileName> to be loaded");
-      }
-      string fileName = string(tokenizer);
-      code = load(name, fileName);
+      code = load();
     }
+
+    ////////////////////////////////////////////
+    // load <tableName> <fileName>
+    // drop index <indexName>
+    // drop attribute <attributeName> from <tableName>
+    ////////////////////////////////////////////
     else if (expect(tokenizer, "print")) {
       tokenizer = next();
       if (expect(tokenizer, "body") || expect(tokenizer, "attributes"))
-        code = printColumns(tokenizer);
+        code = printColumns();
       else if (tokenizer != NULL)
         code = printTable(string(tokenizer));
       else
         code = error ("I expect <tableName>");
     }
+
+    ////////////////////////////////////////////
+    // help
+    // help <commandName>
+    ////////////////////////////////////////////
     else if (expect(tokenizer, "help")) {
       tokenizer = next();
       if (tokenizer != NULL)
@@ -227,6 +240,9 @@ RC CLI::process(const string input)
     else if (expect(tokenizer, "history") || expect(tokenizer, "h")) {
       code = history();
     }
+    ////////////////////////////////////////////
+    // Utopia...
+    ////////////////////////////////////////////
     else if (expect(tokenizer, "make")) {
       code = error ("this is for you Sky...");
     }
@@ -238,8 +254,15 @@ RC CLI::process(const string input)
   return code;
 }
 
-RC CLI::createTable(const string name, char * tokenizer)
+
+RC CLI::createTable()
 {
+  char * tokenizer = next();
+  if (tokenizer == NULL) {
+    return error ("I expect <name> to be created");
+  }
+  string name = string(tokenizer);
+
   // parse columnNames and types
   vector<Attribute> table_attrs;
   Attribute attr;
@@ -309,10 +332,15 @@ RC CLI::createTable(const string name, char * tokenizer)
   return 0;
 }
 
-RC CLI::addAttribute(char * tokenizer)
+RC CLI::createIndex()
+{
+  return 0;
+}
+
+RC CLI::addAttribute()
 {
   Attribute attr;
-  tokenizer = next(); // attributeName
+  char * tokenizer = next(); // attributeName
   attr.name = string(tokenizer);
   if (tokenizer == NULL)
     return error ("I expect type for attribute");
@@ -379,59 +407,62 @@ RC CLI::addAttribute(char * tokenizer)
   return rm->addAttribute(tableName, attr);
 }
 
-// drop either table or index
-RC CLI::drop(const string type, const string tableName)
+RC CLI::dropTable()
 {
-  if (type.compare("table") == 0) {
-    // delete tableName from CLI_TABLES
-    Attribute attr;
-    vector<Attribute> attributes;
-    this->getAttributesFromCatalog(CLI_TABLES, attributes);
+  char * tokenizer = next();
+  if (tokenizer == NULL)
+    return error ("I expect <tableName> to be dropped");
 
-    // Set up the iterator
-    RM_ScanIterator rmsi;
-    RID rid;
-    void *data_returned = malloc(PF_PAGE_SIZE);
+  string tableName = string(tokenizer);
 
-    // convert attributes to vector<string>
-    vector<string> stringAttributes;
-    stringAttributes.push_back("table_name");
-    if( rm->scan(CLI_TABLES, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
+  // delete tableName from CLI_TABLES
+  Attribute attr;
+  vector<Attribute> attributes;
+  this->getAttributesFromCatalog(CLI_TABLES, attributes);
+
+  // Set up the iterator
+  RM_ScanIterator rmsi;
+  RID rid;
+  void *data_returned = malloc(PF_PAGE_SIZE);
+
+  // convert attributes to vector<string>
+  vector<string> stringAttributes;
+  stringAttributes.push_back("table_name");
+  if( rm->scan(CLI_TABLES, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
+    return -1;
+  
+  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
+    if(rm->deleteTuple(CLI_TABLES, rid) != 0)
       return -1;
-    
-    while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
-      if(rm->deleteTuple(CLI_TABLES, rid) != 0)
-        return -1;
-    }
-    rmsi.close();
-
-    // Delete columns    
-    if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
-      return -1;
-
-    // We rely on the fact that RM_EOF is not 0. 
-    // we want to return -1 when getNext tuple errors
-    RC ret = -10;
-    while((ret = rmsi.getNextTuple(rid, data_returned)) == 0){
-      if(rm->deleteTuple(CLI_COLUMNS, rid) != 0)
-        return -1;
-    }
-    if(ret!=RM_EOF)
-      return -1;
-
-    free(data_returned);
-    return rm->deleteTable(tableName);
   }
-  else if (type.compare("index") == 0) {
-    // TODO: drop index here
-  }
+  rmsi.close();
 
+  // Delete columns    
+  if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
+    return -1;
+
+  // We rely on the fact that RM_EOF is not 0. 
+  // we want to return -1 when getNext tuple errors
+  RC ret = -10;
+  while((ret = rmsi.getNextTuple(rid, data_returned)) == 0){
+    if(rm->deleteTuple(CLI_COLUMNS, rid) != 0)
+      return -1;
+  }
+  if(ret!=RM_EOF)
+    return -1;
+
+  free(data_returned);
+  return rm->deleteTable(tableName);
+}
+
+RC CLI::dropIndex()
+{
   return 0;
 }
 
-RC CLI::dropAttribute(char * tokenizer)
+RC CLI::dropAttribute()
 {
-  tokenizer = next(); // attributeName
+  char * tokenizer = next(); // attributeName
   string attrName = string(tokenizer);
   tokenizer = next();
   if (expect(tokenizer, "from") == false) {
@@ -486,8 +517,19 @@ RC CLI::dropAttribute(char * tokenizer)
 // CSV reader without escaping commas
 // should be fixed
 // reads files in data folder
-RC CLI::load(const string tableName, const string fileName)
+RC CLI::load()
 {
+  char * commandTokenizer = next();
+  if (commandTokenizer == NULL)
+    return error ("I expect <tableName>");
+
+  string tableName = string(commandTokenizer);
+  commandTokenizer = next();
+  if (commandTokenizer == NULL) {
+    return error ("I expect <fileName> to be loaded");
+  }
+  string fileName = string(commandTokenizer);
+
   // get attributes from catalog
   Attribute attr;
   vector<Attribute> attributes;
@@ -559,9 +601,9 @@ RC CLI::load(const string tableName, const string fileName)
   return 0;
 }
 
-RC CLI::printColumns(char * tokenizer)
+RC CLI::printColumns()
 {  
-  tokenizer = next();
+  char * tokenizer = next();
   if (tokenizer == NULL) {
     error ("I expect tableName to print its columns");
     return -1;

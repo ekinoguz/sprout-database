@@ -1,7 +1,7 @@
 DDL capabilities in a command-line interpreter:
   create table "tablename" (col1=type1, col2=type2, ...)
   drop table "tablename"
-  create index idxname on tabname (col1)
+  create index columnName on tableName
   drop index
   load tabname (textfilename)
   print tabname

@@ -30,14 +30,16 @@ protected:
   ~CLI();
 
 private:
-  RC createTable(const string name, char * tokenizer);
-  RC drop(const string type, const string name);
-  RC addAttribute(char * tokenizer);
-  RC dropAttribute(char * tokenizer);
-  RC load(const string tableName, const string fileName);
+  // cli parsers
+  RC createTable();
+  RC createIndex();
+  RC dropTable();
+  RC dropIndex();
+  RC addAttribute();
+  RC dropAttribute();
+  RC load();
   RC printTable(const string tableName);
-  RC printColumns(char * tokenizer);
-  RC printTuple(void *data, vector<Attribute> &attrs);
+  RC printColumns();
   RC help(const string input);
   RC history();
 
@@ -45,10 +47,12 @@ private:
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
   RC addAttributeToCatalog(const Attribute &attr, const string tableName, const int position);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
-  
+
+  // helper functions
   char *  next();
   bool expect(char * tokenizer, const string expected);
   RC error(const string errorMessage);
+  RC printTuple(void *data, vector<Attribute> &attrs);
   void printAttributes(vector<Attribute> &attributes);
 
   RM * rm;
