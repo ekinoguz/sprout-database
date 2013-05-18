@@ -35,7 +35,7 @@ private:
   RC createTable();
   RC createIndex();
   RC dropTable();
-  RC dropIndex(const string indexName="", bool help=false);
+  RC dropIndex(const string tableName="", const string columnName="", bool fromCommand=true);
   RC addAttribute();
   RC dropAttribute();
   RC load();
@@ -48,6 +48,7 @@ private:
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
   RC addAttributeToCatalog(const Attribute &attr, const string tableName, const int position);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
+  RC addIndexToCatalog(const string tableName, const string indexName);
 
   // helper functions
   char *  next();

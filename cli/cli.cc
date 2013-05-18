@@ -402,7 +402,9 @@ RC CLI::createIndex()
   if (ixManager->CreateIndex(tableName, columnName) != 0)
     return error("cannot create index, ixManager error");
 
-  // TODO: add index to cli_indexes table
+  // add index to cli_indexes table
+  if (this->addIndexToCatalog(tableName, columnName) != 0)
+    return error("error in adding index to cli_indexes table");
 
   return 0;
 }
@@ -525,11 +527,14 @@ RC CLI::dropTable()
   return rm->deleteTable(tableName);
 }
 
-RC CLI::dropIndex(const string indexName, bool help)
+RC CLI::dropIndex(const string tableName, const string columnName, bool fromCommand)
 {
-  string willDelete;
-  if (help == true)
-    willDelete = indexName;
+  string realTable;
+  string realColumn;
+  if (fromCommand == false) {
+    realTable = tableName;
+    realColumn = columnName;
+  }
   else {
     // parse willDelete from command line
   }
@@ -562,7 +567,7 @@ RC CLI::dropAttribute()
     return rc;
 
   // drop index if there is one
-  rc = this->dropIndex(tableName+"_"+attrName);
+  rc = this->dropIndex(tableName, attrName, false);
   if (rc != 0)
     return rc;
 
@@ -875,6 +880,62 @@ RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, con
 
   free(buffer);
   return ret;
+}
+
+// Add given index to CLI_INDEXES
+RC CLI::addIndexToCatalog(const string tableName, const string columnName)
+{
+  // Collect information from the catalog for the columnName
+  vector<Attribute> columns;
+  if (this->getAttributesFromCatalog(tableName, columns) != 0)
+    return -1;
+
+  int max_size = -1;
+  bool is_variable = false;
+  for (uint i = 0; i < columns.size(); i++) {
+    if (columns[i].name == columnName) {
+      if (columns[i].type == TypeVarChar) {
+        max_size = columns[i].length + 2;
+        is_variable = true;
+      }
+      else {
+        max_size = columns[i].length;
+      }
+      break;
+    }
+  }
+
+  if(max_size == -1)
+    return error("max-size returns -1");
+
+  int offset = 0;
+  int length;
+  void *buffer = malloc(tableName.size() + columnName.size()+8+4+1);
+ 
+  length = tableName.size();
+  memcpy((char *)buffer + offset, &length, sizeof(int));
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
+  offset += tableName.size();
+
+  length = columnName.size();
+  memcpy((char *)buffer + offset, &length, sizeof(int));
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, columnName.c_str(), columnName.size());
+  offset += length;
+
+  memcpy((char *)buffer + offset, &max_size, sizeof(max_size));
+  offset += sizeof(max_size);
+
+  memcpy((char *)buffer + offset, &is_variable, sizeof(is_variable));
+  offset += sizeof(is_variable);
+
+  RID rid;
+  RC rc = rm->insertTuple(CLI_INDEXES, buffer, rid);
+  
+  free(buffer);
+  
+  return rc;
 }
 
 RC CLI::history()
