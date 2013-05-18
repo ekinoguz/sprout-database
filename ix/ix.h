@@ -59,7 +59,7 @@ class IX_IndexHandle {
 
   // Private API
  private:
-  RC FindEntry(void *key, uint16_t &pageNum);
+  RC FindEntryPage(void *key, uint16_t &pageNum);
 
  public:
   PF_FileHandle fileHandle;
