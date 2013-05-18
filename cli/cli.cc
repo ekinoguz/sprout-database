@@ -11,6 +11,7 @@
 #define CVS_DELIMITERS ","
 #define CLI_TABLES "cli_tables"
 #define CLI_COLUMNS "cli_columns"
+#define CLI_INDEXES "cli_indexes"
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
 #define OUTPUT_MIN_WIDTH 10
 #define OUTPUT_MAX_WIDTH 25
@@ -83,7 +84,8 @@ CLI::CLI()
   attr.length = 20;
   table_attrs.push_back(attr);
   
-  rm->createTable(CLI_TABLES, table_attrs);
+  if (rm->createTable(CLI_TABLES, table_attrs) != 0)
+    return;
 
   // add cli catalog attributes to cli columns table
   for(uint i=0; i < table_attrs.size(); i ++) {
@@ -97,6 +99,41 @@ CLI::CLI()
 
   file_url = string(DATABASE_FOLDER) + '/' + CLI_TABLES;
   if (this->addTableToCatalog(CLI_TABLES, file_url, "heap") != 0)
+    return;
+
+  // Adding the index table attributes to the columns table
+  vector<Attribute> index_attr;
+  attr.name = "table_name";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  index_attr.push_back(attr); 
+
+  attr.name = "column_name";
+  attr.length = 30;
+  attr.type = TypeVarChar;
+  index_attr.push_back(attr);
+
+  attr.name = "max_key_length";
+  attr.length = 4;
+  attr.type = TypeInt;
+  index_attr.push_back(attr);
+
+  attr.name = "is_variable_length";
+  attr.length = 1;
+  attr.type = TypeBoolean;
+  index_attr.push_back(attr);
+  
+  if(rm->createTable(CLI_INDEXES, index_attr) != 0)
+    return;
+
+  // add cli index attributes to cli columns table
+  for(uint i=0; i < index_attr.size(); i ++) {
+    this->addAttributeToCatalog(index_attr[i], CLI_INDEXES, i);
+  }
+
+  // add cli catalog information to itself
+  file_url = string(DATABASE_FOLDER) + '/' + CLI_INDEXES;
+  if (this->addTableToCatalog(CLI_INDEXES, file_url, "heap") != 0)
     return;
 }
 
@@ -339,7 +376,6 @@ RC CLI::createTable()
 // index name convention is TableName_ColumnName
 RC CLI::createIndex()
 {
-  RC rc;
   char * tokenizer = next();
   string columnName = string(tokenizer);
   cout << columnName << endl;
