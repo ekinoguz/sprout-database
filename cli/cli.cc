@@ -485,10 +485,12 @@ RC CLI::dropTable()
 
   string tableName = string(tokenizer);
 
+  RC ret = rm->deleteTable(tableName);
+  if (ret != 0)
+    return error("error in deleting table in recordManager");
+
   // delete tableName from CLI_TABLES
   Attribute attr;
-  vector<Attribute> attributes;
-  this->getAttributesFromCatalog(CLI_TABLES, attributes);
 
   // Set up the iterator
   RM_ScanIterator rmsi;
@@ -507,13 +509,22 @@ RC CLI::dropTable()
   }
   rmsi.close();
 
+  // delete indexes if there are
+  vector<Attribute> attributes;
+  this->getAttributesFromCatalog(tableName, attributes);
+  for (uint i = 0; i < attributes.size(); i++) {
+    if (this->checkAttribute(tableName, attributes[i].name, rid, false))
+      if(rm->deleteTuple(CLI_INDEXES, rid) != 0)
+        return -1;
+  }
+
   // Delete columns    
   if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
 
   // We rely on the fact that RM_EOF is not 0. 
   // we want to return -1 when getNext tuple errors
-  RC ret = -10;
+  ret = -10;
   while((ret = rmsi.getNextTuple(rid, data_returned)) == 0){
     if(rm->deleteTuple(CLI_COLUMNS, rid) != 0)
       return -1;
@@ -522,7 +533,8 @@ RC CLI::dropTable()
     return -1;
 
   free(data_returned);
-  return rm->deleteTable(tableName);
+
+  return 0;
 }
 
 // drop index <columnName> on <tableName>
@@ -558,7 +570,7 @@ RC CLI::dropIndex(const string tableName, const string columnName, bool fromComm
   // delete the index from cli_indexes table
   RID rid;
   if (!this->checkAttribute(realTable, realColumn, rid, false)) {
-    return error("given tableName-attrName does not exist in cli");
+    return error("given tableName-attrName index does not exist in cli_indexes");
   }
   // delete entry from CLI_COLUMNS
   rc = rm->deleteTuple(CLI_INDEXES, rid) != 0;
@@ -593,10 +605,16 @@ RC CLI::dropAttribute()
   if (rc != 0)
     return rc;
 
-  // drop index if there is one
-  rc = this->dropIndex(tableName, attrName, false);
-  if (rc != 0)
-    return rc;
+  // if there is an index on dropped attribute
+  //    delete the index from cli_indexes table
+  bool hasIndex = this->checkAttribute(tableName, attrName, rid, false);
+
+  if (hasIndex) {
+    // drop index if there is one
+    rc = this->dropIndex(tableName, attrName, false);
+    if (rc != 0)
+      return rc;
+  }
 
   return 0;
 }
