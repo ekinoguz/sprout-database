@@ -238,11 +238,19 @@ void Test06()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
+  command = "print attributes columns";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
   command = "print columns";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "load tbl_employee employee_200";
+  command = "load tbl_employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);  
+
+  command = "print tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);  
 }
@@ -358,13 +366,13 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    Test01();
-    Test02();
-    Test03();
-    Test04();
-    Test05();
+    // Test01();
+    // Test02();
+    // Test03();
+    // Test04();
+    // Test05();
     Test06();
-    Test07();
+    // Test07();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

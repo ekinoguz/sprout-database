@@ -13,8 +13,8 @@
 #define CLI_COLUMNS "cli_columns"
 #define CLI_INDEXES "cli_indexes"
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
-#define OUTPUT_MIN_WIDTH 10
-#define OUTPUT_MAX_WIDTH 25
+#define DIVISOR "  |  "
+#define DIVISOR_LENGTH 5
 #define EXIT_CODE -99
 
 CLI * CLI::_cli = 0;
@@ -255,7 +255,7 @@ RC CLI::process(const string input)
     else if (expect(tokenizer, "print")) {
       tokenizer = next();
       if (expect(tokenizer, "body") || expect(tokenizer, "attributes"))
-        code = printColumns();
+        code = printAttributes();
       else if (tokenizer != NULL)
         code = printTable(string(tokenizer));
       else
@@ -318,8 +318,7 @@ RC CLI::createTable()
     // get type
     tokenizer = next();
     if (tokenizer == NULL) {
-      cout << "expecting type" << endl;
-      break;
+      return error("expecting type");
     }
     if (expect(tokenizer, "int")) {
       attr.type = TypeInt;
@@ -652,10 +651,8 @@ RC CLI::load()
   string file_url = DATABASE_FOLDER"/../data/" + fileName;
   ifs.open (file_url, ifstream::in);
 
-  if (!ifs.is_open()) {
-    cout << "could not open file: " << file_url << endl;
-    return -1;
-  }
+  if (!ifs.is_open())
+    return error("could not open file: " + file_url);
 
   string line, token;
   char * tokenizer;
@@ -691,7 +688,6 @@ RC CLI::load()
         memcpy((char *)buffer + offset, &num, sizeof(num));
         offset += sizeof(num);  
       }
-      //cout << token << endl;
       tokenizer = strtok(NULL, CVS_DELIMITERS);
     }
     rm->insertTuple(tableName, buffer, rid);
@@ -706,36 +702,39 @@ RC CLI::load()
   return 0;
 }
 
-RC CLI::printColumns()
+RC CLI::printAttributes()
 {  
   char * tokenizer = next();
   if (tokenizer == NULL) {
-    error ("I expect tableName to print its columns");
+    error ("I expect tableName to print its attributes/columns");
     return -1;
   }
 
   string tableName = string(tokenizer);
-  //cout << "we will print columns of <" << tableName << ">" << endl;
 
   // get attributes of tableName
   Attribute attr;
   vector<Attribute> attributes;
   this->getAttributesFromCatalog(tableName, attributes);
 
-  // print attributes
-  //cout << setw(20) << left << "attr.name" << setw(15) << "attr.type" << setw(15) << "attr.length" << endl;
-  //cout << "==============================================" << endl;
-  printAttributes(attributes);
-  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
-    cout << setw(20) << left << it->name << setw(20) << left << it->type << setw(20) << it->length << endl;
+  // update attributes
+  vector<string> outputBuffer;
+  outputBuffer.push_back("name");
+  outputBuffer.push_back("type");
+  outputBuffer.push_back("length");
 
-  return 0;
+  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
+    outputBuffer.push_back(it->name);
+    outputBuffer.push_back(to_string(it->type));
+    outputBuffer.push_back(to_string(it->length));
+  }
+
+  return this->printOutputBuffer(outputBuffer, 3, true);
 }
 
 // print every tuples in given tableName
 RC CLI::printTable(const string tableName)
 {
-  //cout << "print every tuples in table <" << tableName << ">" << endl;
   // Set up the iterator
   RM_ScanIterator rmsi;
   RID rid;
@@ -752,63 +751,19 @@ RC CLI::printTable(const string tableName)
   if (rc != 0)
     return rc;
 
-  printAttributes(attributes);
-  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
-    printTuple(data_returned, attributes);
-  rmsi.close();
-
-  free(data_returned);
-  return 0;
-}
-
-RC CLI::printTuple(void *data, vector<Attribute> &attrs)
-{
-  int length, offset = 0, number;
-  char *str;
-  string record = "";
-  for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
-    int w = it->name.size();
-    if (w >= OUTPUT_MIN_WIDTH)
-    	w = OUTPUT_MAX_WIDTH;
-    else
-    	w += 2;
-    switch(it->type) {
-      case TypeInt:
-      case TypeReal:
-        number = 0;
-        memcpy(&number, (char *)data+offset, sizeof(int));
-        offset += sizeof(int);
-        cout << setw(w) << left << number;
-        break;
-      case TypeVarChar:
-        length = 0;
-        memcpy(&length, (char *)data+offset, sizeof(int));
-	if(length == 0){
-	  cout << setw(w) << left << "--";
-	  break;
-	}
-        offset += sizeof(int);
-
-        str = (char *)malloc(length+1);
-        memcpy(str, (char *)data+offset, length);
-        str[length] = '\0';
-        offset += length;
-
-        cout << setw(w) << left << str;
-        free(str);
-        break;
-      case TypeShort:       
-        cout << setw(it->name.size()) << left << (int)(*((char*)data+offset));
-        offset += 1;
-        break;
-      case TypeBoolean:
-        error ("should not see this, in printTuple, type is: " + (it->type)+47);
-        break;
-      break;
-    }
+  // print
+  vector<string> outputBuffer;
+  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
+    outputBuffer.push_back(it->name);
   }
-  cout << endl;
-  return 0;
+
+  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
+    if (this->updateOutputBuffer(outputBuffer, data_returned, attributes) != 0)
+      return error("problem in updateOutputBuffer");
+  rmsi.close();
+  free(data_returned);
+
+  return this->printOutputBuffer(outputBuffer, attributes.size(), true);
 }
 
 RC CLI::help(const string input)
@@ -1077,23 +1032,85 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
   return false;
 }
 
-void CLI::printAttributes(vector<Attribute> &attributes)
+RC CLI::updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs)
 {
-  int length = 0, used = 0;
-  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
-    used = it->name.size();
-    if (used >= OUTPUT_MIN_WIDTH)
-      used = OUTPUT_MAX_WIDTH;
-    else
-    	used += 2;
-    cout << setw(used) << left << it->name;
-    length += used;
-    if (it == attributes.end()) {
-    	length = length - used + it->length;
+  int length, offset = 0, number;
+  char *str;
+  string record = "";
+  for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
+    switch(it->type) {
+      case TypeInt:
+      case TypeReal:
+        number = 0;
+        memcpy(&number, (char *)data+offset, sizeof(int));
+        offset += sizeof(int);
+        buffer.push_back(to_string(number));
+        break;
+      case TypeVarChar:
+        length = 0;
+        memcpy(&length, (char *)data+offset, sizeof(int));
+        
+        if(length == 0){
+          buffer.push_back("--");
+          break;
+        }
+
+        offset += sizeof(int);
+
+        str = (char *)malloc(length+1);
+        memcpy(str, (char *)data+offset, length);
+        str[length] = '\0';
+        offset += length;
+
+        buffer.push_back(str);
+        free(str);
+        break;
+      case TypeShort:       
+        buffer.push_back(to_string((int)(*((char*)data+offset))));
+        offset += 1;
+        break;
+      case TypeBoolean:
+        error ("should not see this, in printTuple, type is: " + (it->type)+47);
+        break;
+      break;
     }
   }
+  return 0;
+}
+
+// 2-pass output function
+RC CLI::printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial)
+{
+  // find max for each column
+  uint *maxLengths = new uint[mod];
+  for(uint i=0; i < mod; i++)
+    maxLengths[i] = 0;
+
+  int index;
+  for (uint i=0; i < buffer.size(); i++) {
+    index = i%mod;
+    maxLengths[index] = fmax(maxLengths[index], buffer[i].size());
+  }
+
+  uint startIndex = 0;
+  int totalLength = 0;
+  if (firstSpecial) {
+    for(uint i=0; i < mod; i++) {
+      cout << setw(maxLengths[i]) << left << buffer[i] << DIVISOR;
+      totalLength += maxLengths[i] + DIVISOR_LENGTH;
+    }
+    cout << endl;
+    for (int i=0; i < totalLength; i++)
+      cout << "=";
+    startIndex = mod;
+  }
+
+  // output columns
+  for (uint i=startIndex; i < buffer.size(); i++) {
+    if (i % mod == 0)
+      cout << endl;
+    cout << setw(maxLengths[i%mod]) << left << buffer[i] << DIVISOR;
+  }
   cout << endl;
-  for (int i = 0; i < length; i++)
-    cout << "=";
-  cout << endl;
+  return 0;
 }

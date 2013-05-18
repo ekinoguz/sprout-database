@@ -5,6 +5,7 @@
 #include <string>
 #include <cstring>
 #include <iomanip>
+#include <cmath>
 
 #include "../shared.h"
 #include "../pf/pf.h"
@@ -40,7 +41,7 @@ private:
   RC dropAttribute();
   RC load();
   RC printTable(const string tableName);
-  RC printColumns();
+  RC printAttributes();
   RC help(const string input);
   RC history();
 
@@ -55,8 +56,8 @@ private:
   bool expect(char * tokenizer, const string expected);
   bool checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns=true);
   RC error(const string errorMessage);
-  RC printTuple(void *data, vector<Attribute> &attrs);
-  void printAttributes(vector<Attribute> &attributes);
+  RC printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial=false);
+  RC updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs);
 
   RM * rm;
   IX_Manager * ixManager;
