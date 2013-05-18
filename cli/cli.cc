@@ -1094,13 +1094,16 @@ RC CLI::printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial)
 
   uint startIndex = 0;
   int totalLength = 0;
+
   if (firstSpecial) {
     for(uint i=0; i < mod; i++) {
       cout << setw(maxLengths[i]) << left << buffer[i] << DIVISOR;
       totalLength += maxLengths[i] + DIVISOR_LENGTH;
     }
     cout << endl;
-    for (int i=0; i < totalLength; i++)
+
+    // totalLength - 2 because I do not want to count for extra spaces after last column
+    for (int i=0; i < totalLength-2; i++)
       cout << "=";
     startIndex = mod;
   }
@@ -1112,5 +1115,6 @@ RC CLI::printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial)
     cout << setw(maxLengths[i%mod]) << left << buffer[i] << DIVISOR;
   }
   cout << endl;
+  delete[] maxLengths;
   return 0;
 }
