@@ -5,7 +5,11 @@
 #define INDEX_TABLE_RECORD_MAX_LENGTH 160   // Actual value is 93
 #define DIRECTORY_ENTRY_SIZE 2
 
-typedef enum { LEAF_NODE, IX_NODE } nodeType;
+// Node formats:
+// - Leaf node: contains sequence of tuples <Key, pageNum, slotNum>
+// - IX node: contains <pageNum, key, pageNum, key, pageNum, ..., pageNum>
+// Note: all nodes end with 1 bytes for node type and 2 bytes for free space pointer
+typedef enum { LEAF_NODE = 0, IX_NODE } nodeType;
 
 IX_Manager IX_Manager::_ix_manager;
 
@@ -109,7 +113,9 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
   void *data = malloc(PF_PAGE_SIZE);
   memset((char *)data, 0, PF_PAGE_SIZE);
-  *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
+  uint8_t type = LEAF_NODE;
+  memcpy((char *)data + PF_PAGE_SIZE - 3, &type, 1);
+  // *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
   // Note: Free pointer starts at 0
   if(fh.AppendPage(data)!=0)
     {
@@ -289,9 +295,50 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   // Split the leaf page if needed
   // We have to have a way to locate the root page on our file, I don't think we can have page 0 to be the root all the time, because when we create a new root, we have to put it on page 0, shift all pages and reorganize the whole index pointers
 
+  uint16_t pageNum;
+  if (FindEntry(key, pageNum) != 0)
+    {
+      return -3;
+    }
+  
 
   return -1;
 }
+
+RC IX_IndexHandle::FindEntry(void *key, uint16_t &pageNum)
+{
+  void *page = malloc(PF_PAGE_SIZE);
+  pageNum = 0;
+  if (fileHandle.ReadPage(pageNum, page) != 0)
+    {
+      free(page);
+      return -2;
+    }
+  // Read node type
+  uint8_t type;
+  memcpy(&type, (char *)page + PF_PAGE_SIZE - 3, 1);
+
+  while (type == IX_NODE)
+    {
+      // Split if needed
+
+      // Parse IX node and set pageNum
+      
+
+      
+      if (fileHandle.ReadPage(pageNum, page) != 0)
+	{
+	  free(page);
+	  return -2;
+	}
+      // Read node type
+      memcpy(&type, (char *)page + PF_PAGE_SIZE - 3, 1);
+    }
+
+  free(page);
+  return 0;
+}
+
 RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
   // Return 2 if (key,rid) does not exist
 
@@ -331,14 +378,14 @@ void IX_PrintError (RC rc)
   // Print error message
   switch (rc)
     {
-    case -3:
-      cout << "IX error" << endl;
+    case -1:
+      cout << "RM error" << endl;
       break;
     case -2:
       cout << "PF error" << endl;
       break;
-    case -1:
-      cout << "RM error" << endl;
+    case -3:
+      cout << "IX error" << endl;
       break;
     case 1:
       cout << "Duplicate found" << endl;
