@@ -1,15 +1,8 @@
-
 #include "ix.h"
 
 #define INDEX_TABLE "indexes"
 #define INDEX_TABLE_RECORD_MAX_LENGTH 160   // Actual value is 93
 #define DIRECTORY_ENTRY_SIZE 2
-
-// Node formats:
-// - Leaf node: contains sequence of tuples <Key, pageNum, slotNum>
-// - IX node: contains <pageNum, key, pageNum, key, pageNum, ..., pageNum>
-// Note: all nodes end with 1 bytes for node type and 2 bytes for free space pointer
-typedef enum { LEAF_NODE = 0, IX_NODE } nodeType;
 
 IX_Manager IX_Manager::_ix_manager;
 
@@ -113,9 +106,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
   void *data = malloc(PF_PAGE_SIZE);
   memset((char *)data, 0, PF_PAGE_SIZE);
-  uint8_t type = LEAF_NODE;
-  memcpy((char *)data + PF_PAGE_SIZE - 3, &type, 1);
-  // *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
+  *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
   // Note: Free pointer starts at 0
   if(fh.AppendPage(data)!=0)
     {
@@ -152,6 +143,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
   if(rm->insertTuple(INDEX_TABLE, buffer, rid) != 0)
     {
       free(buffer);
+      //TODO: If this fails we should delete the file
       return -1;
     }
 
@@ -296,10 +288,9 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   // We have to have a way to locate the root page on our file, I don't think we can have page 0 to be the root all the time, because when we create a new root, we have to put it on page 0, shift all pages and reorganize the whole index pointers
 
   uint16_t pageNum;
-  if (FindEntryPage(key, pageNum) != 0)
-    {
-      return -3;
-    }
+  // true makes sure that as we search we split
+  if (FindEntryPage(key, pageNum, true) != 0)
+    return -3;
 
   // Read the page where the key should be inserted
   void *page = malloc(PF_PAGE_SIZE);
@@ -311,94 +302,100 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
 
   // Read the free pointer
   uint16_t free_pointer = 0;
-  memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+  memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
   int key_size = 0;
+  int shift_offset = 0;
   if (is_variable_length == false)
     {
       key_size = max_key_size;
     }
   else
     {
+      shift_offset = sizeof(key_size);
       memcpy(&key_size, (char *)key, sizeof(key_size));
-      key_size += sizeof(key_size);  // Add the first four bytes that contains the key size
+      key_size += sizeof(key_size); // Add the first four bytes that contains the key size
     }
 
   // 3 in rvalue is the free_pointer + node_type
-  if (key_size > PF_PAGE_SIZE - 3 - free_pointer)
+  // 4 in rvalue is the next_pointer (pageNum)
+  // 4 in lvalue is the rid pointer
+  if (key_size + 4 > PF_PAGE_SIZE - free_pointer - 3 - 2)
     {
-      // split
+      cout << "Fatal ERROR: This shouldn't happen" << endl;
+      return -3;
     }
-  else
+  
+  // Find where to insert the key, all keys on page should be sorted
+  int offset = 0;
+  while (offset < free_pointer)
     {
-      // Find where to insert the key, all keys on page should be sorted
-      int offset = 0;
-      while (offset < free_pointer)
+      int key_on_page_size = 0;
+      if (is_variable_length == false)
 	{
-	  int key_on_page_size = 0;
-	  if (is_variable_length == false)
-	    {
-	      key_on_page_size = max_key_size;
-	    }
-	  else
-	    {
-	      memcpy(&key_on_page_size, (char *)key, sizeof(key_on_page_size));
-	      key_on_page_size += sizeof(key_on_page_size);  // Add the first four bytes that contains the key size
-	    }
-
-	  // Read key on page
-	  void *key_on_page = malloc(key_on_page_size);
-	  memcpy(key_on_page, (char *)page + offset, key_on_page_size);
-
-	  // Compare key on page with the current key
-	  int cmp = memcmp(key, key_on_page, key_on_page_size);
-	  free(key_on_page);
-
-	  if (cmp <= 0)
-	    {
-	      break;
-	    }
-	  else
-	    {
-	      offset += key_on_page_size + 4;
-	    }
+	  key_on_page_size = max_key_size;
+	}
+      else
+	{
+	  memcpy(&key_on_page_size, (char *)page+offset, sizeof(key_on_page_size));
+	  key_on_page_size += sizeof(key_on_page_size);  // Add the first four bytes that contains the key size
 	}
 
-      // Shift all the subsequent keys to the right
-      int subsequent_keys_size = free_pointer - offset;
-      void *subsequent_keys = malloc(subsequent_keys_size);
-      memcpy(subsequent_keys, (char *)page + offset, subsequent_keys_size);
-      memcpy((char *)page + offset + key_size + 4, subsequent_keys, subsequent_keys_size);
+      // Read key on page
+      void *key_on_page = (void *)((char *)page + offset);
 
-      // Inser the new key with the pageNum and slotNum
-      uint16_t key_pageNum = rid.pageNum;
-      uint16_t key_slotNum = rid.slotNum;
+      // Compare key on page with the current key
+      int cmp;
+      if( key_on_page_size <= key_size)
+	cmp = memcmp(key+shift_offset, key_on_page+shift_offset, key_on_page_size-shift_offset);
+      else
+	cmp = memcmp(key+shift_offset, key_on_page+shift_offset, key_size-shift_offset);
 
-      memcpy((char *)page + offset, key, key_size);
-      offset += key_size;
-      memcpy((char *)page + offset, &key_pageNum, DIRECTORY_ENTRY_SIZE);
-      offset += DIRECTORY_ENTRY_SIZE;
-      memcpy((char *)page + offset, &key_slotNum, DIRECTORY_ENTRY_SIZE);
-      offset += DIRECTORY_ENTRY_SIZE;
+      if( cmp == 0 && key_on_page_size != key_size)
+	cmp = memcmp(key_on_page_size, key_size);
 
-      free_pointer += key_size + 4;
+      if (cmp <= 0)
+	  break;
+      else
+	  offset += key_on_page_size + 4;
+    }
+  
+  // Shift all the subsequent keys to the right
+  int subsequent_keys_size = free_pointer - offset;
+  void *subsequent_keys = malloc(subsequent_keys_size);
+  memcpy(subsequent_keys, (char *)page + offset, subsequent_keys_size);
+  memcpy((char *)page + offset + key_size + 4, subsequent_keys, subsequent_keys_size);
+  free(subsequent_keys);
 
-      // Write the free_pointer back to the end of the page
-      memcpy((char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, &free_pointer, DIRECTORY_ENTRY_SIZE);
+  // Insert the new key with the pageNum and slotNum
+  uint16_t key_pageNum = rid.pageNum;
+  uint16_t key_slotNum = rid.slotNum;
+
+  memcpy((char *)page + offset, key, key_size);
+  offset += key_size;
+  memcpy((char *)page + offset, &key_pageNum, sizeof(key_pageNum));
+  offset += sizeof(key_pageNum);
+  memcpy((char *)page + offset, &key_slotNum, sizeof(key_slotNum));
+  offset += sizeof(key_slotNum);
+
+  free_pointer += key_size + 4;
+
+  // Write the free_pointer back to the end of the page
+  memcpy((char *)page + PF_PAGE_SIZE - 2, &free_pointer, 2);
 	      
-      // Write the page back to disk
-      if (fileHandle.WritePage(pageNum, page) != 0)
-	{
-	  free(page);
-	  return -2;
-	}
+  // Write the page back to disk
+  if (fileHandle.WritePage(pageNum, page) != 0)
+    {
+      free(page);
+      return -2;
     }
+    
   
   free(page);
   return 0;
 }
 
-RC IX_IndexHandle::FindEntryPage(void *key, uint16_t &pageNum)
+RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit)
 {
   void *page = malloc(PF_PAGE_SIZE);
   pageNum = 0;
@@ -408,17 +405,29 @@ RC IX_IndexHandle::FindEntryPage(void *key, uint16_t &pageNum)
       return -2;
     }
   // Read node type
-  uint8_t type = 0;
+  nodeType type = 0;
   memcpy(&type, (char *)page + PF_PAGE_SIZE - 3, 1);
+
+  int search_key_size = 0;
+  if (is_variable_length == false)
+    {
+      search_key_size = max_key_size;
+    }
+  else
+    {
+      memcpy(&search_key_size, (char *)key, sizeof(search_key_size));
+    }
+
 
   while (type == IX_NODE)
     {
+      // if(doSplit)
       // TODO: Split if needed
 
       // Parse IX node and set pageNum
       // free_pointer must not be zero
       uint16_t free_pointer = 0;
-      memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+      memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
       uint16_t offset = 2;    // Start pointing to the first key on the page, first 2 bytes are pageNum
       while (offset < free_pointer)
@@ -437,26 +446,36 @@ RC IX_IndexHandle::FindEntryPage(void *key, uint16_t &pageNum)
 	      shift_offset = sizeof(key_size);
 	    }
 
-	  void *ix_key = malloc(key_size);
-	  memcpy(ix_key, (char *)page + offset, key_size);
-	  int cmp = memcmp(key, ix_key, key_size);
-	  free(ix_key);
+	  void *ix_key = (char *)page + offset;
+
+	  int cmp;
+	  if( search_key_size <= key_size)
+	    cmp = memcmp((char*)key+shift_offset, ix_key, search_key);
+	  else
+	    cmp = memcmp((char*)key+shift_offset, ix_key, key_size);
+	  
+	  if( cmp == 0 && search_key_size != key_size)
+	    cmp = memcmp(search_key_size, key_size);
+
 	  if (cmp == 0)
 	    {
-	      memcpy(&pageNum, (char *)page + offset + key_size, DIRECTORY_ENTRY_SIZE);
-	      // SKY: if you think the breaks might cause errors, add a bool found variable and assign true it instead of the breaks and change the inner while to while (!found)
+	      memcpy(&pageNum, (char *)page + offset + key_size, 2);
 	      break;
 	    }
 	  else if (cmp < 0)
 	    {
-	      memcpy(&pageNum, (char *)page + offset - shift_offset - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+	      memcpy(&pageNum, (char *)page + offset - shift_offset - 2, 2);
 	      break;
 	    }
 	  else
 	    {
-	      offset += key_size + DIRECTORY_ENTRY_SIZE; // The plus DIRECTORY_ENTRY_SIZE is to skip the pageNum and point to the next key
+	      offset += key_size + 2; // The plus 2 is to skip the pageNum and point to the next key
 	    }
 	}
+
+      // No index <= key follow the last pointer
+      if(offset >= free_page)
+	memcpy(&pageNum, (char *)page + offset - 2, 2);
 
       if (fileHandle.ReadPage(pageNum, page) != 0)
 	{
@@ -479,10 +498,13 @@ RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
 
 IX_IndexScan::IX_IndexScan()
 {
+  page = malloc(PF_PAGE_SIZE);
+  memset(page, 0, PF_PAGE_SIZE);
 }
 
 IX_IndexScan::~IX_IndexScan()
 {
+  free(page);
 }
 
 RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
@@ -491,18 +513,38 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
 			  bool lowKeyInclusive,
 			  bool highKeyInclusive)
 {
-  return -1;
+
+  // Make sure that if either lowKey or highKey is null we search for infiitiy
+  // TODO: Add test for this
+  if(indexHandle.FindEntryPage(lowKey,lowPage,false) != 0)
+    return -3;
+
+  if(indexHandle.FindEntryPage(highKey,highPage,false) != 0)
+    return -3;
+
+
+  offset = 0;
+  // We need to find and set current
+  
+
 }
 
 RC IX_IndexScan::GetNextEntry(RID &rid)
 {
+  
   // Return current and move to next
+
+  // How do we signal that their are no more entries? EOF??
   return -1;
 }
 
 RC IX_IndexScan::CloseScan()
 {
-  return -1;
+  // TODO: Add protection from reading from a closed scan
+  lowPage = -1;
+  highPage = -1;
+  memset(page, 0, PF_PAGE_SIZE);
+  return 0;
 }
 
 void IX_PrintError (RC rc)

@@ -13,6 +13,12 @@ using namespace std;
 
 class IX_IndexHandle;
 
+// Node formats:
+// - Leaf node: contains sequence of tuples <Key, pageNum, slotNum>
+// - IX node: contains <pageNum, key, pageNum, key, pageNum, ..., pageNum>
+// Note: all nodes end with 1 bytes for node type and 2 bytes for free space pointer
+typedef enum { LEAF_NODE = 0, IX_NODE } nodeType;
+
 class IX_Manager {
  public:
   static IX_Manager* Instance();
@@ -59,7 +65,7 @@ class IX_IndexHandle {
 
   // Private API
  private:
-  RC FindEntryPage(void *key, uint16_t &pageNum);
+  RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false);
 
  public:
   PF_FileHandle fileHandle;
@@ -91,6 +97,12 @@ class IX_IndexScan {
   RC CloseScan();             // Terminate index scan
 
   // Private API
+ private:
+  void * page;
+  uint16_t lowPage;
+  uint16_t highPage;
+  RID current;
+  int offset;
 };
 
 // print out the error message for a given return code
