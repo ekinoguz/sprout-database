@@ -356,41 +356,41 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
 
 	  if (cmp <= 0)
 	    {
-	      // Shift all the subsequent keys to the right
-	      int subsequent_keys_size = free_pointer - offset;
-	      void *subsequent_keys = malloc(subsequent_keys_size);
-	      memcpy(subsequent_keys, (char *)page + offset, subsequent_keys_size);
-	      memcpy((char *)page + offset + key_size + 4, subsequent_keys, subsequent_keys_size);
-
-	      // Inser the new key with the pageNum and slotNum
-	      uint16_t key_pageNum = rid.pageNum;
-	      uint16_t key_slotNum = rid.slotNum;
-
-	      memcpy((char *)page + offset, key, key_size);
-	      offset += key_size;
-	      memcpy((char *)page + offset, &key_pageNum, DIRECTORY_ENTRY_SIZE);
-	      offset += DIRECTORY_ENTRY_SIZE;
-	      memcpy((char *)page + offset, &key_slotNum, DIRECTORY_ENTRY_SIZE);
-	      offset += DIRECTORY_ENTRY_SIZE;
-
-	      free_pointer += key_size + 4;
-
-	      // Write the free_pointer back to the end of the page
-	      memcpy((char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, &free_pointer, DIRECTORY_ENTRY_SIZE);
-	      
-	      // Write the page back to disk
-	      if (fileHandle.WritePage(pageNum, page) != 0)
-		{
-		  free(page);
-		  return -2;
-		}
-
 	      break;
 	    }
 	  else
 	    {
 	      offset += key_on_page_size + 4;
 	    }
+	}
+
+      // Shift all the subsequent keys to the right
+      int subsequent_keys_size = free_pointer - offset;
+      void *subsequent_keys = malloc(subsequent_keys_size);
+      memcpy(subsequent_keys, (char *)page + offset, subsequent_keys_size);
+      memcpy((char *)page + offset + key_size + 4, subsequent_keys, subsequent_keys_size);
+
+      // Inser the new key with the pageNum and slotNum
+      uint16_t key_pageNum = rid.pageNum;
+      uint16_t key_slotNum = rid.slotNum;
+
+      memcpy((char *)page + offset, key, key_size);
+      offset += key_size;
+      memcpy((char *)page + offset, &key_pageNum, DIRECTORY_ENTRY_SIZE);
+      offset += DIRECTORY_ENTRY_SIZE;
+      memcpy((char *)page + offset, &key_slotNum, DIRECTORY_ENTRY_SIZE);
+      offset += DIRECTORY_ENTRY_SIZE;
+
+      free_pointer += key_size + 4;
+
+      // Write the free_pointer back to the end of the page
+      memcpy((char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, &free_pointer, DIRECTORY_ENTRY_SIZE);
+	      
+      // Write the page back to disk
+      if (fileHandle.WritePage(pageNum, page) != 0)
+	{
+	  free(page);
+	  return -2;
 	}
     }
   
