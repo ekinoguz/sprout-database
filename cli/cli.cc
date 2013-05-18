@@ -220,7 +220,7 @@ RC CLI::process(const string input)
 
     ////////////////////////////////////////////
     // drop table <tableName>
-    // drop index <indexName>
+    // drop index <columnName> on <tableName>
     // drop attribute <attributeName> from <tableName>
     ////////////////////////////////////////////
     else if (expect(tokenizer, "drop")) {
@@ -373,12 +373,10 @@ RC CLI::createTable()
 }
 
 // create index <columnName> on <tableName>
-// index name convention is TableName_ColumnName
 RC CLI::createIndex()
 {
   char * tokenizer = next();
   string columnName = string(tokenizer);
-  cout << columnName << endl;
 
   tokenizer = next();
   if (!expect(tokenizer, "on")) {
@@ -527,6 +525,7 @@ RC CLI::dropTable()
   return rm->deleteTable(tableName);
 }
 
+// drop index <columnName> on <tableName>
 RC CLI::dropIndex(const string tableName, const string columnName, bool fromCommand)
 {
   string realTable;
@@ -537,7 +536,35 @@ RC CLI::dropIndex(const string tableName, const string columnName, bool fromComm
   }
   else {
     // parse willDelete from command line
+    char * tokenizer = next();
+    string realColumn = string(tokenizer);
+
+    tokenizer = next();
+    if (!expect(tokenizer, "on")) {
+      return error ("syntax error: expecting \"on\"");
+    }
+
+    tokenizer = next();
+    string realTable = string(tokenizer);
   }
+  RC rc;
+  // possible TODO: check if index is there or not
+
+  // drop the index
+  rc = ixManager->DestroyIndex(realTable, realColumn);
+  if (rc != 0)
+    return error("error while destroying index in ixManager");
+
+  // delete the index from cli_indexes table
+  RID rid;
+  if (!this->checkAttribute(realTable, realColumn, rid, false)) {
+    return error("given tableName-attrName does not exist in cli");
+  }
+  // delete entry from CLI_COLUMNS
+  rc = rm->deleteTuple(CLI_INDEXES, rid) != 0;
+  if (rc != 0)
+    return rc;
+
   return 0;
 }
 
@@ -570,7 +597,6 @@ RC CLI::dropAttribute()
   rc = this->dropIndex(tableName, attrName, false);
   if (rc != 0)
     return rc;
-
 
   return 0;
 }
@@ -985,9 +1011,13 @@ RC CLI::error(const string errorMessage)
   return -2;
 }
 
-// checks whether given tableName-columnName exists or not
-bool CLI::checkAttribute(const string tableName, const string columnName, RID &rid)
+// checks whether given tableName-columnName exists or not in cli_columns or cli_indexes
+bool CLI::checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns)
 {
+  string searchTable = CLI_COLUMNS;
+  if (searchColumns == false)
+    searchTable = CLI_INDEXES;
+
   vector<Attribute> attributes;
   this->getAttributesFromCatalog(CLI_COLUMNS, attributes);
 
@@ -1001,7 +1031,7 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
   stringAttributes.push_back("table_name");
     
   // Find columns which is columnName
-  if( rm->scan(CLI_COLUMNS, "column_name", EQ_OP, columnName.c_str(), stringAttributes, rmsi) != 0)
+  if( rm->scan(searchTable, "column_name", EQ_OP, columnName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
   
   while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
