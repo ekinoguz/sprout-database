@@ -1582,6 +1582,8 @@ void testCase_O2()
     rc = ixs.GetNextEntry(rid);
     assert(rc == success);
 
+    cout << "S: " << rid.slotNum << ":" << rids[i].slotNum << endl;
+    cout << "P: " << rid.pageNum << ":" << rids[i].pageNum << endl;
     assert(rid.slotNum == rids[i].slotNum);
     assert(rid.pageNum == rids[i].pageNum);
     ixs.CloseScan();
@@ -1660,7 +1662,7 @@ void testCase_O4()
   rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
   assert(rc == success);
 
-  unsigned numOfTuples = 10;
+  uint numOfTuples = 10;
 
   // fill the rids and payloads
   vector<RID> rids;
@@ -1691,7 +1693,7 @@ void testCase_O4()
   }
 
   // Test Insert Entry
-  for(unsigned i = 0; i < numOfTuples; i++) 
+  for(uint i = 0; i < numOfTuples; i++) 
     {
       rc = ixHandle.InsertEntry(&ages[i], rids[i]);
       assert (rc == success);
@@ -1706,7 +1708,7 @@ void testCase_O4()
   assert (rc != success);
 
 
-  for(unsigned i = 0; i < numOfTuples; i++) 
+  for(uint i = 0; i < numOfTuples; i++) 
   {
     rc = ixHandle.DeleteEntry(payloads[i], rids[i]);
     assert (rc == success);
@@ -1733,7 +1735,7 @@ void ourTests()
   testCase_O1();
   testCase_O3();
   testCase_O2();
-  testCase_O4();
+  //testCase_O4(); // Uncomment when we implement delete
 }
 int main()
 {
@@ -1746,7 +1748,7 @@ int main()
     
   testCase_1("tbl_employee", "Age");
   ourTests();
-  testCase_2("tbl_employee", "Age");
+  // testCase_2("tbl_employee", "Age"); // Uncomment when we implement delete
   testCase_3("tbl_employee", "Age");
   testCase_4("tbl_employee", "Age");
   testCase_5("tbl_employee", "Age");

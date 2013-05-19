@@ -26,7 +26,6 @@ IX_Manager::~IX_Manager()
 
 int IX_Manager::keycmp(const char * key, const char * okey, int key_size, int okey_size, int shift_offset)
 {
-  cout << "In cmp: " << key_size << "|" << okey_size << endl;
   int cmp;
   if(key_size <= okey_size)
     cmp = memcmp(key+shift_offset, okey+shift_offset, key_size-shift_offset);
@@ -34,10 +33,7 @@ int IX_Manager::keycmp(const char * key, const char * okey, int key_size, int ok
     cmp = memcmp(key+shift_offset, okey+shift_offset, okey_size-shift_offset);
 	  
   if(cmp == 0 && key_size != okey_size)
-    {
-      cout << "here" << endl;
       cmp = memcmp(&key_size, &okey_size, 4);
-    }
 
   return cmp;
 }
@@ -323,7 +319,6 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
   int key_size = 0;
-  uint16_t shift_offset = 0;
   if (is_variable_length == false)
     {
       key_size = max_key_size;
@@ -332,7 +327,6 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
     {
       memcpy(&key_size, (char *)key, sizeof(key_size));
       key_size += sizeof(key_size); // Add the first four bytes that contains the key size
-      shift_offset = sizeof(key_size);
     }
 
   // 3 in rvalue is the free_pointer + node_type
@@ -348,12 +342,9 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   int offset = 0;
   if(findOnPage(page, key, offset) != 0)
     return -3;
-
-  cout << "Offset: " << offset << endl;
   
   // Shift all the subsequent keys to the right
   int subsequent_keys_size = free_pointer - offset;
-  cout << subsequent_keys_size << endl;
   void *subsequent_keys = malloc(subsequent_keys_size);
   memcpy(subsequent_keys, (char *)page + offset, subsequent_keys_size);
   memcpy((char *)page + offset + key_size + 4, subsequent_keys, subsequent_keys_size);
@@ -370,7 +361,7 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   memcpy((char *)page + offset, &key_slotNum, sizeof(key_slotNum));
   offset += sizeof(key_slotNum);
 
-  free_pointer += key_size + shift_offset + 4;
+  free_pointer += key_size + 4;
 
   // Write the free_pointer back to the end of the page
   memcpy((char *)page + PF_PAGE_SIZE - 2, &free_pointer, 2);
@@ -407,16 +398,6 @@ RC IX_IndexHandle::findOnPage(const void *page, const void *key, int & offset, b
       // Add the first 4 bytes to the key size
       key_size += sizeof(key_size);
     }
-
-  cout << key_size << endl;
-  cout << "Key in find on page @ " << key << ":  ";
-  for (int i = 0; i < 4; i++)
-    {
-      cout << ((int)(*((char*)key + i))) << " ";
-    }
-  for (int i = 4; i < key_size; i++)
-    cout << *((char*)key + i);
-  cout << endl;
 
   uint16_t free_pointer = 0;
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
@@ -459,7 +440,7 @@ RC IX_IndexHandle::findOnPage(const void *page, const void *key, int & offset, b
       else
 	{
 	  cout << "HI" << endl;
-	  offset += key_on_page_size + shift_offset + 4;
+	  offset += key_on_page_size + 4;
 	}
     }
 
@@ -564,6 +545,22 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
   return 0;
 }
 
+int IX_IndexHandle::getKeySize(void *key, int * shift_offset){
+  int key_size = max_key_size;
+  int shift;
+  shift = 0;
+  if(is_variable_length){
+    memcpy(&key_size, key, 4);
+    key_size += 4;
+    shift =  4;
+  }
+
+  if(shift_offset)
+    *shift_offset = shift;
+
+  return key_size;
+}
+
 RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
   // Return 2 if (key,rid) does not exist
 
@@ -602,7 +599,6 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
   if(this->indexHandle->FindEntryPage(lowKey,lowPage,false) != 0)
     return -3;
 
-  offset = 0;
   // We need to find and set current
 
   // Read in the lowPage
@@ -643,12 +639,15 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
 
   cout << "Offset in open scan: " << offset << endl;
 
+  int lowKey_size = this->indexHandle->getKeySize((char *)page+offset);
+  offset += lowKey_size;
+
   uint16_t key_pageNum = 0;
   uint16_t key_slotNum = 0;
   memcpy(&key_pageNum, (char *)page + offset, 2);
-  // offset += sizeof(key_pageNum);
-  memcpy(&key_slotNum, (char *)page + offset + 2, 2);
-  // offset += sizeof(key_slotNum);
+  offset += sizeof(key_pageNum);
+  memcpy(&key_slotNum, (char *)page + offset, 2);
+  offset += sizeof(key_slotNum);
   current.pageNum = key_pageNum;
   current.slotNum = key_slotNum;
   
@@ -668,7 +667,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid)
   rid.slotNum = current.slotNum;
 
   if(!more)
-    return -5;
+    return -1;
 
   uint16_t free_pointer = 0;
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
@@ -685,10 +684,6 @@ RC IX_IndexScan::GetNextEntry(RID &rid)
       key_on_page_size += sizeof(key_on_page_size);  // Add the first four bytes that contains the key size
       shift_offset = 4;
     }
-
-  
-  // Read key on page
-  // void *key_on_page = (void *)((char *)page + offset);
 
   if(offset < free_pointer) {
     offset += key_on_page_size + 4;
@@ -752,8 +747,9 @@ RC IX_IndexScan::GetNextEntry(RID &rid)
 RC IX_IndexScan::CloseScan()
 {
   // TODO: Add protection from reading from a closed scan
-  // lowPage = -1;
   highKey = NULL;
+  indexHandle = NULL;
+  offset = -1;
   memset(page, 0, PF_PAGE_SIZE);
   return 0;
 }
