@@ -66,6 +66,7 @@ class IX_IndexHandle {
   // Private API
  private:
   RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false);
+  RC findOnPage(const void *page, const void *key, int & offset, bool inclusiveSearch = true);
 
  public:
   PF_FileHandle fileHandle;
@@ -99,10 +100,11 @@ class IX_IndexScan {
   // Private API
  private:
   void * page;
-  uint16_t lowPage;
-  uint16_t highPage;
+  void *highKey; // Warning: This is not a copy!
+  bool highKeyInclusive;
   RID current;
   int offset;
+  bool more;
 };
 
 // print out the error message for a given return code
