@@ -1572,18 +1572,12 @@ void testCase_O2()
   void * key;
   for(uint i=0; i < rids.size(); i+= 15){
     key = tuples[i];
-    cout << "Calling key: ";
-    for (int i = 4; i < 5; i++)
-      cout << *((char*)key + i);
-    cout << endl;
     rc = ixs.OpenScan(ixHandle, key, key, true, true);
     assert(rc == success);
 
     rc = ixs.GetNextEntry(rid);
     assert(rc == success);
 
-    cout << "S: " << rid.slotNum << ":" << rids[i].slotNum << endl;
-    cout << "P: " << rid.pageNum << ":" << rids[i].pageNum << endl;
     assert(rid.slotNum == rids[i].slotNum);
     assert(rid.pageNum == rids[i].pageNum);
     ixs.CloseScan();

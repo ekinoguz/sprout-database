@@ -72,7 +72,7 @@ class IX_IndexHandle {
   RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false) const;
   RC findOnPage(const void *page, const void *key, int & offset, bool inclusiveSearch = true) const;
 
-  int getKeySize(void *key, int* shift_offset = NULL);
+  int getKeySize(const void *key, int* shift_offset = NULL) const;
  public:
   PF_FileHandle fileHandle;
   int max_key_size;
