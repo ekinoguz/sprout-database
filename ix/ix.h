@@ -42,6 +42,10 @@ class IX_Manager {
  // Private API
  public:
   RC buildIndex(string tableName, string attributeName, IX_IndexHandle & ih);
+  static int keycmp(const char* key, const char* okey, int key_size, int okey_size, int shift_offset);
+  static int keycmp(const void* key, const void* okey, int key_size, int okey_size, int shift_offset){
+    return keycmp((char *)key, (char *)okey, key_size, okey_size, shift_offset);
+  }
  private:
   bool initialized;
   static IX_Manager _ix_manager;
@@ -64,9 +68,9 @@ class IX_IndexHandle {
   RC DeleteEntry(void *key, const RID &rid);  // Delete index entry
 
   // Private API
- private:
-  RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false);
-  RC findOnPage(const void *page, const void *key, int & offset, bool inclusiveSearch = true);
+ public:
+  RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false) const;
+  RC findOnPage(const void *page, const void *key, int & offset, bool inclusiveSearch = true) const;
 
  public:
   PF_FileHandle fileHandle;
