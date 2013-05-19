@@ -5,7 +5,11 @@
 #define INDEX_TABLE_RECORD_MAX_LENGTH 160   // Actual value is 93
 #define DIRECTORY_ENTRY_SIZE 2
 
-typedef enum { LEAF_NODE, IX_NODE } nodeType;
+// Node formats:
+// - Leaf node: contains sequence of tuples <Key, pageNum, slotNum>
+// - IX node: contains <pageNum, key, pageNum, key, pageNum, ..., pageNum>
+// Note: all nodes end with 1 bytes for node type and 2 bytes for free space pointer
+typedef enum { LEAF_NODE = 0, IX_NODE } nodeType;
 
 IX_Manager IX_Manager::_ix_manager;
 
@@ -109,7 +113,9 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
   void *data = malloc(PF_PAGE_SIZE);
   memset((char *)data, 0, PF_PAGE_SIZE);
-  *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
+  uint8_t type = LEAF_NODE;
+  memcpy((char *)data + PF_PAGE_SIZE - 3, &type, 1);
+  // *((char *)data+PF_PAGE_SIZE-3) = LEAF_NODE;
   // Note: Free pointer starts at 0
   if(fh.AppendPage(data)!=0)
     {
@@ -182,12 +188,12 @@ RC IX_Manager::DestroyIndex(const string tableName, const string attributeName)
   RID rid;
   char *data = (char*)(malloc(INDEX_TABLE_RECORD_MAX_LENGTH));
   bool found = false;
-  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF) 
     {
-      uint16_t tableName_size;
+      int tableName_size;
       memcpy(&tableName_size, data, 4);
 
-      uint16_t attributeName_size;
+      int attributeName_size;
       memcpy(&attributeName_size, data + 4 + tableName_size, 4);
 
       char *attributeName_intable = ((char*)(malloc(attributeName_size + 1)));
@@ -235,14 +241,14 @@ RC IX_Manager::OpenIndex(const string tableName,
   bool found = false;
   while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
-      uint16_t tableName_size;
+      int tableName_size;
       memcpy(&tableName_size, data, 4);
 
-      uint16_t attributeName_size;
+      int attributeName_size;
       memcpy(&attributeName_size, data + 4 + tableName_size, 4);
 
       char *attributeName_intable = ((char*)(malloc(attributeName_size + 1)));
-      memset(attributeName_intable, 0, attributeName_size + 1);
+      memset(attributeName_intable, 0, attributeName_size + 1); // ensure the null terminator
       memcpy(attributeName_intable, data + 4 + tableName_size + 4, attributeName_size);
       string strAttr (attributeName_intable);
       free(attributeName_intable);
@@ -289,9 +295,182 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   // Split the leaf page if needed
   // We have to have a way to locate the root page on our file, I don't think we can have page 0 to be the root all the time, because when we create a new root, we have to put it on page 0, shift all pages and reorganize the whole index pointers
 
+  uint16_t pageNum;
+  if (FindEntryPage(key, pageNum) != 0)
+    {
+      return -3;
+    }
 
-  return -1;
+  // Read the page where the key should be inserted
+  void *page = malloc(PF_PAGE_SIZE);
+  if (fileHandle.ReadPage(pageNum, page) != 0)
+    {
+      free(page);
+      return -2;
+    }
+
+  // Read the free pointer
+  uint16_t free_pointer = 0;
+  memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+
+  int key_size = 0;
+  if (is_variable_length == false)
+    {
+      key_size = max_key_size;
+    }
+  else
+    {
+      memcpy(&key_size, (char *)key, sizeof(key_size));
+      key_size += sizeof(key_size);  // Add the first four bytes that contains the key size
+    }
+
+  // 3 in rvalue is the free_pointer + node_type
+  if (key_size > PF_PAGE_SIZE - 3 - free_pointer)
+    {
+      // split
+    }
+  else
+    {
+      // Find where to insert the key, all keys on page should be sorted
+      int offset = 0;
+      while (offset < free_pointer)
+	{
+	  int key_on_page_size = 0;
+	  if (is_variable_length == false)
+	    {
+	      key_on_page_size = max_key_size;
+	    }
+	  else
+	    {
+	      memcpy(&key_on_page_size, (char *)key, sizeof(key_on_page_size));
+	      key_on_page_size += sizeof(key_on_page_size);  // Add the first four bytes that contains the key size
+	    }
+
+	  // Read key on page
+	  void *key_on_page = malloc(key_on_page_size);
+	  memcpy(key_on_page, (char *)page + offset, key_on_page_size);
+
+	  // Compare key on page with the current key
+	  int cmp = memcmp(key, key_on_page, key_on_page_size);
+	  free(key_on_page);
+
+	  if (cmp <= 0)
+	    {
+	      break;
+	    }
+	  else
+	    {
+	      offset += key_on_page_size + 4;
+	    }
+	}
+
+      // Shift all the subsequent keys to the right
+      int subsequent_keys_size = free_pointer - offset;
+      void *subsequent_keys = malloc(subsequent_keys_size);
+      memcpy(subsequent_keys, (char *)page + offset, subsequent_keys_size);
+      memcpy((char *)page + offset + key_size + 4, subsequent_keys, subsequent_keys_size);
+
+      // Inser the new key with the pageNum and slotNum
+      uint16_t key_pageNum = rid.pageNum;
+      uint16_t key_slotNum = rid.slotNum;
+
+      memcpy((char *)page + offset, key, key_size);
+      offset += key_size;
+      memcpy((char *)page + offset, &key_pageNum, DIRECTORY_ENTRY_SIZE);
+      offset += DIRECTORY_ENTRY_SIZE;
+      memcpy((char *)page + offset, &key_slotNum, DIRECTORY_ENTRY_SIZE);
+      offset += DIRECTORY_ENTRY_SIZE;
+
+      free_pointer += key_size + 4;
+
+      // Write the free_pointer back to the end of the page
+      memcpy((char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, &free_pointer, DIRECTORY_ENTRY_SIZE);
+	      
+      // Write the page back to disk
+      if (fileHandle.WritePage(pageNum, page) != 0)
+	{
+	  free(page);
+	  return -2;
+	}
+    }
+  
+  free(page);
+  return 0;
 }
+
+RC IX_IndexHandle::FindEntryPage(void *key, uint16_t &pageNum)
+{
+  void *page = malloc(PF_PAGE_SIZE);
+  pageNum = 0;
+  if (fileHandle.ReadPage(pageNum, page) != 0)
+    {
+      free(page);
+      return -2;
+    }
+  // Read node type
+  uint8_t type = 0;
+  memcpy(&type, (char *)page + PF_PAGE_SIZE - 3, 1);
+
+  while (type == IX_NODE)
+    {
+      // TODO: Split if needed
+
+      // Parse IX node and set pageNum
+      // free_pointer must not be zero
+      uint16_t free_pointer = 0;
+      memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+
+      uint16_t offset = 2;    // Start pointing to the first key on the page, first 2 bytes are pageNum
+      while (offset < free_pointer)
+	{
+	  int key_size = 0;
+	  uint16_t shift_offset;
+	  if (is_variable_length == false)
+	    {
+	      key_size = max_key_size;
+	      shift_offset = 0;
+	    }
+	  else
+	    {
+	      memcpy(&key_size, (char *)page + offset, sizeof(key_size));
+	      offset += sizeof(key_size);
+	      shift_offset = sizeof(key_size);
+	    }
+
+	  void *ix_key = malloc(key_size);
+	  memcpy(ix_key, (char *)page + offset, key_size);
+	  int cmp = memcmp(key, ix_key, key_size);
+	  free(ix_key);
+	  if (cmp == 0)
+	    {
+	      memcpy(&pageNum, (char *)page + offset + key_size, DIRECTORY_ENTRY_SIZE);
+	      // SKY: if you think the breaks might cause errors, add a bool found variable and assign true it instead of the breaks and change the inner while to while (!found)
+	      break;
+	    }
+	  else if (cmp < 0)
+	    {
+	      memcpy(&pageNum, (char *)page + offset - shift_offset - DIRECTORY_ENTRY_SIZE, DIRECTORY_ENTRY_SIZE);
+	      break;
+	    }
+	  else
+	    {
+	      offset += key_size + DIRECTORY_ENTRY_SIZE; // The plus DIRECTORY_ENTRY_SIZE is to skip the pageNum and point to the next key
+	    }
+	}
+
+      if (fileHandle.ReadPage(pageNum, page) != 0)
+	{
+	  free(page);
+	  return -2;
+	}
+      // Read node type
+      memcpy(&type, (char *)page + PF_PAGE_SIZE - 3, 1);
+    }
+
+  free(page);
+  return 0;
+}
+
 RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
   // Return 2 if (key,rid) does not exist
 
@@ -331,14 +510,14 @@ void IX_PrintError (RC rc)
   // Print error message
   switch (rc)
     {
-    case -3:
-      cout << "IX error" << endl;
+    case -1:
+      cout << "RM error" << endl;
       break;
     case -2:
       cout << "PF error" << endl;
       break;
-    case -1:
-      cout << "RM error" << endl;
+    case -3:
+      cout << "IX error" << endl;
       break;
     case 1:
       cout << "Duplicate found" << endl;

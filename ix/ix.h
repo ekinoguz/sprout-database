@@ -58,6 +58,8 @@ class IX_IndexHandle {
   RC DeleteEntry(void *key, const RID &rid);  // Delete index entry
 
   // Private API
+ private:
+  RC FindEntryPage(void *key, uint16_t &pageNum);
 
  public:
   PF_FileHandle fileHandle;
