@@ -188,12 +188,12 @@ RC IX_Manager::DestroyIndex(const string tableName, const string attributeName)
   RID rid;
   char *data = (char*)(malloc(INDEX_TABLE_RECORD_MAX_LENGTH));
   bool found = false;
-  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF) 
     {
-      uint16_t tableName_size;
+      int tableName_size;
       memcpy(&tableName_size, data, 4);
 
-      uint16_t attributeName_size;
+      int attributeName_size;
       memcpy(&attributeName_size, data + 4 + tableName_size, 4);
 
       char *attributeName_intable = ((char*)(malloc(attributeName_size + 1)));
@@ -241,14 +241,14 @@ RC IX_Manager::OpenIndex(const string tableName,
   bool found = false;
   while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
-      uint16_t tableName_size;
+      int tableName_size;
       memcpy(&tableName_size, data, 4);
 
-      uint16_t attributeName_size;
+      int attributeName_size;
       memcpy(&attributeName_size, data + 4 + tableName_size, 4);
 
       char *attributeName_intable = ((char*)(malloc(attributeName_size + 1)));
-      memset(attributeName_intable, 0, attributeName_size + 1);
+      memset(attributeName_intable, 0, attributeName_size + 1); // ensure the null terminator
       memcpy(attributeName_intable, data + 4 + tableName_size + 4, attributeName_size);
       string strAttr (attributeName_intable);
       free(attributeName_intable);
