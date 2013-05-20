@@ -405,6 +405,7 @@ void testCase_4(const string tablename, const string attrname)
   rc = ixScan->OpenScan(ixHandle, NULL, NULL, false, false);
   if(rc == success)
     {
+      
       cout << "Scan Opened Successfully!" << endl;
     }
   else 
@@ -416,9 +417,16 @@ void testCase_4(const string tablename, const string attrname)
       cout << "Failed Opening Scan!" << endl;
     }  
     
+  int key = 1;
   while(ixScan->GetNextEntry(rid) == success) 
     {
-      cout << rid.pageNum << " " << rid.slotNum << endl;
+      if(rid.pageNum != key)
+	cout << rid.pageNum << " " << rid.slotNum << endl;
+
+      assert(rid.pageNum == key);
+      assert(rid.slotNum == key+1);
+      //cout << rid.pageNum << " " << rid.slotNum << endl;
+      key ++;
     }
     
   // Close Scan
@@ -1557,7 +1565,7 @@ void testCase_O2()
   // Insert Data
   vector<RID> rids;
   vector<void *>tuples;
-  insertTuples(tablename, rids,tuples,200);
+  insertTuples(tablename, rids,tuples,2000);
   
   RC rc = ixManager->CreateIndex(tablename, attrname);
   assert(rc == success);
