@@ -391,6 +391,7 @@ void testCase_4(const string tablename, const string attrname)
   // Test InsertEntry
   unsigned numOfTuples = 1000;
   //unsigned maxValue = 500;
+
   for(unsigned i = 0; i <= numOfTuples; i++) 
     {
       unsigned key = i+1;//just in case somebody starts pageNum and recordId from 1
@@ -398,6 +399,7 @@ void testCase_4(const string tablename, const string attrname)
       rid.pageNum = key;
       rid.slotNum = key+1;
         
+      //cout << key << endl;
       rc = ixHandle.InsertEntry(&key, rid);
       if(rc != success)
         {
@@ -1761,10 +1763,10 @@ int main()
   RM *rm = RM::Instance();
   createTable(rm, "tbl_employee");
     
-  testCase_1("tbl_employee", "Age");
-  ourTests();
+  //testCase_1("tbl_employee", "Age");
+  //ourTests();
   // testCase_2("tbl_employee", "Age"); // Uncomment when we implement delete
-  testCase_3("tbl_employee", "Age");
+  //testCase_3("tbl_employee", "Age");
   testCase_4("tbl_employee", "Age");
   testCase_5("tbl_employee", "Age");
   testCase_6("tbl_employee", "Height");

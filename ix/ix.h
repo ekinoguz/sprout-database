@@ -82,6 +82,7 @@ class IX_IndexHandle {
   PF_FileHandle fileHandle;
   int max_key_size;
   bool is_variable_length;
+  AttrType type;
 };
 
 

@@ -34,24 +34,51 @@ IX_Manager::IX_Manager()
 IX_Manager::~IX_Manager()
 {
 }
-
 int IX_IndexHandle::keycmp(const char * key, const char * okey, int key_size, int okey_size, int shift_offset) const
 {
   if(okey_size == 0 || shift_offset == 0)
     okey_size = getKeySize(okey, &shift_offset);
   if(key_size == 0)
     key_size = getKeySize(key);
-  
-  int cmp;
-  if(key_size <= okey_size)
-    cmp = memcmp(key+shift_offset, okey+shift_offset, key_size-shift_offset);
-  else
-    cmp = memcmp(key+shift_offset, okey+shift_offset, okey_size-shift_offset);
+
+  if(is_variable_length){    
+    int cmp;
+    if(key_size <= okey_size)
+      cmp = memcmp(key+shift_offset, okey+shift_offset, key_size-shift_offset);
+    else
+      cmp = memcmp(key+shift_offset, okey+shift_offset, okey_size-shift_offset);
 	  
-  if(cmp == 0 && key_size != okey_size)
+    if(cmp == 0 && key_size != okey_size)
       cmp = memcmp(&key_size, &okey_size, 4);
 
-  return cmp;
+    return cmp;
+  } else {
+    if(memcmp(key, okey, key_size) == 0)
+      return 0;
+
+    bool less;
+    switch( type ){
+    case TypeInt:
+      less = *(int *)(key) < *(int *)(okey);
+      break;
+    case TypeReal:
+      less = *(float *)(key) < *(float *)(okey);
+      break;
+    case TypeShort:
+    case TypeBoolean:
+      less = *(char *)(key) < *(char *)(okey);
+      break;
+    default:
+      return error("Unkown type!!!!", -100);
+    }
+
+    if(less)
+      return -1;
+    else
+      return 1;
+  }
+
+  
 }
 
 RC IX_Manager::init()
@@ -83,6 +110,11 @@ RC IX_Manager::init()
   attr.length = 1;
   attr.type = TypeBoolean;
   index_attr.push_back(attr);
+
+  attr.name = "type";
+  attr.length = 4;
+  attr.type = TypeInt;
+  index_attr.push_back(attr);
   
   if(rm->createTable(INDEX_TABLE, index_attr) != 0)
     return -1;
@@ -102,6 +134,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
   int max_size = -1;
   bool is_variable = false;
+  AttrType type;
   for (uint i = 0; i < columns.size(); i++)
     {
       if (columns[i].column_name == attributeName)
@@ -116,6 +149,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 	      max_size = columns[i].length;
 	      is_variable = false;
 	    }
+	  type = columns[i].type;
 	  break;
 	}
     }
@@ -168,6 +202,9 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
   memcpy(buffer + offset, &is_variable, sizeof(is_variable));
   offset += sizeof(is_variable);
+
+  memcpy(buffer + offset, &type, sizeof(type));
+  offset += sizeof(type);
 
   RID rid;
   if(rm->insertTuple(INDEX_TABLE, buffer, rid) != 0)
@@ -256,6 +293,7 @@ RC IX_Manager::OpenIndex(const string tableName,
   attributeNames.push_back("column_name");
   attributeNames.push_back("max_key_length");
   attributeNames.push_back("is_variable_length");
+  attributeNames.push_back("type");
   RM_ScanIterator rm_ScanIterator;
   rm->scan(INDEX_TABLE, "table_name", EQ_OP, tableName.c_str(), attributeNames, rm_ScanIterator);
   RID rid;
@@ -278,11 +316,13 @@ RC IX_Manager::OpenIndex(const string tableName,
 	{
 	  memcpy(&indexHandle.max_key_size, data + 4 + tableName_size + 4 + attributeName_size, 4);
 	  memcpy(&indexHandle.is_variable_length, data + 4 + tableName_size + 4 + attributeName_size + 4, 1);
+	  memcpy(&indexHandle.type, data + 4 + tableName_size + 4 + attributeName_size + 4 + 4, 1);
 	  found = true;
 	}
     }
-
   free(data);
+
+  rm_ScanIterator.close();
 
   if(!found)
     return -3;
@@ -439,6 +479,7 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 
   while (type == IX_NODE)
     {
+      cout << "Looking for entry page "<< pageNum << endl;
       prevPageNum = pageNum;
       // Parse IX node and set pageNum
       // free_pointer must not be zero
@@ -448,7 +489,7 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
       uint16_t offset = 2;    // Start pointing to the first key on the page, first 2 bytes are pageNum
       while (offset < free_pointer)
 	{  
-	  if(key == NULL) {
+	  if(key == NULL) { // Just move to the page to the left, since we want the left most leaf
 	    memcpy(&pageNum, (char *)page, 2);
 	    break;
 	  }
@@ -461,11 +502,13 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 	  int cmp = keycmp(key, ix_key);
 	  if (cmp == 0)
 	    {
+	      cout << "equals" << endl;
 	      memcpy(&pageNum, (char *)page + offset + key_size, 2);
 	      break;
 	    }
 	  else if (cmp < 0)
 	    {
+	      cout << "less " << *((int *)key) << ":" << *((int *)ix_key) << endl;
 	      memcpy(&pageNum, (char *)page + offset - 2, 2);
 	      break;
 	    }
@@ -477,6 +520,7 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 
       // No index <= key follow the last pointer
       if(offset >= free_pointer){
+	cout << "last" << endl;
 	memcpy(&pageNum, (char *)page + free_pointer - 2, 2);
       }
 
