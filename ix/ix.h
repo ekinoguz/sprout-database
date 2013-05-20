@@ -103,6 +103,7 @@ class IX_IndexScan {
 
   // Private API
  private:
+  IX_IndexHandle *indexHandle;
   void * page;
   void *highKey; // Warning: This is not a copy!
   bool highKeyInclusive;

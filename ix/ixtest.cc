@@ -1572,6 +1572,10 @@ void testCase_O2()
   void * key;
   for(uint i=0; i < rids.size(); i+= 15){
     key = tuples[i];
+    cout << "Calling key: ";
+    for (int i = 4; i < 5; i++)
+      cout << *((char*)key + i);
+    cout << endl;
     rc = ixs.OpenScan(ixHandle, key, key, true, true);
     assert(rc == success);
 
