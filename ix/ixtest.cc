@@ -50,13 +50,22 @@ void createTable(RM *rm, const string tablename)
   cout << "****Table Created: " << tablename << " ****" << endl << endl;
 }
 
-void prepareTuple(const int index, void *buffer, int *tuple_size)
+void prepareTuple(const int index, void *buffer, int *tuple_size, bool no_duplicates = false)
 {
-  string name = "";
-  char letter = index % 26 + 97;
-  int count = index % 20 + 1;
-  for(int i = 0; i < count; i++){
-    name += letter;
+  string name;
+  int count;
+  if(no_duplicates){
+    stringstream ss;
+    ss << index;
+    name = ss.str();
+    count = name.length();
+  } else {
+    name = "";
+    char letter = index % 52 + 97;
+    count = index % 99 + 1;
+    for(int i = 0; i < count; i++){
+      name += letter;
+    }
   }
 
   int age = index;
@@ -84,20 +93,20 @@ void prepareTuple(const int index, void *buffer, int *tuple_size)
 }
 
 
-void createTuples(vector<void *> &tuples, int number){
+void createTuples(vector<void *> &tuples, int number, bool uniq = false){
   for(int i=0; i < number; i++){
     // Test insert Tuple
     void * tuple = malloc(1000);
     int size = 0;
     memset(tuple, 0, 1000);
-    prepareTuple(i, tuple, &size);
+    prepareTuple(i, tuple, &size, uniq);
   
     tuples.push_back(tuple);
   }
 }
 
-void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, int number){
-  createTuples(tuples,number);
+void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, int number, bool uniq = false){
+  createTuples(tuples,number, uniq);
   
   RID rid;
   for(uint i=0; i < tuples.size(); i++){
@@ -399,6 +408,7 @@ void testCase_4(const string tablename, const string attrname)
 	  cout << "Failed Inserting Entry..." << endl;
         }     
     }
+
     
   // Scan
   IX_IndexScan *ixScan = new IX_IndexScan();
@@ -1558,6 +1568,7 @@ void testCase_O1()
 // Test that create builds the index
 void testCase_O2()
 {
+  cout << endl << "****In Test Case O2****" << endl;
   string tablename = "emptestO2";
   string attrname = "EmpName";
   createTable(RM::Instance(), tablename);
@@ -1565,7 +1576,7 @@ void testCase_O2()
   // Insert Data
   vector<RID> rids;
   vector<void *>tuples;
-  insertTuples(tablename, rids,tuples,2000);
+  insertTuples(tablename, rids,tuples,700);
   
   RC rc = ixManager->CreateIndex(tablename, attrname);
   assert(rc == success);
@@ -1593,6 +1604,8 @@ void testCase_O2()
   
 
   freeTuples(tuples);
+
+  cout << "O2 Passed" << endl;
 }
 
 void testCase_O3() {
