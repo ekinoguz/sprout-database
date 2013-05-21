@@ -69,6 +69,7 @@ int IX_IndexHandle::keycmp(const char * key, const char * okey, int key_size, in
       less = *(char *)(key) < *(char *)(okey);
       break;
     default:
+      cout << type << endl;
       return error("Unkown type!!!!", -100);
     }
 
@@ -316,7 +317,7 @@ RC IX_Manager::OpenIndex(const string tableName,
 	{
 	  memcpy(&indexHandle.max_key_size, data + 4 + tableName_size + 4 + attributeName_size, 4);
 	  memcpy(&indexHandle.is_variable_length, data + 4 + tableName_size + 4 + attributeName_size + 4, 1);
-	  memcpy(&indexHandle.type, data + 4 + tableName_size + 4 + attributeName_size + 4 + 4, 1);
+	  memcpy(&indexHandle.type, data + 4 + tableName_size + 4 + attributeName_size + 4 + 1, 4);
 	  found = true;
 	}
     }
@@ -479,7 +480,6 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 
   while (type == IX_NODE)
     {
-      cout << "Looking for entry page "<< pageNum << endl;
       prevPageNum = pageNum;
       // Parse IX node and set pageNum
       // free_pointer must not be zero
@@ -502,13 +502,11 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 	  int cmp = keycmp(key, ix_key);
 	  if (cmp == 0)
 	    {
-	      cout << "equals" << endl;
 	      memcpy(&pageNum, (char *)page + offset + key_size, 2);
 	      break;
 	    }
 	  else if (cmp < 0)
 	    {
-	      cout << "less " << *((int *)key) << ":" << *((int *)ix_key) << endl;
 	      memcpy(&pageNum, (char *)page + offset - 2, 2);
 	      break;
 	    }
@@ -520,15 +518,9 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 
       // No index <= key follow the last pointer
       if(offset >= free_pointer){
-	cout << "last" << endl;
 	memcpy(&pageNum, (char *)page + free_pointer - 2, 2);
       }
-
-      // cout << free_pointer << endl;
-      // cout << offset << endl;
-      //cout << prevPageNum << endl;
-      //cout << pageNum << endl;
-
+ 
       if (fileHandle.ReadPage(pageNum, page) != 0)
 	{
 	  free(page);
@@ -666,6 +658,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
   int return_page = -1;
   
   uint16_t new_page_num = fileHandle.GetNumberOfPages(); // This is the page number added at the end with append
+
   // Switch on type
   if( pageNum == 0 ){ // Root page
     int pointer_size = 4;    
@@ -701,6 +694,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
     uint16_t left_page = fileHandle.GetNumberOfPages(); 
     uint16_t right_page = left_page + 1;
+    new_page_num = right_page;
     
     if( type == LEAF_NODE ){
       // Set up the linked pointers
@@ -711,9 +705,12 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Copy the old root to the left page
     void * leftPage = malloc(PF_PAGE_SIZE);
     memcpy(leftPage, page,PF_PAGE_SIZE);
+    memset(leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
 
     if(fileHandle.AppendPage(leftPage) != 0)
       return -2;
+
+    free(leftPage);
 
     // To make debugging easier just clear the page
     memset(page, 0, PF_PAGE_SIZE);
@@ -729,12 +726,11 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Delete everything else by changing the free pointer
     tmp = 4 + key_size;
     memcpy((char *)page+PF_PAGE_SIZE-2, &tmp, 2);
-    
+        
     // Ensure the root is now an IX_NODE
-    type = IX_NODE;
-    memcpy((char *)page + PF_PAGE_SIZE - 3,&type, 1);
+    nodeType new_type = IX_NODE;
+    memcpy((char *)page + PF_PAGE_SIZE - 3,&new_type, 1);
     
-    free(leftPage);
   } else if( type == LEAF_NODE ) {
     // Set up the linked pointers 
     uint16_t next_page = 0;
@@ -757,6 +753,9 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
     // Update the old free_pointer
     memcpy((char *)page+PF_PAGE_SIZE-2, &offset, 2);
+    
+    // Clear the rest
+    memset((char *)page+offset, 0,PF_PAGE_SIZE-3-2-offset);
     
     if(insertKey(newPage, new_page_num, prevPageNum) != 0)
       return -3;
@@ -794,17 +793,17 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
   if(fileHandle.AppendPage(newPage)!=0)
     return -2;
 
-
   // Set the return page
   int key_start_offset = 0;  
   if(type == IX_NODE)
     key_start_offset = 4;
   
-  int cmp = keycmp(key, (char *)newPage+key_start_offset);
+  int cmp = keycmp(key, ((char *)newPage+key_start_offset));
 
   if( cmp < 0 ){
-    if(pageNum == 0)
+    if(pageNum == 0){
       return_page = new_page_num - 1;
+    }
     else
       return_page = pageNum;
   }
@@ -883,7 +882,6 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
       offset = 0;
     }
   } // Otherwise we use the first record
-
   int lowKey_size = this->indexHandle->getKeySize((char *)page+offset);
   offset += lowKey_size;
 
@@ -905,18 +903,26 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
 //  Depending on how we implement delete this could be an issue, because the offset will change after a delete. However, it may still work since we don't reread the page after each operation. This will work if we employ "merge right" on deletes
 RC IX_IndexScan::GetNextEntry(RID &rid)
 {
+  if(!more)
+    return -1;
+  
   // Return current and move to next
   rid.pageNum = current.pageNum;
   rid.slotNum = current.slotNum;
 
-  if(!more)
-    return -1;
+  int shift_offset = 0;
+  int key_on_page_size = this->indexHandle->getKeySize((char *)page+offset, &shift_offset);
+  
+  uint16_t tmpPage = 0;
+  uint16_t tmpSlot = 0;
+  memcpy(&tmpPage, (char *)page+offset+key_on_page_size, 2);
+  memcpy(&tmpSlot, (char *)page+offset+key_on_page_size+2, 2);
+
+  current.pageNum = tmpPage;
+  current.slotNum = tmpSlot;
 
   uint16_t free_pointer = 0;
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
-
-  int shift_offset = 0;
-  int key_on_page_size = this->indexHandle->getKeySize((char *)page+offset, &shift_offset);
 
   if(offset < free_pointer) {
     offset += key_on_page_size + 4;
@@ -938,7 +944,6 @@ RC IX_IndexScan::GetNextEntry(RID &rid)
     offset = 0;
   }
   
-  
   // Check if we passed the key
   if(highKey != NULL) { 
     // Read the current key
@@ -951,14 +956,6 @@ RC IX_IndexScan::GetNextEntry(RID &rid)
 	return 0;
     }
   }
-
-  uint16_t tmpPage = 0;
-  uint16_t tmpSlot = 0;
-  memcpy(&tmpPage, (char *)page+offset+key_on_page_size, 2);
-  memcpy(&tmpSlot, (char *)page+offset+key_on_page_size+2, 2);
-  
-  current.pageNum = tmpPage;
-  current.slotNum = tmpSlot;
 
   return 0;
 }
