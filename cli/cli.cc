@@ -190,7 +190,7 @@ RC CLI::process(const string input)
   {
 
     ////////////////////////////////////////////
-    // create table <tableName> TODO: write structure
+    // create table <tableName> (col1=type1, col2=type2, ...)
     // create index <columnName> on <tableName>
     ////////////////////////////////////////////
     if (expect(tokenizer, "create")) {
@@ -343,7 +343,6 @@ RC CLI::createTable()
       attr.length = 1;
     }
     else {
-      // TODO this is actually error
       return error ("problem in attribute type in create table: " + string(tokenizer));
     }
     table_attrs.push_back(attr);
@@ -485,18 +484,19 @@ RC CLI::dropTable()
   string tableName = string(tokenizer);
 
 
-  // TODO: delete indexes if there are
-  // vector<Attribute> attributes;
-  // this->getAttributesFromCatalog(tableName, attributes);
-  // for (uint i = 0; i < attributes.size(); i++) {
-  //   if(this->dropIndex(tableName, attributes[i].name, false) != 0)
-  //     return error("error while dropping an index in dropTable");
-  // }
+  // delete indexes if there are
+  RID rid;
+  vector<Attribute> attributes;
+  this->getAttributesFromCatalog(tableName, attributes);
+  for (uint i = 0; i < attributes.size(); i++) {
+    if(this->checkAttribute(tableName, attributes[i].name, rid, false))
+      if(this->dropIndex(tableName, attributes[i].name, false) != 0)
+        return error("error while dropping an index in dropTable");
+  }
 
   // Set up the iterator
   Attribute attr;
   RM_ScanIterator rmsi;
-  RID rid;
   void *data_returned = malloc(PF_PAGE_SIZE);
 
   // convert attributes to vector<string>
@@ -1020,7 +1020,7 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
     memcpy(str, (char *)data_returned+offset, length);
     str[length] = '\0';
     offset += length;
-    
+
     if(tableName.compare(string(str)) == 0) {
       free(data_returned);
       free(str);

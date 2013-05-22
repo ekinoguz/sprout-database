@@ -372,6 +372,38 @@ void Test08()
 
   string command;
 
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table tbl_employee2 EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index EmpName on tbl_employee2";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Age on tbl_employee2";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Height on tbl_employee2";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index EmpName on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Age on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print cli_indexes";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);  
+
   command = ("drop attribute EmpName from tbl_employee");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
@@ -381,6 +413,22 @@ void Test08()
   assert (cli->process(command) == SUCCESS);
 
   command = ("drop attribute EmpName from tbl_employee2");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("print cli_indexes");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee2");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("print cli_indexes");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
 
