@@ -376,7 +376,6 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
   int key_size = getKeySize((char *)key);
-
   // 3 in rvalue is the free_pointer + node_type
   // 2 in rvalue is the next_pointer (pageNum)
   // 4 in lvalue is the rid pointer
@@ -447,7 +446,9 @@ RC IX_IndexHandle::findOnPage(const void *page, const void *key, int & offset, b
 
       int cmp = keycmp(key, key_on_page);
 
-      if (cmp <= 0)
+      if( cmp < 0)
+	return 0;
+      else if (cmp == 0 && inclusiveSearch)
 	return 0;
       else
 	offset += key_on_page_size + 4;
@@ -816,8 +817,67 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
 RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
   // Return 2 if (key,rid) does not exist
+  uint16_t pageNum;
+  if(FindEntryPage(key, pageNum))
+    return -3;
 
-  return -1;
+  void * page = malloc(PF_PAGE_SIZE);
+  if(fileHandle.ReadPage(pageNum, page) != 0)
+    return -2;
+  
+  int offset = 0;
+  if(findOnPage(page, key, offset, true) != 0)
+    return -3;
+
+  uint16_t free_pointer = 0;
+  memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
+
+  if(offset >= free_pointer){
+    // Not found
+    free(page);
+    return error("Key not found", 2);
+  }
+
+  int key_size = getKeySize((char *)page+offset);
+  
+  // If we want to implement duplicates we will need to continue searching here
+  if( keycmp(key, (char *)page + offset) != 0 ){
+    free(page);
+    return error("Key not on page", 2);
+  }
+
+
+  offset += key_size;
+   
+  uint16_t key_pageNum = 0;
+  uint16_t key_slotNum = 0;
+  memcpy(&key_pageNum, (char *)page + offset, 2);
+  offset += sizeof(key_pageNum);
+  memcpy(&key_slotNum, (char *)page + offset, 2);
+  offset += sizeof(key_slotNum);
+
+  if(rid.pageNum != key_pageNum || rid.slotNum != key_slotNum){
+    free(page);
+    return 2;
+  }
+
+  // Actually delete the key by shifting records and the free pointer
+  int subsequent_keys_size = free_pointer - offset;
+  void *subsequent_keys = malloc(subsequent_keys_size);
+  
+  memcpy(subsequent_keys, (char *)page + offset, subsequent_keys_size);
+  memcpy((char *)page + offset - key_size - 4, subsequent_keys, subsequent_keys_size);
+  free(subsequent_keys);
+
+  free_pointer -= (key_size + 4);
+  memcpy((char *)page + PF_PAGE_SIZE - 2, &free_pointer,2);
+
+  if(fileHandle.WritePage(pageNum, page) != 0)
+    return -2;
+
+  free(page);
+  
+  return 0;
 }
 
 IX_IndexScan::IX_IndexScan()
@@ -882,17 +942,6 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
       offset = 0;
     }
   } // Otherwise we use the first record
-  int lowKey_size = this->indexHandle->getKeySize((char *)page+offset);
-  offset += lowKey_size;
-
-  uint16_t key_pageNum = 0;
-  uint16_t key_slotNum = 0;
-  memcpy(&key_pageNum, (char *)page + offset, 2);
-  offset += sizeof(key_pageNum);
-  memcpy(&key_slotNum, (char *)page + offset, 2);
-  offset += sizeof(key_slotNum);
-  current.pageNum = key_pageNum;
-  current.slotNum = key_slotNum;
   
   more = true;
   return 0;
@@ -903,13 +952,10 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
 //  Depending on how we implement delete this could be an issue, because the offset will change after a delete. However, it may still work since we don't reread the page after each operation. This will work if we employ "merge right" on deletes
 RC IX_IndexScan::GetNextEntry(RID &rid)
 {
-  if(!more)
+  if(!more){
     return -1;
+  }
   
-  // Return current and move to next
-  rid.pageNum = current.pageNum;
-  rid.slotNum = current.slotNum;
-
   int shift_offset = 0;
   int key_on_page_size = this->indexHandle->getKeySize((char *)page+offset, &shift_offset);
   
@@ -918,8 +964,8 @@ RC IX_IndexScan::GetNextEntry(RID &rid)
   memcpy(&tmpPage, (char *)page+offset+key_on_page_size, 2);
   memcpy(&tmpSlot, (char *)page+offset+key_on_page_size+2, 2);
 
-  current.pageNum = tmpPage;
-  current.slotNum = tmpSlot;
+  rid.pageNum = tmpPage;
+  rid.slotNum = tmpSlot;
 
   uint16_t free_pointer = 0;
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);

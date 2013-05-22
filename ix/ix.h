@@ -114,7 +114,6 @@ class IX_IndexScan {
   void * page;
   void *highKey; // Warning: This is not a copy!
   bool highKeyInclusive;
-  RID current;
   int offset;
   bool more;
 };

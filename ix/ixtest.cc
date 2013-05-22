@@ -257,6 +257,7 @@ void testCase_2(const string tablename, const string attrname)
   rc = ixHandle.DeleteEntry(payload, rid);
   if(rc != success)
     {
+      cout << "RC: " << rc << endl;
 #ifdef ASSERT_ALL
       assert(false);
 #endif
@@ -884,7 +885,8 @@ void testCase_7(const string tablename, const string attrname)
     }  
     
   // Test InsertEntry
-  unsigned numOfTuples = 100;
+  //  unsigned numOfTuples = 175000;
+  unsigned numOfTuples = 10000;
   for(unsigned i = 1; i <= numOfTuples; i++) 
     {
       float key = (float)i;
@@ -921,9 +923,14 @@ void testCase_7(const string tablename, const string attrname)
     }
 
   // Test DeleteEntry in IndexScan Iterator
+  int i = 0;
   while(ixScan->GetNextEntry(rid) == success) 
     {
-      cout << rid.pageNum << " " << rid.slotNum << endl;
+      i++;
+      assert(rid.pageNum == i);
+      assert(rid.slotNum == i);
+	
+      // cout << rid.pageNum << " " << rid.slotNum << endl;
 
       float key = (float)rid.pageNum;
       rc = ixHandle.DeleteEntry(&key, rid);
@@ -937,6 +944,8 @@ void testCase_7(const string tablename, const string attrname)
         }
     }
   cout << endl;
+  assert(i==100);
+  
 
   // Test CloseScan
   rc = ixScan->CloseScan();
@@ -971,14 +980,12 @@ void testCase_7(const string tablename, const string attrname)
   // Test IndexScan Iterator
   while(ixScan->GetNextEntry(rid) == success) 
     {
-      cout << "Entry returned: " << rid.pageNum << " " << rid.slotNum << "--- failure" << endl;
-
-      if(rid.pageNum > 100)
+      if(rid.pageNum < 100)
         {
 #ifdef ASSERT_ALL
 	  assert(false);
 #endif
-
+	  cout << "Entry returned: " << rid.pageNum << " " << rid.slotNum << "--- failure" << endl;
 	  cout << "Wrong entries output...failure" << endl;
         }
     }
@@ -1118,9 +1125,13 @@ void testCase_8(const string tablename, const string attrname)
     }
 
   // Test DeleteEntry in IndexScan Iterator
+  int i = 0;
   while(ixScan->GetNextEntry(rid) == success) 
     {
-      cout << rid.pageNum << " " << rid.slotNum << endl;
+      i++;
+      assert(rid.pageNum == i);
+      assert(rid.slotNum == i);
+      // cout << rid.pageNum << " " << rid.slotNum << endl;
         
       float key = (float)rid.pageNum;
       rc = ixHandle.DeleteEntry(&key, rid);
@@ -1133,7 +1144,8 @@ void testCase_8(const string tablename, const string attrname)
 	  cout << "Failed deleting entry in Scan..." << endl;
         }
     }
-  cout << endl;
+  // cout << endl;
+  assert(i == 200);
 
   // Test CloseScan
   rc = ixScan->CloseScan();
@@ -1184,9 +1196,13 @@ void testCase_8(const string tablename, const string attrname)
       cout << "Failed Opening Scan..." << endl;
     }
 
+  i = 450;
   while(ixScan->GetNextEntry(rid) == success)
     {
-      cout << rid.pageNum << " " << rid.slotNum << endl;
+      i++;
+      assert(rid.pageNum == i);
+      assert(rid.slotNum == i);
+      // cout << rid.pageNum << " " << rid.slotNum << endl;
 
       if(rid.pageNum <= 450 || rid.slotNum <= 450)
         {
@@ -1196,7 +1212,9 @@ void testCase_8(const string tablename, const string attrname)
 	  cout << "Wrong entries output...failure" << endl;
         }
     }
-  cout << endl;
+  // cout << endl;
+
+  assert(i == 500);
 
   // Test CloseScan
   rc = ixScan->CloseScan();
@@ -1691,7 +1709,7 @@ void testCase_O4()
   // 5. Close Index
   cout << endl << "****In Test Case Our_4****" << endl;
   string tablename = "emptestO4";
-  string attrname = "EmpName";
+  string attrname = "Age";
   createTable(RM::Instance(), tablename);
   
   RC rc = ixManager->CreateIndex(tablename, attrname);
@@ -1701,19 +1719,20 @@ void testCase_O4()
   rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
   assert(rc == success);
 
-  uint numOfTuples = 10;
+  uint numOfTuples = 100;
 
   // fill the rids and payloads
   vector<RID> rids;
   RID rid;
-  vector<void *> payloads;
   int age = 18;
   vector<int> ages;
   void *payload;
 
   int random = 1;
 
-  unsigned key = 100;
+  // This fails
+  // unsigned key = 100000;
+  unsigned key = 10000;
   for(uint i = 0; i < numOfTuples; i++) {
     if (random > 0) {
       age = age + i;
@@ -1724,42 +1743,45 @@ void testCase_O4()
     }
     rid.pageNum = key;
     rid.slotNum = key+1+i;
-    payload = malloc(sizeof(int));
-    memcpy(payload, &age, sizeof(int));
     rids.push_back(rid);
     ages.push_back(age);
-    payloads.push_back(payload);
   }
 
   // Test Insert Entry
   for(uint i = 0; i < numOfTuples; i++) 
     {
-      rc = ixHandle.InsertEntry(&ages[i], rids[i]);
+      // cout << ages[i] << ":" << &(ages[i]) << endl;
+      rc = ixHandle.InsertEntry(&(ages[i]), rids[i]);
       assert (rc == success);
     }
 
   // Test Delete Entry which is not there
-  payload = malloc(sizeof(int));
-  rc = ixHandle.DeleteEntry(payload, rid);
+  age = -1;
+  rc = ixHandle.DeleteEntry(&age, rid);
   assert (rc != success);
 
-  rc = ixHandle.DeleteEntry(payloads[0], rids[1]);
+  rc = ixHandle.DeleteEntry(&(ages[0]), rids[1]);
   assert (rc != success);
 
 
   for(uint i = 0; i < numOfTuples; i++) 
   {
-    rc = ixHandle.DeleteEntry(payloads[i], rids[i]);
+    payload = &(ages[i]);
+    rc = ixHandle.DeleteEntry(payload, rids[i]);
     assert (rc == success);
   }
 
   // Test Delete Entry again
-  rc = ixHandle.DeleteEntry(payloads[0], rids[0]);
+  cout << "**** Supposed to fail *****" << endl;
+  payload = &(ages[0]);
+  rc = ixHandle.DeleteEntry(payload, rids[0]);
   assert (rc != success);
 
   // Test Delete Entry again
-  rc = ixHandle.DeleteEntry(payloads[numOfTuples-1], rids[numOfTuples-1]);
+  payload = &(ages[numOfTuples-1]);
+  rc = ixHandle.DeleteEntry(payload, rids[numOfTuples-1]);
   assert (rc != success);
+  cout << "*****-----------------*****" << endl;
 
   // Test Close Index
   rc = ixManager->CloseIndex(ixHandle);
@@ -1774,7 +1796,7 @@ void ourTests()
   testCase_O1();
   testCase_O3();
   testCase_O2();
-  //testCase_O4(); // Uncomment when we implement delete
+  testCase_O4(); // Uncomment when we implement delete
 }
 int main()
 {
@@ -1785,23 +1807,23 @@ int main()
   RM *rm = RM::Instance();
   createTable(rm, "tbl_employee");
     
-  //testCase_1("tbl_employee", "Age");
-  //ourTests();
-  // testCase_2("tbl_employee", "Age"); // Uncomment when we implement delete
-  //testCase_3("tbl_employee", "Age");
+  testCase_1("tbl_employee", "Age");
+  testCase_2("tbl_employee", "Age"); // Uncomment when we implement delete
+  testCase_3("tbl_employee", "Age");
   testCase_4("tbl_employee", "Age");
   testCase_5("tbl_employee", "Age");
-  testCase_6("tbl_employee", "Height");
-  //testCase_7("tbl_employee", "Height"); Uncomment when delete works
-  //testCase_8("tbl_employee", "Height"); Uncommnet when delete works
+  testCase_6("tbl_employee", "Height");  
+  testCase_7("tbl_employee", "Height"); // Uncomment when delete works
+  testCase_8("tbl_employee", "Height"); // Uncommnet when delete works
+  ourTests();
 
   
 
   // Extra Credit Work
   // Duplicat Entries
-  testCase_extra_1("tbl_employee", "Age");
+  /// testCase_extra_1("tbl_employee", "Age");
   // TypeVarChar
-  testCase_extra_2("tbl_employee", "EmpName");
+  // testCase_extra_2("tbl_employee", "EmpName");
     
   return 0;
 }
