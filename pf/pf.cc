@@ -236,7 +236,7 @@ RC PF_FileHandle::ReadPageFromDisk(PageNum pageNum, void *data)
   // if page number does not exist
   if (pageNum >= GetNumberOfPagesFromDisk())
     {
-      cout << "page number does not exist" << endl;
+      cout << "page number does " << pageNum << " not exist" << endl;
       return -1;
     }
 
@@ -266,8 +266,7 @@ RC PF_FileHandle::WritePageToDisk(PageNum pageNum, const void *data)
   // if page number does not exist
   if (pageNum > GetNumberOfPages())
     {
-      cout << "page number does not exist" << endl;
-      //cout << "[" << GetNumberOfPagesFromDisk() << ", " << pageNum << "] ";
+      cout << "page number " << pageNum << " does not exist" << endl;
       return -1;
     }
   if (filestr)

@@ -42,10 +42,7 @@ class IX_Manager {
  // Private API
  public:
   RC buildIndex(string tableName, string attributeName, IX_IndexHandle & ih);
-  static int keycmp(const char* key, const char* okey, int key_size, int okey_size, int shift_offset);
-  static int keycmp(const void* key, const void* okey, int key_size, int okey_size, int shift_offset){
-    return keycmp((char *)key, (char *)okey, key_size, okey_size, shift_offset);
-  }
+
  private:
   bool initialized;
   static IX_Manager _ix_manager;
@@ -69,14 +66,23 @@ class IX_IndexHandle {
 
   // Private API
  public:
-  RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false) const;
+  RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false);
   RC findOnPage(const void *page, const void *key, int & offset, bool inclusiveSearch = true) const;
 
   int getKeySize(const void *key, int* shift_offset = NULL) const;
+  int split(int pageNum, int prevPageNum, const void * key);
+  RC insertKey(void* key, int pointerPage, int toPage);
+
+  int keycmp(const char* key, const char* okey, int key_size = 0, int okey_size = 0, int shift_offset = 0) const;
+  int keycmp(const void* key, const void* okey, int key_size = 0, int okey_size = 0, int shift_offset = 0) const{
+    return keycmp((char *)key, (char *)okey, key_size, okey_size, shift_offset);
+  }
+  
  public:
   PF_FileHandle fileHandle;
   int max_key_size;
   bool is_variable_length;
+  AttrType type;
 };
 
 
@@ -108,7 +114,6 @@ class IX_IndexScan {
   void * page;
   void *highKey; // Warning: This is not a copy!
   bool highKeyInclusive;
-  RID current;
   int offset;
   bool more;
 };
