@@ -297,8 +297,10 @@ char RM::getLatestVersionFromCatalog(const string tableName)
   //memset(data, 0, 256);
 
   // Just return the first one we find
-  if(rm_ScanIterator.getNextTuple(rid,data) == RM_EOF)
+  if(rm_ScanIterator.getNextTuple(rid,data) == RM_EOF){
+    free(data);
     return 255; // 255 is an error
+  }
   
   // Version is the 4th field
   int offset = 2 + 3*DIRECTORY_ENTRY_SIZE;
@@ -327,6 +329,7 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
     
     if(version == -1){
       cout << "Latest version cannot be found" << endl;
+      free(data);
       return -1;
     }
   }
