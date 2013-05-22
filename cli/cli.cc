@@ -484,6 +484,15 @@ RC CLI::dropTable()
 
   string tableName = string(tokenizer);
 
+
+  // TODO: delete indexes if there are
+  // vector<Attribute> attributes;
+  // this->getAttributesFromCatalog(tableName, attributes);
+  // for (uint i = 0; i < attributes.size(); i++) {
+  //   if(this->dropIndex(tableName, attributes[i].name, false) != 0)
+  //     return error("error while dropping an index in dropTable");
+  // }
+
   // Set up the iterator
   Attribute attr;
   RM_ScanIterator rmsi;
@@ -502,15 +511,6 @@ RC CLI::dropTable()
       return -1;
   }
   rmsi.close();
-
-  // TODO: delete indexes if there are
-  vector<Attribute> attributes;
-  this->getAttributesFromCatalog(tableName, attributes);
-  for (uint i = 0; i < attributes.size(); i++) {
-    if (this->checkAttribute(tableName, attributes[i].name, rid, false))
-      if(rm->deleteTuple(CLI_INDEXES, rid) != 0)
-        return -1;
-  }
 
   // Delete columns from CLI_COLUMNS  
   if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
@@ -561,8 +561,12 @@ RC CLI::dropIndex(const string tableName, const string columnName, bool fromComm
   RC rc;
   // check if index is there or not
   RID rid;
-  if (!this->checkAttribute(realTable, realColumn, rid, false))
-    return error("given tableName-attrName index does not exist in cli_indexes");
+  if (!this->checkAttribute(realTable, realColumn, rid, false)) {
+    if (fromCommand)
+      return error("given " + realTable + ":" + realColumn + " index does not exist in cli_indexes");
+    else // return error but print nothing
+      return -1;
+  }
 
   // drop the index
   rc = ixManager->DestroyIndex(realTable, realColumn);
@@ -997,33 +1001,32 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
 
   // convert attributes to vector<string>
   vector<string> stringAttributes;
-  stringAttributes.push_back("column_name");
+  //stringAttributes.push_back("column_name");
   stringAttributes.push_back("table_name");
   
-  // Find columns which is columnName
+  // Find records whose column is columnName
   if( rm->scan(searchTable, "column_name", EQ_OP, columnName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
   
+  // check if tableName is what we want
   while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
-    // check if tableName is what we want
     int length, offset = 0;
-    char *str;
-    // first iteration reads the column_name
-    for (uint i = 0; i < 2; i++) {
-      length = 0;
-      memcpy(&length, (char *)data_returned+offset, sizeof(int));
-      offset += sizeof(int);
+    char *str=(char *)malloc(length+1);
+  
+    length = 0;
+    memcpy(&length, (char *)data_returned+offset, sizeof(int));
+    offset += sizeof(int);
 
-      str = (char *)malloc(length+1);
-      memcpy(str, (char *)data_returned+offset, length);
-      str[length] = '\0';
-      offset += length;
-      free(str);
-    }
+    memcpy(str, (char *)data_returned+offset, length);
+    str[length] = '\0';
+    offset += length;
+    
     if(tableName.compare(string(str)) == 0) {
       free(data_returned);
+      free(str);
       return true;
     }
+    free(str);
   }
   free(data_returned);
   return false;
