@@ -13,6 +13,12 @@ using namespace std;
 
 class IX_IndexHandle;
 
+// Node formats:
+// - Leaf node: contains sequence of tuples <Key, pageNum, slotNum>
+// - IX node: contains <pageNum, key, pageNum, key, pageNum, ..., pageNum>
+// Note: all nodes end with 1 bytes for node type and 2 bytes for free space pointer
+typedef enum { LEAF_NODE = 0, IX_NODE } nodeType;
+
 class IX_Manager {
  public:
   static IX_Manager* Instance();
@@ -36,6 +42,10 @@ class IX_Manager {
  // Private API
  public:
   RC buildIndex(string tableName, string attributeName, IX_IndexHandle & ih);
+  static int keycmp(const char* key, const char* okey, int key_size, int okey_size, int shift_offset);
+  static int keycmp(const void* key, const void* okey, int key_size, int okey_size, int shift_offset){
+    return keycmp((char *)key, (char *)okey, key_size, okey_size, shift_offset);
+  }
  private:
   bool initialized;
   static IX_Manager _ix_manager;
@@ -58,9 +68,11 @@ class IX_IndexHandle {
   RC DeleteEntry(void *key, const RID &rid);  // Delete index entry
 
   // Private API
- private:
-  RC FindEntryPage(void *key, uint16_t &pageNum);
+ public:
+  RC FindEntryPage(const void *key, uint16_t &pageNum, const bool doSplit = false) const;
+  RC findOnPage(const void *page, const void *key, int & offset, bool inclusiveSearch = true) const;
 
+  int getKeySize(const void *key, int* shift_offset = NULL) const;
  public:
   PF_FileHandle fileHandle;
   int max_key_size;
@@ -91,6 +103,14 @@ class IX_IndexScan {
   RC CloseScan();             // Terminate index scan
 
   // Private API
+ private:
+  IX_IndexHandle *indexHandle;
+  void * page;
+  void *highKey; // Warning: This is not a copy!
+  bool highKeyInclusive;
+  RID current;
+  int offset;
+  bool more;
 };
 
 // print out the error message for a given return code
