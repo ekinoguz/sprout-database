@@ -31,7 +31,7 @@ void RM::init()
 {
   initialized = true;
 
-  pfm = PF_Manager::Instance(10);
+  pfm = PF_Manager::Instance(200);
   this->database_folder = DATABASE_FOLDER;
 
   // We may need to add this in if we think that every time the RM is initialized it should be on a 
