@@ -136,7 +136,9 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
       fileHandle.cache = cache;
 
       // Add the file info to the cache, this helps tracking the number of pages of the file
+#ifndef FUCK_CACHE
       cache->AddFileInfo(&fileHandle);
+#endif
       return 0;
     }
 }
@@ -146,14 +148,16 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
 // file's pages are flushed to disk when the file is closed.
 RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 {
-  if (fileHandle.filestr.is_open())
+  if (fileHandle.filestr!=NULL && fileHandle.filestr.is_open())
     {
       // Write all dirty pages to disk
+      #ifndef FUCK_CACHE
       int result = cache->ClosingFile(&fileHandle);
       if (result != 0)
 	{
 	  return result;
 	}
+      #endif
 
       fileHandle.filestr.flush();
       fileHandle.filestr.close();
@@ -162,8 +166,7 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
     }
   else
     {
-      // cout << "fileHandle does not have open file instance to close" << endl;
-      return -1;
+       return -1;
     }
 }
 
@@ -191,6 +194,7 @@ PF_FileHandle::PF_FileHandle()
 
 PF_FileHandle::~PF_FileHandle()
 {
+  PF_Manager::Instance()->CloseFile(*this);
 }
 
 RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)

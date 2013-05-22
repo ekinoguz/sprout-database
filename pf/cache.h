@@ -41,6 +41,7 @@ class Cache
   int ClosingFile(PF_FileHandle *fileHandle);
   void AddFileInfo(PF_FileHandle* fileHandle);
   void DeleteFileInfo(PF_FileHandle* fileHandle);
+  void DeleteAllFileInfo();
   unsigned GetNumberOfPages(PF_FileHandle* fileHandle);
   unsigned EvictAllPagesToFiles();
 

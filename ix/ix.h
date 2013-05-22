@@ -61,7 +61,7 @@ class IX_IndexHandle {
   //  1) data is a concatenation of values of the attributes
   //  2) For int and real: use 4 bytes to store the value;
   //     For varchar: use 4 bytes to store the length of characters, then store the actual characters.
-  RC InsertEntry(void *key, const RID &rid);  // Insert new index entry
+  RC InsertEntry(const void *key, const RID &rid);  // Insert new index entry
   RC DeleteEntry(void *key, const RID &rid);  // Delete index entry
 
   // Private API
@@ -83,6 +83,7 @@ class IX_IndexHandle {
   int max_key_size;
   bool is_variable_length;
   AttrType type;
+  bool is_open;
 };
 
 

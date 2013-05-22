@@ -41,6 +41,8 @@ Cache::~Cache()
 {
   EvictAllPagesToFiles();
 
+  DeleteAllFileInfo();
+  
   freed = true;
 
   free(buffer);
@@ -68,7 +70,7 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
 {
   ostringstream convert;
   convert << pageNum;
-  // cout << fileHandle->fileName << "|" << pageNum << endl;
+
   std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());;
   
   if (element == existingPages.end())
@@ -83,7 +85,6 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
       // If frame is dirty write it to disk
       if (isDirty(frameToFlush))
 	{
-	  // cout << frameToFlush << ":" << (framesInfo + frameToFlush)->fileHandle << ":" << (framesInfo + frameToFlush)->pageNum << endl;
 	  if ((framesInfo + frameToFlush)->fileHandle != 0)
 	    {
 	      (framesInfo + frameToFlush)->fileHandle->WritePageToDisk((framesInfo + frameToFlush)->pageNum, buffer + (PF_PAGE_SIZE * frameToFlush));
@@ -100,8 +101,11 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
 	}
       	  
       // Read the data from disk
-      fileHandle->ReadPageFromDisk(pageNum, data);
-	  
+      if (fileHandle->ReadPageFromDisk(pageNum, data) != 0)
+	{
+	  return -1;
+	}
+      
       // Add the data to the cache and set the forward mapping
       memcpy(buffer + (PF_PAGE_SIZE * frameToFlush), data, PF_PAGE_SIZE);
       (framesInfo + frameToFlush)->fileHandle = fileHandle;
@@ -113,19 +117,15 @@ int Cache::ReadPage(PF_FileHandle *fileHandle, unsigned pageNum, void *data)
 
       // Set usage to 1
       *(frameUsage + frameToFlush) = 1;
-	  
       return 0;
     }
   else
     {
-      // cout << element->second << endl;
-
       int frameNum = element->second;
       memcpy(data, buffer + (PF_PAGE_SIZE * frameNum), PF_PAGE_SIZE);
 
       uint16_t temp;
       memcpy(&temp, (char*)data + PF_PAGE_SIZE - 4, 2);
-      // cout << "num of records: " << temp << endl;
       
       *(frameUsage + frameNum) = *(frameUsage + frameNum) + 1;
       return 0;
@@ -142,7 +142,7 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     {
       return AppendPage(fileHandle, data);
     }
-
+  
   ostringstream convert;
   convert << pageNum;
   std::unordered_map<std::string, int>::const_iterator element = existingPages.find(fileHandle->fileName + convert.str());
@@ -150,6 +150,7 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     {
       // Locate a page to flush
       int frameToFlush = GetFrameWithLowestUsage();
+
       // If frame is dirty write it to disk
       if (isDirty(frameToFlush))
 	{
@@ -191,7 +192,6 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     }
   else
     {
-      // cout << "writing in cache: " << element->second << endl;
       int frameNum = element->second;
 
       // Overwrite the cache frame with the new data
@@ -209,9 +209,9 @@ int Cache::WritePage(PF_FileHandle *fileHandle, unsigned pageNum, const void *da
     }
 
   // Write the page to disk to ensure fault tolerance
-#ifdef DEBUG
+  #ifdef DEBUG
     fileHandle->WritePageToDisk(pageNum, data);    
-#endif
+  #endif
 
   return 0;
 }
@@ -300,13 +300,28 @@ int Cache::ClosingFile(PF_FileHandle *fileHandle)
 	      return result;
 	    }
 	}
-      
+
       if (((framesInfo + i)->fileHandle == fileHandle)){	
 	memset(framesInfo+i,0,sizeof(FrameInfo));
       }
     }
   
   DeleteFileInfo(fileHandle);
+
+  auto it = existingPages.begin();
+  while (it != existingPages.end())
+    {
+      string key = it->first;
+      it++;
+      if (fileHandle->fileName.size() <= key.size())
+	{
+	  string substr = key.substr(0, fileHandle->fileName.size());
+	  if (fileHandle->fileName == substr)
+	    {
+	      existingPages.erase(key);
+	    }
+	}
+    }
 
   return 0;
 }
@@ -327,6 +342,11 @@ void Cache::AddFileInfo(PF_FileHandle* fileHandle)
     {
       element->second->numberOfUsers++;
     }
+}
+
+void Cache::DeleteAllFileInfo(){
+  for ( auto it = filesInfo.begin(); it != filesInfo.end(); ++it )
+    free(it->second);
 }
 
 void Cache::DeleteFileInfo(PF_FileHandle* fileHandle)

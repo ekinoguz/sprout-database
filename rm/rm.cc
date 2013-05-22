@@ -31,7 +31,7 @@ void RM::init()
 {
   initialized = true;
 
-  pfm = PF_Manager::Instance(10);
+  pfm = PF_Manager::Instance(200);
   this->database_folder = DATABASE_FOLDER;
 
   // We may need to add this in if we think that every time the RM is initialized it should be on a 
@@ -134,8 +134,6 @@ RM::~RM()
 {
   // Close the file handles
   for (unordered_map<string,PF_FileHandle *>::iterator it = fileHandles.begin(); it != fileHandles.end(); ++it) {
-    pfm->CloseFile(*it->second);
-    
     delete (it->second);
   }
 }
@@ -297,8 +295,10 @@ char RM::getLatestVersionFromCatalog(const string tableName)
   //memset(data, 0, 256);
 
   // Just return the first one we find
-  if(rm_ScanIterator.getNextTuple(rid,data) == RM_EOF)
+  if(rm_ScanIterator.getNextTuple(rid,data) == RM_EOF){
+    free(data);
     return 255; // 255 is an error
+  }
   
   // Version is the 4th field
   int offset = 2 + 3*DIRECTORY_ENTRY_SIZE;
@@ -327,6 +327,7 @@ RC RM::getAttributesFromCatalog(const string tableName, vector<Column> &columns,
     
     if(version == -1){
       cout << "Latest version cannot be found" << endl;
+      free(data);
       return -1;
     }
   }
@@ -1591,11 +1592,6 @@ RC RM::closeFileHandle(const string tableName)
 
   if ( got != fileHandles.end() )
     {
-      if (pfm->CloseFile(*(fileHandles[tableName])) != 0)
-	{
-	  return -1;
-	}
-      
       delete fileHandles[tableName];
       fileHandles.erase(tableName);
     }

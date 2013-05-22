@@ -1350,7 +1350,23 @@ void secO_3()
   
   rc = rm->readTuple(tablename, rid_to_update, data_returned);
   assert(rc != success);
-  
+
+
+  vector<string> attributeNames;
+  attributeNames.push_back("EmpName");
+  RM_ScanIterator rm_ScanIterator;
+  assert (rm->scan(tablename, "", NO_OP, NULL, attributeNames, rm_ScanIterator) == 0);
+   
+  int i = 0;
+  int expected_tuples = 999; // Fix this
+  void * data = malloc(PF_PAGE_SIZE);
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF) {
+    i++;
+  }
+  cout << "I" << i << endl;
+  assert(i == expected_tuples);
+
+  free(data);
   free(tuple);
   free(tuple_updated);
   free(data_returned);
