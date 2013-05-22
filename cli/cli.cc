@@ -770,6 +770,7 @@ RC CLI::help(const string input)
 {
   if (input.compare("create") == 0) {
     cout << "\tcreate table <tableName> (col1=type1, col2=type2, ...): creates table with given properties" << endl;
+    cout << "\tcreate index <columnName> on <tableName>: creates index for <columnName> in table <tableName>" << endl;
   }
   else if (input.compare("add") == 0) {
     cout << "\tadd attribute \"attributeName=type\" to \"tableName\": drops given table" << endl;
@@ -1066,13 +1067,10 @@ RC CLI::updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute>
         free(str);
         break;
       case TypeShort:       
+      case TypeBoolean:
         buffer.push_back(to_string((int)(*((char*)data+offset))));
         offset += 1;
         break;
-      case TypeBoolean:
-        error ("should not see this, in printTuple, type is: " + (it->type)+47);
-        break;
-      break;
     }
   }
   return 0;
