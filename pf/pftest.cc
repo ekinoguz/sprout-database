@@ -418,7 +418,7 @@ int ekin_PFTest_2b(PF_Manager *pf)
 
     // Update the first page
     // Write ASCII characters from 32 to 41 (inclusive)
-    data = malloc(PF_PAGE_SIZE);
+    memset(data, 0, PF_PAGE_SIZE);
     for(unsigned i = 0; i < PF_PAGE_SIZE; i++)
     {
         *((char *)data+i) = i % 10 + 32;
@@ -525,6 +525,7 @@ int ekin_PFTest_3(PF_Manager *pf)
     assert (*((int *) data) == 4);
 
     cout << "****PF Test Case 3 Finishes****" << endl;
+    free(data);
     return 0;
 }
 
@@ -602,6 +603,7 @@ int ekin_PFTest_4(PF_Manager *pf)
     rc = pf->DestroyFile("test4");
     assert(rc == success);
     cout << "****PF Test Case 4 Finishes****" << endl;
+    free(data);
     return 0;
 }
 
