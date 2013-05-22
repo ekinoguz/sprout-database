@@ -706,7 +706,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Copy the old root to the left page
     void * leftPage = malloc(PF_PAGE_SIZE);
     memcpy(leftPage, page,PF_PAGE_SIZE);
-    memset(leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
+    memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
 
     if(fileHandle.AppendPage(leftPage) != 0)
       return -2;
