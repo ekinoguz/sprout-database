@@ -484,14 +484,8 @@ RC CLI::dropTable()
 
   string tableName = string(tokenizer);
 
-  RC ret = rm->deleteTable(tableName);
-  if (ret != 0)
-    return error("error in deleting table in recordManager");
-
-  // delete tableName from CLI_TABLES
-  Attribute attr;
-
   // Set up the iterator
+  Attribute attr;
   RM_ScanIterator rmsi;
   RID rid;
   void *data_returned = malloc(PF_PAGE_SIZE);
@@ -502,13 +496,14 @@ RC CLI::dropTable()
   if( rm->scan(CLI_TABLES, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
   
+  // delete tableName from CLI_TABLES
   while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
     if(rm->deleteTuple(CLI_TABLES, rid) != 0)
       return -1;
   }
   rmsi.close();
 
-  // delete indexes if there are
+  // TODO: delete indexes if there are
   vector<Attribute> attributes;
   this->getAttributesFromCatalog(tableName, attributes);
   for (uint i = 0; i < attributes.size(); i++) {
@@ -517,13 +512,13 @@ RC CLI::dropTable()
         return -1;
   }
 
-  // Delete columns    
+  // Delete columns from CLI_COLUMNS  
   if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
 
   // We rely on the fact that RM_EOF is not 0. 
   // we want to return -1 when getNext tuple errors
-  ret = -10;
+  RC ret = -10;
   while((ret = rmsi.getNextTuple(rid, data_returned)) == 0){
     if(rm->deleteTuple(CLI_COLUMNS, rid) != 0)
       return -1;
@@ -532,6 +527,11 @@ RC CLI::dropTable()
     return -1;
 
   free(data_returned);
+
+  // and finally DeleteTable
+  ret = rm->deleteTable(tableName);
+  if (ret != 0)
+    return error("error in deleting table in recordManager");
 
   return 0;
 }
@@ -548,7 +548,7 @@ RC CLI::dropIndex(const string tableName, const string columnName, bool fromComm
   else {
     // parse willDelete from command line
     char * tokenizer = next();
-    string realColumn = string(tokenizer);
+    realColumn = string(tokenizer);
 
     tokenizer = next();
     if (!expect(tokenizer, "on")) {
@@ -556,10 +556,13 @@ RC CLI::dropIndex(const string tableName, const string columnName, bool fromComm
     }
 
     tokenizer = next();
-    string realTable = string(tokenizer);
+    realTable = string(tokenizer);
   }
   RC rc;
-  // possible TODO: check if index is there or not
+  // check if index is there or not
+  RID rid;
+  if (!this->checkAttribute(realTable, realColumn, rid, false))
+    return error("given tableName-attrName index does not exist in cli_indexes");
 
   // drop the index
   rc = ixManager->DestroyIndex(realTable, realColumn);
@@ -567,16 +570,9 @@ RC CLI::dropIndex(const string tableName, const string columnName, bool fromComm
     return error("error while destroying index in ixManager");
 
   // delete the index from cli_indexes table
-  RID rid;
-  if (!this->checkAttribute(realTable, realColumn, rid, false)) {
-    return error("given tableName-attrName index does not exist in cli_indexes");
-  }
-  // delete entry from CLI_COLUMNS
   rc = rm->deleteTuple(CLI_INDEXES, rid) != 0;
-  if (rc != 0)
-    return rc;
 
-  return 0;
+  return rc;
 }
 
 RC CLI::dropAttribute()
@@ -1003,7 +999,7 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
   vector<string> stringAttributes;
   stringAttributes.push_back("column_name");
   stringAttributes.push_back("table_name");
-    
+  
   // Find columns which is columnName
   if( rm->scan(searchTable, "column_name", EQ_OP, columnName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
