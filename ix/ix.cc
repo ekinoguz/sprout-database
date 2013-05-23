@@ -158,7 +158,6 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
   if(max_size == -1)
     return -3;
 
-  
   // Create the index file on disk
   string file_url = DATABASE_FOLDER"/" + tableName + "_" + attributeName+".idx"; 
   if(pfm->CreateFile(file_url) != 0)
@@ -179,7 +178,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
       return -2;
     }
   free(data);
-  
+
   if(pfm->CloseFile(fh) != 0)
     return -2;
 
@@ -226,7 +225,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
 
   if(buildIndex(tableName, attributeName, ixh)!=0)
     return -3;
-  
+
   CloseIndex(ixh);
 
   return 0;
@@ -326,11 +325,14 @@ RC IX_Manager::OpenIndex(const string tableName,
   if(!found)
     return -3;
 
+  indexHandle.is_open = true;
+
   return 0;
 }
 
 RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle)
 {
+  indexHandle.is_open = false;
   if (pfm->CloseFile(indexHandle.fileHandle) != 0)
     {
       return -2;
@@ -341,13 +343,14 @@ RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle)
 
 IX_IndexHandle::IX_IndexHandle()
 {
+  is_open = false;
 }
 
 IX_IndexHandle::~IX_IndexHandle()
 {
 }
 
-RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
+RC IX_IndexHandle::InsertEntry(const void *key, const RID &rid){
   // Key is in "their" format
   // Return 1 if (key,rid) already exists or cope with duplicate keys
   // This is gonna be a pain in the ass implementation
@@ -355,6 +358,9 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
   // Split all pages while searching
   // Split the leaf page if needed
   // We have to have a way to locate the root page on our file, I don't think we can have page 0 to be the root all the time, because when we create a new root, we have to put it on page 0, shift all pages and reorganize the whole index pointers
+
+  if(!is_open)
+    return -5;
 
   uint16_t pageNum;
   // true makes sure that as we search we split
@@ -417,10 +423,10 @@ RC IX_IndexHandle::InsertEntry(void *key, const RID &rid){
 	      
   // Write the page back to disk
   if (fileHandle.WritePage(pageNum, page) != 0)
-    {
-      free(page);
-      return -2;
-    }
+   {
+     free(page);
+     return -2;
+   }
     
   
   free(page);
@@ -815,6 +821,9 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 }
 
 RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
+  if(!is_open)
+    return -5;
+  
   // Return 2 if (key,rid) does not exist
   uint16_t pageNum;
   if(FindEntryPage(key, pageNum))
@@ -900,6 +909,9 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
 			  bool lowKeyInclusive,
 			  bool highKeyInclusive)
 {
+  if(!indexHandle.is_open)
+    return -5;
+  
   this->highKey = highKey;
   this->highKeyInclusive = highKeyInclusive;
   this->indexHandle = const_cast<IX_IndexHandle*>(&indexHandle);
@@ -951,6 +963,9 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
 //  Depending on how we implement delete this could be an issue, because the offset will change after a delete. However, it may still work since we don't reread the page after each operation. This will work if we employ "merge right" on deletes
 RC IX_IndexScan::GetNextEntry(RID &rid)
 {
+  if(!indexHandle->is_open)
+    return -5;
+  
   if(!more){
     return -1;
   }
@@ -1058,14 +1073,17 @@ RC IX_Manager::buildIndex(string tableName, string attributeName, IX_IndexHandle
     }
 
   RID rid;
-  void* data = malloc(indexHandle.max_key_size+2);
+  void* data = malloc(PF_PAGE_SIZE);
+  int i = 0;
   while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF)
     {
+      i += 1;
       if (indexHandle.InsertEntry(data, rid) != 0)
-	{
-	  free(data);
-	  return -3;
-	}
+      	{
+      	  cout << "fail " << endl;
+      	  free(data);
+      	  return -3;
+      	}
     }
 
   free(data);

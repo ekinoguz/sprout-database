@@ -93,20 +93,22 @@ void prepareTuple(const int index, void *buffer, int *tuple_size, bool no_duplic
 }
 
 
-void createTuples(vector<void *> &tuples, int number, bool uniq = false){
+void createTuples(vector<void *> &tuples, int number, bool uniq = false, int dups = 1){
   for(int i=0; i < number; i++){
     // Test insert Tuple
     void * tuple = malloc(1000);
-    int size = 0;
-    memset(tuple, 0, 1000);
-    prepareTuple(i, tuple, &size, uniq);
+    for(int j=0; j < dups; j++){
+      int size = 0;
+      memset(tuple, 0, 1000);
+      prepareTuple(i, tuple, &size, uniq);
   
-    tuples.push_back(tuple);
+      tuples.push_back(tuple);
+    }
   }
 }
 
-void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, int number, bool uniq = false){
-  createTuples(tuples,number, uniq);
+void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, int number, bool uniq = false, int dups = 1){
+  createTuples(tuples,number, uniq, dups);
   
   RID rid;
   for(uint i=0; i < tuples.size(); i++){
@@ -114,6 +116,23 @@ void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, i
 
     rids.push_back(rid);
   }
+}
+
+vector<void *> getKeys(vector<void *> &tuples, int offset, bool is_variable){
+  vector<void *> keys;
+  void  * key;
+  for(uint i=0; i < tuples.size(); i++){
+    if(is_variable){
+      int key_size = 0;
+      memcpy(&key_size, (char *)tuples[i]+offset, 4);
+      key = malloc(key_size+4);
+      memcpy(key, (char *)tuples[i]+offset, key_size+4);
+      keys.push_back(key);
+    }else{
+      cout << "Not supported" << endl;
+    }
+  }
+  return keys;
 }
 
 void freeTuples(vector<void *> &tuples){
@@ -1632,7 +1651,7 @@ void testCase_O2()
   IX_IndexScan ixs;
   RID rid;
   void * key;
-  for(uint i=0; i < rids.size(); i+= 15){
+  for(uint i=0; i < rids.size(); i+= 1){
     key = tuples[i];
     rc = ixs.OpenScan(ixHandle, key, key, true, true);
     assert(rc == success);
@@ -1790,6 +1809,111 @@ void testCase_O4()
   return;
 }
 
+void testCase_O5(){
+  cout << endl << "****In Test Case O5****" << endl;
+  string tablename = "emptestO5";
+  string attrname = "EmpName";
+  createTable(RM::Instance(), tablename);
+
+  // Insert Data
+  vector<RID> rids;
+  vector<void *>tuples;
+  insertTuples(tablename, rids,tuples,1000, true, 4);
+  
+  vector<void *> keys = getKeys(tuples, 0, true);
+
+  RC rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+    
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc == success);
+
+  IX_IndexScan ixs;
+  RID rid;
+  void * key;
+  vector<RID> possible;
+  for(uint i=0; i < rids.size(); i+= 4){
+    
+    key = keys[i];
+    rc = ixs.OpenScan(ixHandle, key, key, true, true);
+    assert(rc == success);
+    
+    possible.clear();
+    for(uint j=0; j< 4; j++){
+      possible.push_back(rids[i+j]);
+    }
+    
+    for(uint j=0; j < 4; j++){
+      rc = ixs.GetNextEntry(rid);
+      assert(rc == success);
+
+      for(uint k=0; k < possible.size(); k++){
+	if(possible[k].slotNum == rid.slotNum &&
+	   possible[k].pageNum == rid.pageNum) 
+	  {
+	    possible.erase( possible.begin()+k );
+	    break;
+	  }
+      }
+    }
+    // Make sure we saw all versions and no more
+    assert(ixs.GetNextEntry(rid) != 0 );
+    assert(possible.size() == 0); 
+
+    ixs.CloseScan();
+  }
+
+  // Test deleting just the first one
+  for(uint i=0; i < rids.size(); i+= 4){
+    key = keys[i];
+    rc = ixs.OpenScan(ixHandle, key, key, true, true);
+    assert(rc == success);
+
+    rid = rids[i];
+    rc = ixHandle.DeleteEntry(key, rid);
+    assert(rc == success);
+
+    ixs.CloseScan();
+  }
+
+  // Make sure only the first was deleted
+    for(uint i=0; i < rids.size(); i+= 4){
+    
+    key = keys[i];
+    rc = ixs.OpenScan(ixHandle, key, key, true, true);
+    assert(rc == success);
+    
+    possible.clear();
+    for(uint j=1; j< 4; j++){
+      possible.push_back(rids[i+j]);
+    }
+    
+    for(uint j=0; j < 3; j++){
+      rc = ixs.GetNextEntry(rid);
+      assert(rc == success);
+
+      for(uint k=0; k < possible.size(); k++){
+	if(possible[k].slotNum == rid.slotNum &&
+	   possible[k].pageNum == rid.pageNum) 
+	  {
+	    possible.erase( possible.begin()+k );
+	    break;
+	  }
+      }
+    }
+    // Make sure we saw all versions and no more
+    assert(ixs.GetNextEntry(rid) != 0 );
+    assert(possible.size() == 0); 
+
+    ixs.CloseScan();
+  }
+
+  freeTuples(keys);
+  freeTuples(tuples);
+
+  cout << "O5 Passed" << endl;
+}
 // TODO: test insert varchar variables
 
 void ourTests()
@@ -1797,7 +1921,8 @@ void ourTests()
   testCase_O1();
   testCase_O3();
   testCase_O2();
-  testCase_O4(); // Uncomment when we implement delete
+  testCase_O4(); 
+  testCase_O5(); // Basic duplicate checking
 }
 int main()
 {
@@ -1809,13 +1934,13 @@ int main()
   createTable(rm, "tbl_employee");
     
   testCase_1("tbl_employee", "Age");
-  testCase_2("tbl_employee", "Age"); // Uncomment when we implement delete
+  testCase_2("tbl_employee", "Age"); 
   testCase_3("tbl_employee", "Age");
   testCase_4("tbl_employee", "Age");
   testCase_5("tbl_employee", "Age");
   testCase_6("tbl_employee", "Height");  
-  testCase_7("tbl_employee", "Height"); // Uncomment when delete works
-  testCase_8("tbl_employee", "Height"); // Uncommnet when delete works
+  testCase_7("tbl_employee", "Height"); 
+  testCase_8("tbl_employee", "Height");
   ourTests();
 
   

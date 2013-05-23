@@ -136,9 +136,9 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
       fileHandle.cache = cache;
 
       // Add the file info to the cache, this helps tracking the number of pages of the file
-      #ifndef FUCK_CACHE
+#ifndef FUCK_CACHE
       cache->AddFileInfo(&fileHandle);
-      #endif
+#endif
       return 0;
     }
 }
@@ -166,8 +166,7 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
     }
   else
     {
-      // cout << "fileHandle does not have open file instance to close" << endl;
-      return -1;
+       return -1;
     }
 }
 
