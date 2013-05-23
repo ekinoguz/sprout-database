@@ -12,7 +12,7 @@ CLI *cli;
 
 int main()
 {
-  //system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
+  system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
   
   cli = CLI::Instance();
   cli->start();
