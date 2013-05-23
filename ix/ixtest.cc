@@ -291,6 +291,7 @@ void testCase_2(const string tablename, const string attrname)
       cout << "Failed Closing Index..." << endl;
     }
     
+  free(payload);
   return;
 }
 
@@ -327,9 +328,9 @@ void testCase_3(const string tablename, const string attrname)
       cout << "Index opened again...failure" << endl;
     }  
     
-  IX_IndexScan *ixScan = new IX_IndexScan();
+  IX_IndexScan ixScan;
   // Test Open Scan
-  rc = ixScan->OpenScan(ixHandle, NULL, NULL, false, false);
+  rc = ixScan.OpenScan(ixHandle, NULL, NULL, false, false);
   if(rc == success) 
     {
 #ifdef ASSERT_ALL
@@ -413,8 +414,8 @@ void testCase_4(const string tablename, const string attrname)
 
     
   // Scan
-  IX_IndexScan *ixScan = new IX_IndexScan();
-  rc = ixScan->OpenScan(ixHandle, NULL, NULL, false, false);
+  IX_IndexScan ixScan;
+  rc = ixScan.OpenScan(ixHandle, NULL, NULL, false, false);
   if(rc == success)
     {
       
@@ -429,8 +430,8 @@ void testCase_4(const string tablename, const string attrname)
       cout << "Failed Opening Scan!" << endl;
     }  
     
-  int key = 1;
-  while(ixScan->GetNextEntry(rid) == success) 
+  uint key = 1;
+  while(ixScan.GetNextEntry(rid) == success) 
     {
       if(rid.pageNum != key)
 	cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
@@ -442,7 +443,7 @@ void testCase_4(const string tablename, const string attrname)
     }
     
   // Close Scan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -577,10 +578,10 @@ void testCase_5(const string tablename, const string attrname)
     }
     
   // Test Open Scan
-  IX_IndexScan *ixScan = new IX_IndexScan();
+  IX_IndexScan ixScan;
   int value = 501;
 
-  rc= ixScan->OpenScan(ixHandle, &value, NULL, true, false);
+  rc= ixScan.OpenScan(ixHandle, &value, NULL, true, false);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -595,8 +596,8 @@ void testCase_5(const string tablename, const string attrname)
     }  
     
   // Test IndexScan iterator
-  int start = value;
-  while(ixScan->GetNextEntry(rid) == success) 
+  uint start = value;
+  while(ixScan.GetNextEntry(rid) == success) 
     {
       
       assert(start == rid.pageNum);
@@ -615,7 +616,7 @@ void testCase_5(const string tablename, const string attrname)
     }
     
   // Test Closing Scan
-  rc= ixScan->CloseScan();
+  rc= ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -746,10 +747,10 @@ void testCase_6(const string tablename, const string attrname)
     }
 
   // Test Scan    
-  IX_IndexScan *ixScan = new IX_IndexScan();
+  IX_IndexScan ixScan;
   float compVal = 6500;
 
-  rc = ixScan->OpenScan(ixHandle, NULL, &compVal, false, false);
+  rc = ixScan.OpenScan(ixHandle, NULL, &compVal, false, false);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -764,8 +765,8 @@ void testCase_6(const string tablename, const string attrname)
     }  
 
   // Test IndexScan Iterator
-  int i = 1;
-  while(ixScan->GetNextEntry(rid) == success) 
+  uint i = 1;
+  while(ixScan.GetNextEntry(rid) == success) 
     {
       if (i <= 2000) {
 	assert(rid.pageNum == i);
@@ -791,7 +792,7 @@ void testCase_6(const string tablename, const string attrname)
     }
 
   // Test CloseScan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -905,10 +906,10 @@ void testCase_7(const string tablename, const string attrname)
     }
 
   // Test Scan
-  IX_IndexScan *ixScan = new IX_IndexScan();
+  IX_IndexScan ixScan;
   float compVal = 100.0;
 
-  rc = ixScan->OpenScan(ixHandle, NULL, &compVal, false, true);
+  rc = ixScan.OpenScan(ixHandle, NULL, &compVal, false, true);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -923,8 +924,8 @@ void testCase_7(const string tablename, const string attrname)
     }
 
   // Test DeleteEntry in IndexScan Iterator
-  int i = 0;
-  while(ixScan->GetNextEntry(rid) == success) 
+  uint i = 0;
+  while(ixScan.GetNextEntry(rid) == success) 
     {
       i++;
       assert(rid.pageNum == i);
@@ -948,7 +949,7 @@ void testCase_7(const string tablename, const string attrname)
   
 
   // Test CloseScan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -963,7 +964,7 @@ void testCase_7(const string tablename, const string attrname)
     }
 
   // Open Scan again
-  rc = ixScan->OpenScan(ixHandle, NULL, &compVal, false, true);
+  rc = ixScan.OpenScan(ixHandle, NULL, &compVal, false, true);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -978,7 +979,7 @@ void testCase_7(const string tablename, const string attrname)
     }
 
   // Test IndexScan Iterator
-  while(ixScan->GetNextEntry(rid) == success) 
+  while(ixScan.GetNextEntry(rid) == success) 
     {
       if(rid.pageNum < 100)
         {
@@ -991,7 +992,7 @@ void testCase_7(const string tablename, const string attrname)
     }
 
   // Test CloseScan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -1107,10 +1108,10 @@ void testCase_8(const string tablename, const string attrname)
     }
 
   // Test Scan
-  IX_IndexScan *ixScan = new IX_IndexScan();
+  IX_IndexScan ixScan;
   float compVal = 200.0;
 
-  rc = ixScan->OpenScan(ixHandle, NULL, &compVal, false, true);
+  rc = ixScan.OpenScan(ixHandle, NULL, &compVal, false, true);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -1125,8 +1126,8 @@ void testCase_8(const string tablename, const string attrname)
     }
 
   // Test DeleteEntry in IndexScan Iterator
-  int i = 0;
-  while(ixScan->GetNextEntry(rid) == success) 
+  uint i = 0;
+  while(ixScan.GetNextEntry(rid) == success) 
     {
       i++;
       assert(rid.pageNum == i);
@@ -1148,7 +1149,7 @@ void testCase_8(const string tablename, const string attrname)
   assert(i == 200);
 
   // Test CloseScan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -1183,7 +1184,7 @@ void testCase_8(const string tablename, const string attrname)
 
   // Test Scan
   compVal = 450.0;
-  rc = ixScan->OpenScan(ixHandle, &compVal, NULL, false, false);
+  rc = ixScan.OpenScan(ixHandle, &compVal, NULL, false, false);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -1197,7 +1198,7 @@ void testCase_8(const string tablename, const string attrname)
     }
 
   i = 450;
-  while(ixScan->GetNextEntry(rid) == success)
+  while(ixScan.GetNextEntry(rid) == success)
     {
       i++;
       assert(rid.pageNum == i);
@@ -1217,7 +1218,7 @@ void testCase_8(const string tablename, const string attrname)
   assert(i == 500);
 
   // Test CloseScan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -1348,10 +1349,10 @@ void testCase_extra_1(const string tablename, const string attrname)
     }
     
   // Test Scan
-  IX_IndexScan *ixScan = new IX_IndexScan();
+  IX_IndexScan ixScan;
   int compVal = 1234;
 
-  rc = ixScan->OpenScan(ixHandle, &compVal, &compVal, true, true);
+  rc = ixScan.OpenScan(ixHandle, &compVal, &compVal, true, true);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -1367,7 +1368,7 @@ void testCase_extra_1(const string tablename, const string attrname)
 
   // Test IndexScan Iterator
   int count = 0;
-  while(ixScan->GetNextEntry(rid) == success) 
+  while(ixScan.GetNextEntry(rid) == success) 
     {
       if(count % 1000 == 0)
 	cout << rid.pageNum << " " << rid.slotNum << endl;
@@ -1376,7 +1377,7 @@ void testCase_extra_1(const string tablename, const string attrname)
   cout << count << endl;
 
   // Test CloseScan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;
@@ -1491,7 +1492,7 @@ void testCase_extra_2(const string tablename, const string attrname)
     }
 
   // Test Scan
-  IX_IndexScan *ixScan = new IX_IndexScan();
+  IX_IndexScan ixScan;
   unsigned offset = 20;
   void *key = malloc(100);
   *(int *)key = offset;
@@ -1500,7 +1501,7 @@ void testCase_extra_2(const string tablename, const string attrname)
       *((char *)key+4+j) = 96+offset;
     }
 
-  rc = ixScan->OpenScan(ixHandle, key, key, true, true);
+  rc = ixScan.OpenScan(ixHandle, key, key, true, true);
   if(rc == success)
     {
       cout << "Scan Opened Successfully!" << endl;
@@ -1515,7 +1516,7 @@ void testCase_extra_2(const string tablename, const string attrname)
 
   // Test IndexScan Iterator
   //  int i = 2000;
-  while(ixScan->GetNextEntry(rid) == success)
+  while(ixScan.GetNextEntry(rid) == success)
     {
       // TODO: THis is a scan of one key why does it return so many thigns?
       //      assert(rid.pageNum == i);
@@ -1526,7 +1527,7 @@ void testCase_extra_2(const string tablename, const string attrname)
   //cout << endl;
 
   // Test CloseScan
-  rc = ixScan->CloseScan();
+  rc = ixScan.CloseScan();
   if(rc == success)
     {
       cout << "Scan Closed Successfully!" << endl;

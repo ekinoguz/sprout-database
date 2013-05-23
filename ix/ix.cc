@@ -184,7 +184,7 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
     return -2;
 
   // Add index to INDEX_TABLE
-  char * buffer = (char*)(malloc(tableName.size() + attributeName.size()+8+4+1));
+  char * buffer = (char*)(malloc(tableName.size() + attributeName.size()+8+4+1+4));
   int offset = 0;
   int size = tableName.size();
   memcpy(buffer+offset, &size, 4);
@@ -260,6 +260,7 @@ RC IX_Manager::DestroyIndex(const string tableName, const string attributeName)
       memset(attributeName_intable, 0, attributeName_size + 1);
       memcpy(attributeName_intable, data + 4 + tableName_size + 4, attributeName_size);
       string strAttr (attributeName_intable);
+      free(attributeName_intable);
       if (strAttr == attributeName)
 	{
 	  found = true;
@@ -267,15 +268,12 @@ RC IX_Manager::DestroyIndex(const string tableName, const string attributeName)
 	}
     }
 
+  free(data);
   if (found == false)
-    {
-      return -3;
-    }
+    return -3;
 
   if (rm->deleteTuple(INDEX_TABLE, rid) != 0)
-    {
-      return -1;
-    }
+    return -1;
 
   return 0;
 }
@@ -706,7 +704,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Copy the old root to the left page
     void * leftPage = malloc(PF_PAGE_SIZE);
     memcpy(leftPage, page,PF_PAGE_SIZE);
-    memset(leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
+    memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
 
     if(fileHandle.AppendPage(leftPage) != 0)
       return -2;
@@ -812,6 +810,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     return_page = new_page_num;
 
   free(page);
+  free(newPage);
   return return_page;  
 }
 
