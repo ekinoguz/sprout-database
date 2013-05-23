@@ -885,7 +885,6 @@ RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, con
 // Add given index to CLI_INDEXES
 RC CLI::addIndexToCatalog(const string tableName, const string columnName)
 {
-  cout << tableName << ":" << columnName << endl;
   // Collect information from the catalog for the columnName
   vector<Attribute> columns;
   if (this->getAttributesFromCatalog(tableName, columns) != 0)
