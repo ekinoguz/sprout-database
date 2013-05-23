@@ -18,6 +18,16 @@ IX_Manager *ixManager;
 const int success = 0;
 
 
+// Only works for var char
+void printKey(void * key){
+  int key_size = *(int *)key;
+  char * tmp = (char *) malloc(key_size);
+  memcpy(tmp, (char *)key+4, key_size);
+  cout << "Key: " << tmp << endl;
+
+  free(tmp);
+}
+
 void createTable(RM *rm, const string tablename)
 {
   // Functions tested
@@ -96,8 +106,8 @@ void prepareTuple(const int index, void *buffer, int *tuple_size, bool no_duplic
 void createTuples(vector<void *> &tuples, int number, bool uniq = false, int dups = 1){
   for(int i=0; i < number; i++){
     // Test insert Tuple
-    void * tuple = malloc(1000);
     for(int j=0; j < dups; j++){
+      void * tuple = malloc(1000);
       int size = 0;
       memset(tuple, 0, 1000);
       prepareTuple(i, tuple, &size, uniq);
@@ -118,7 +128,7 @@ void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, i
   }
 }
 
-vector<void *> getKeys(vector<void *> &tuples, int offset, bool is_variable){
+vector<void *> getKeys(const vector<void *> &tuples, int offset, bool is_variable){
   vector<void *> keys;
   void  * key;
   for(uint i=0; i < tuples.size(); i++){
@@ -136,8 +146,9 @@ vector<void *> getKeys(vector<void *> &tuples, int offset, bool is_variable){
 }
 
 void freeTuples(vector<void *> &tuples){
-  for(uint i=0; i < tuples.size(); i++)
+  for(uint i=0; i < tuples.size(); i++){
     free(tuples[i]);
+  }
   tuples.clear();
 }
 
@@ -905,7 +916,7 @@ void testCase_7(const string tablename, const string attrname)
     }  
     
   // Test InsertEntry
-  //  unsigned numOfTuples = 175000;
+  // unsigned numOfTuples = 175000;
   unsigned numOfTuples = 10000;
   for(unsigned i = 1; i <= numOfTuples; i++) 
     {
@@ -1818,7 +1829,7 @@ void testCase_O5(){
   // Insert Data
   vector<RID> rids;
   vector<void *>tuples;
-  insertTuples(tablename, rids,tuples,1000, true, 4);
+  insertTuples(tablename, rids,tuples,500, true, 4);
   
   vector<void *> keys = getKeys(tuples, 0, true);
 
@@ -1845,9 +1856,12 @@ void testCase_O5(){
     }
     
     for(uint j=0; j < 4; j++){
+      //      cout << i << ":" << j << endl;
+      //      printKey(keys[i+j]);
+      
       rc = ixs.GetNextEntry(rid);
       assert(rc == success);
-
+      
       for(uint k=0; k < possible.size(); k++){
 	if(possible[k].slotNum == rid.slotNum &&
 	   possible[k].pageNum == rid.pageNum) 
@@ -1860,25 +1874,25 @@ void testCase_O5(){
     // Make sure we saw all versions and no more
     assert(ixs.GetNextEntry(rid) != 0 );
     assert(possible.size() == 0); 
-
+    
     ixs.CloseScan();
   }
-
+  
   // Test deleting just the first one
   for(uint i=0; i < rids.size(); i+= 4){
     key = keys[i];
     rc = ixs.OpenScan(ixHandle, key, key, true, true);
     assert(rc == success);
-
+    
     rid = rids[i];
     rc = ixHandle.DeleteEntry(key, rid);
     assert(rc == success);
-
+    
     ixs.CloseScan();
   }
-
+  
   // Make sure only the first was deleted
-    for(uint i=0; i < rids.size(); i+= 4){
+  for(uint i=0; i < rids.size(); i+= 4){
     
     key = keys[i];
     rc = ixs.OpenScan(ixHandle, key, key, true, true);
@@ -1892,7 +1906,7 @@ void testCase_O5(){
     for(uint j=0; j < 3; j++){
       rc = ixs.GetNextEntry(rid);
       assert(rc == success);
-
+      
       for(uint k=0; k < possible.size(); k++){
 	if(possible[k].slotNum == rid.slotNum &&
 	   possible[k].pageNum == rid.pageNum) 
@@ -1905,7 +1919,7 @@ void testCase_O5(){
     // Make sure we saw all versions and no more
     assert(ixs.GetNextEntry(rid) != 0 );
     assert(possible.size() == 0); 
-
+    
     ixs.CloseScan();
   }
 
