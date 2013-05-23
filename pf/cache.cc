@@ -41,6 +41,8 @@ Cache::~Cache()
 {
   EvictAllPagesToFiles();
 
+  DeleteAllFileInfo();
+  
   freed = true;
 
   free(buffer);
@@ -327,6 +329,11 @@ void Cache::AddFileInfo(PF_FileHandle* fileHandle)
     {
       element->second->numberOfUsers++;
     }
+}
+
+void Cache::DeleteAllFileInfo(){
+  for ( auto it = filesInfo.begin(); it != filesInfo.end(); ++it )
+    free(it->second);
 }
 
 void Cache::DeleteFileInfo(PF_FileHandle* fileHandle)
