@@ -840,34 +840,38 @@ RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
   uint16_t free_pointer = 0;
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
-  if(offset >= free_pointer){
-    // Not found
-    free(page);
-    return error("Key not found", 2);
-  }
+  int key_size;
+  bool found = false;
+  do  {
 
-  int key_size = getKeySize((char *)page+offset);
+    if(offset >= free_pointer){
+      // Not found anywhere
+      free(page);
+      return error("Entry not found on page", 2);
+    }
+
+    key_size = getKeySize((char *)page+offset);
   
-  // If we want to implement duplicates we will need to continue searching here
-  if( keycmp(key, (char *)page + offset) != 0 ){
-    free(page);
-    return error("Key not on page", 2);
-  }
+    // If we want to implement duplicates we will need to continue searching here
+    int cmp = keycmp(key, (char *)page + offset);
+    if( cmp != 0 ){
+      free(page);
+      return error("Key not on page", 2);
+    }
 
-
-  offset += key_size;
+    offset += key_size;
    
-  uint16_t key_pageNum = 0;
-  uint16_t key_slotNum = 0;
-  memcpy(&key_pageNum, (char *)page + offset, 2);
-  offset += sizeof(key_pageNum);
-  memcpy(&key_slotNum, (char *)page + offset, 2);
-  offset += sizeof(key_slotNum);
+    uint16_t key_pageNum = 0;
+    uint16_t key_slotNum = 0;
+    memcpy(&key_pageNum, (char *)page + offset, 2);
+    offset += sizeof(key_pageNum);
+    memcpy(&key_slotNum, (char *)page + offset, 2);
+    offset += sizeof(key_slotNum);
 
-  if(rid.pageNum != key_pageNum || rid.slotNum != key_slotNum){
-    free(page);
-    return 2;
-  }
+    if(rid.pageNum == key_pageNum && rid.slotNum == key_slotNum){
+      found = true;
+    }
+  } while(!found);
 
   // Actually delete the key by shifting records and the free pointer
   int subsequent_keys_size = free_pointer - offset;
