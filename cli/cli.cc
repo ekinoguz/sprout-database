@@ -778,7 +778,7 @@ RC CLI::help(const string input)
   else if (input.compare("drop") == 0) {
     cout << "\tdrop table <tableName>: drops given table" << endl;
     cout << "\tdrop index \"indexName\": drops given index" << endl;
-    cout << "\tdrop attribute \"tableName\" from \"tableName\": drops attributeName from tableName" << endl;
+    cout << "\tdrop attribute \"attributeName\" from \"tableName\": drops attributeName from tableName" << endl;
   }
   else if (input.compare("load") == 0) {
     cout << "\tload <tableName> \"fileName\"";
