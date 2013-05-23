@@ -485,15 +485,31 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 
   while (type == IX_NODE)
     {
-      prevPageNum = pageNum;
       // Parse IX node and set pageNum
       // free_pointer must not be zero
       uint16_t free_pointer = 0;
       memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
+      if(doSplit){
+	if(free_pointer + max_key_size + 4 > PF_PAGE_SIZE - 3 - 2){
+	  pageNum = split(pageNum, prevPageNum, key);
+	  if(pageNum < 0)
+	    return -3;	  
+	} 
+
+	if (fileHandle.ReadPage(pageNum, page) != 0)
+	  {
+	    free(page);
+	    return error(__LINE__, -2);
+	  }
+      }
+
+      prevPageNum = pageNum;
+
       uint16_t offset = 2;    // Start pointing to the first key on the page, first 2 bytes are pageNum
       while (offset < free_pointer)
 	{  
+
 	  if(key == NULL) { // Just move to the page to the left, since we want the left most leaf
 	    memcpy(&pageNum, (char *)page, 2);
 	    break;
@@ -533,14 +549,6 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 	}
       // Read node type
       memcpy(&type, (char *)page + PF_PAGE_SIZE - 3, 1);
-
-      if(doSplit){
-	if(free_pointer + max_key_size + 4 > PF_PAGE_SIZE - 3 - 2){
-	  pageNum = split(pageNum, prevPageNum, key);
-	  if(pageNum < 0)
-	    return -3;
-	} 
-      }
     }
 
   // Check the final leaf and split if necessary
@@ -631,6 +639,8 @@ RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){
 
   // Update the free pointer
   free_pointer += key_size + 2;
+  if(free_pointer >= PF_PAGE_SIZE - 5)
+    error("THe impossible happened!",-3);
   memcpy((char *)page + PF_PAGE_SIZE - 2, &free_pointer, 2);
    
   RC rc = fileHandle.WritePage(toPage, page);
