@@ -1829,7 +1829,8 @@ void testCase_O5(){
   // Insert Data
   vector<RID> rids;
   vector<void *>tuples;
-  insertTuples(tablename, rids,tuples,500, true, 4);
+  // Here 50000 causes a fail
+  insertTuples(tablename, rids,tuples,1000, true, 4);
   
   vector<void *> keys = getKeys(tuples, 0, true);
 
