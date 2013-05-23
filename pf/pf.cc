@@ -148,7 +148,7 @@ RC PF_Manager::OpenFile(const char *fileName, PF_FileHandle &fileHandle)
 // file's pages are flushed to disk when the file is closed.
 RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 {
-  if (fileHandle.filestr.is_open())
+  if (fileHandle.filestr!=NULL && fileHandle.filestr.is_open())
     {
       // Write all dirty pages to disk
       #ifndef FUCK_CACHE
@@ -195,6 +195,7 @@ PF_FileHandle::PF_FileHandle()
 
 PF_FileHandle::~PF_FileHandle()
 {
+  PF_Manager::Instance()->CloseFile(*this);
 }
 
 RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)

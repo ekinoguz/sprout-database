@@ -134,8 +134,6 @@ RM::~RM()
 {
   // Close the file handles
   for (unordered_map<string,PF_FileHandle *>::iterator it = fileHandles.begin(); it != fileHandles.end(); ++it) {
-    pfm->CloseFile(*it->second);
-    
     delete (it->second);
   }
 }
@@ -1594,11 +1592,6 @@ RC RM::closeFileHandle(const string tableName)
 
   if ( got != fileHandles.end() )
     {
-      if (pfm->CloseFile(*(fileHandles[tableName])) != 0)
-	{
-	  return -1;
-	}
-      
       delete fileHandles[tableName];
       fileHandles.erase(tableName);
     }
