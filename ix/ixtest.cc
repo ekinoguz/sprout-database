@@ -1494,7 +1494,7 @@ void testCase_extra_2(const string tablename, const string attrname)
 #endif
       cout << "Failed Opening Index..." << endl;
     }  
-    
+  vector<RID> rids;
   // Test InsertEntry
   unsigned numOfTuples = 500;
   for(unsigned i = 1; i <= numOfTuples; i++) 
@@ -1508,9 +1508,14 @@ void testCase_extra_2(const string tablename, const string attrname)
     *((char *)key+4+j) = 96+count;
         }
 
+
       rid.pageNum = i;
       rid.slotNum = i;
         
+        if (count == 20) {
+          rids.push_back(rid); 
+        }
+
       rc = ixHandle.InsertEntry(key, rid);
       if(rc != success)
         {
@@ -1529,6 +1534,7 @@ void testCase_extra_2(const string tablename, const string attrname)
   for(unsigned j = 0; j < offset; j++)
     {
       *((char *)key+4+j) = 96+offset;
+      cout << *((char *)key+4+j) << endl;
     }
 
   rc = ixScan.OpenScan(ixHandle, key, key, true, true);
@@ -1545,14 +1551,19 @@ void testCase_extra_2(const string tablename, const string attrname)
     }
 
   // Test IndexScan Iterator
-  //  int i = 2000;
+  int i = rids.size()-1;
+  //int i = 0;
   while(ixScan.GetNextEntry(rid) == success)
     {
       // TODO: THis is a scan of one key why does it return so many thigns?
       //      assert(rid.pageNum == i);
       //      assert(rid.slotNum == i);
       //      i++;
-      cout << rid.pageNum << " " << rid.slotNum << endl;
+      cout << rid.pageNum << ":" << rids[i].pageNum << "---" << rid.slotNum << endl;
+      assert(rid.pageNum == rids[i].pageNum);
+      assert(rid.slotNum == rids[i].pageNum);
+      i--;
+      
     }
   //cout << endl;
 
@@ -2073,7 +2084,7 @@ int main()
   // Duplicat Entries
   /// testCase_extra_1("tbl_employee", "Age");
   // TypeVarChar
-  // testCase_extra_2("tbl_employee", "EmpName");
+  testCase_extra_2("tbl_employee", "EmpName");
     
   return 0;
 }
