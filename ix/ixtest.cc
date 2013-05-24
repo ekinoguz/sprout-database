@@ -1788,11 +1788,14 @@ void testCase_O4()
 
   // Test Delete Entry which is not there
   age = -1;
+  cout << "**** Supposed to fail *****" << endl;
   rc = ixHandle.DeleteEntry(&age, rid);
   assert (rc != success);
 
   rc = ixHandle.DeleteEntry(&(ages[0]), rids[1]);
   assert (rc != success);
+  cout << "*****-----------------*****" << endl;
+
 
 
   for(uint i = 0; i < numOfTuples; i++) 
