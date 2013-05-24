@@ -1931,6 +1931,81 @@ void testCase_O5(){
 }
 // TODO: test insert varchar variables
 
+void testCase_O6()
+{
+  cout << endl << "****In Test Case O6****" << endl;
+
+  string tablename = "testing_scan";
+  string attrname = "Age";
+  createTable(RM::Instance(), tablename);
+  RC rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+    
+  // Test OpenIndex
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc == success);
+
+  RID rid;
+  for (uint key = 5000; key <= 10000; key++)
+    {
+      rid.pageNum = key;
+      rid.slotNum = key + 1;
+      rc = ixHandle.InsertEntry(&key, rid);
+      assert(rc == success);
+    }
+
+  for (uint key = 20000; key <= 30000; key++)
+    {
+      rid.pageNum = key;
+      rid.slotNum = key + 1;
+      rc = ixHandle.InsertEntry(&key, rid);
+      assert(rc == success);
+    }
+  cout << "Keys Inserted Successfully!" << endl;
+
+  // Scan
+  IX_IndexScan ixScan;
+  uint lowKey = 15000;
+  uint highKey = 25000;
+  rc = ixScan.OpenScan(ixHandle, &lowKey, &highKey, true, true);
+  assert(rc == success);
+  cout << "Scan Opened Successfully!" << endl;
+  
+  uint key = 20000;
+  uint count = 0;
+  while(ixScan.GetNextEntry(rid) == success) 
+    {
+      if(rid.pageNum != key)
+	cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
+
+      assert(rid.pageNum == key);
+      assert(rid.slotNum == key + 1);
+      key ++;
+      count++;
+    }
+  assert(count == 5001);
+  cout << "Scan Completed Successfully!" << endl;
+
+  rc = ixScan.CloseScan();
+  assert(rc == success);
+  cout << "Scan Closed Successfully!" << endl;
+      
+  // Close Index
+  rc = ixManager->CloseIndex(ixHandle);
+  assert(rc == success);
+  cout << "Index Closed Successfully!" << endl;
+  
+  // Destroy Index
+  rc = ixManager->DestroyIndex(tablename, attrname);
+  assert(rc == success);
+  cout << "Index Destroyed Successfully!" << endl;
+
+  cout << "O6 Passed" << endl;
+  return;
+}
+
+
 void ourTests()
 {
   testCase_O1();
@@ -1938,6 +2013,7 @@ void ourTests()
   testCase_O2();
   testCase_O4(); 
   testCase_O5(); // Basic duplicate checking
+  testCase_O6();
 }
 int main()
 {
