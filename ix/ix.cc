@@ -585,8 +585,14 @@ int IX_IndexHandle::getKeySize(const void *key, int * shift_offset) const{
   return key_size;
 }
 
+
+// TODO: REMOVE
+// Only works for var char
+void printKey(void * key);
+// ************
+
 // toPage must be an internal page
-RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){
+RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){    
   void * page = malloc(PF_PAGE_SIZE);
   
   if(fileHandle.ReadPage(toPage, page) != 0)
@@ -609,16 +615,17 @@ RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){
       // Read key on page
       void *key_on_page = (void *)((char *)page + offset);
       int key_on_page_size = getKeySize(key_on_page);
-
+      
       int cmp = keycmp(key, key_on_page);
-
-      if (cmp <= 0)
+      
+      if (cmp == 0)
+	error("Duplicate internal keys not supported.", -3);	
+      else if (cmp < 0)
 	break;
       else
 	offset += key_on_page_size + 2;
-
+      
     }  
-
 
   if( offset >= free_pointer )
     offset = free_pointer;
@@ -744,7 +751,9 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Copy the old root to the left page
     void * leftPage = malloc(PF_PAGE_SIZE);
     memcpy(leftPage, page,PF_PAGE_SIZE);
-    memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
+    // If we memset here we lose the key that we need to promote
+    //   in order to uncomment this line make sure to first copy the key
+    // memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
 
     if(fileHandle.AppendPage(leftPage) != 0)
       return -2;
@@ -753,14 +762,18 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
     // To make debugging easier just clear the page
     memset(page, 0, PF_PAGE_SIZE);
-        
-    // Add in the promoted key
-    key_size = getKeySize((char*)newPage + key_offset);
-    memcpy((char *)page+2, (char *)newPage+key_offset, key_size);
+    
+    // The promoted key here is NOT the leftmost entry of the IX_NODE but instead, it is the
+    // Key that we deleted!! This is true for both kinds of splits
+
+    // Add in the promoted key. This must be the deleted key for IX_NODES! For leaf nodes, this is still the left most key on the right page
+    void * promoted_key = (char *)leftPage+tmp;
+    key_size = getKeySize(promoted_key);
+    memcpy((char *)page+2, promoted_key, key_size);
+
     // Add in new pointers
     memcpy(page, &left_page, 2);
     memcpy((char *)page+key_size+2, &right_page, 2);
-    
     
     // Delete everything else by changing the free pointer
     tmp = 4 + key_size;
@@ -870,11 +883,11 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     memcpy((char*)newPage+PF_PAGE_SIZE-2, &tmp, 2);
 
     // Update the old free_pointer (minus the last key)
-    // Note: We don't premote this key, although we could
     tmp = offset - key_size;
     memcpy((char *)page+PF_PAGE_SIZE-2, &tmp, 2);
     
-    if(insertKey((char *)newPage+2, new_page_num, prevPageNum) != 0)
+    // Promote the deleted key which happens to be siting at the free_pointer boundry
+    if(insertKey((char *)page+tmp, new_page_num, prevPageNum) != 0)
       return -3;
     
   } else{

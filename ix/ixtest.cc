@@ -10,6 +10,7 @@
 #include "ix.h"
 
 #define ASSERT_ALL
+#define LARGE_TESTS
 
 using namespace std;
 
@@ -1844,8 +1845,12 @@ void testCase_O5(){
   // Insert Data
   vector<RID> rids;
   vector<void *>tuples;
-  // Here 50000 causes a fail
+
+  #ifdef LARGE_TESTS
   insertTuples(tablename, rids,tuples,50000, true, 4);
+  #else
+  insertTuples(tablename, rids,tuples,5000, true, 4);
+  #endif
   
   vector<void *> keys = getKeys(tuples, 0, true);
 
@@ -2204,7 +2209,7 @@ void ourTests()
   testCase_O3();
   testCase_O2();
   testCase_O4(); 
-  // testCase_O5(); // Basic duplicate checking
+  testCase_O5(); // Basic duplicate checking
   testCase_O6();
   testCase_O7();
 }
@@ -2231,7 +2236,7 @@ int main()
 
   // Extra Credit Work
   // Duplicat Entries
-  /// testCase_extra_1("tbl_employee", "Age");
+  // testCase_extra_1("tbl_employee", "Age");
   // TypeVarChar
   //testCase_extra_2("tbl_employee", "EmpName");
     
