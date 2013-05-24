@@ -1025,7 +1025,6 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
   
   if(lowKey != NULL) {
     // Search for the first key that meets our requirements
-    
     if(this->indexHandle->findOnPage(page, lowKey, offset, lowKeyInclusive) != 0)
       return -3;
 
