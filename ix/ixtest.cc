@@ -1513,7 +1513,8 @@ void testCase_extra_2(const string tablename, const string attrname)
       rid.slotNum = i;
         
         if (count == 20) {
-          rids.push_back(rid); 
+          rids.push_back(rid);
+          cout << i << endl;
         }
 
       rc = ixHandle.InsertEntry(key, rid);
@@ -2049,6 +2050,153 @@ void testCase_O6()
   return;
 }
 
+// test for exclusive/inclusive keys in scan when using VarChar data
+void testCase_O7()
+{
+  cout << endl << "****In Our Test Case07****" << endl;
+    
+  string tablename = "emptestO7";
+  string attrname = "EmpName";
+  createTable(RM::Instance(), tablename);
+  RC rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+
+  RID rid;
+  // Test OpenIndex
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert (rc == success);
+
+  vector<RID> rids;
+  // Test InsertEntry
+  const unsigned first = 10000;
+  const unsigned firstEnd = 20000;
+  const unsigned second = 30000;
+  const unsigned secondEnd = 60000;
+  string entry;
+
+  for(unsigned i = first; i <= secondEnd; i++) 
+    {
+      int offset=0;
+      void *key = malloc(100);
+      entry = to_string(i);
+      int length = entry.size();
+
+      memcpy((char *)key + offset, &length, sizeof(int));
+      offset += 4;
+
+      memcpy((char *)key+offset, entry.c_str(), entry.size());
+      offset += entry.size();
+
+      rid.pageNum = i;
+      rid.slotNum = i;
+
+      rc = ixHandle.InsertEntry(key, rid);
+      assert (rc == success);
+      free (key);
+
+      if (i == firstEnd)
+        i = second;
+    }
+
+  // Test Scan No Low
+  IX_IndexScan ixScanNoLow;
+  unsigned offset = 0;
+  void *lowKeyPtr = malloc(100);
+  void *highKeyPtr = malloc(100);
+
+  string lowKey = "25000";
+  int length = lowKey.size();
+  memcpy((char *)lowKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  memcpy((char *)lowKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  offset += entry.size();
+
+  string highKey = "50000";
+  length = highKey.size();
+  memcpy((char *)highKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  offset = 0;
+  memcpy((char *)highKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  offset += entry.size();
+
+  rc = ixScanNoLow.OpenScan(ixHandle, lowKeyPtr, highKeyPtr, true, true);
+  assert (rc == success);
+
+  // Test IndexScan Iterator
+  int i = second;
+  while(ixScanNoLow.GetNextEntry(rid) == success)
+    {
+      //cout << rid.pageNum << ":" << rids[i].pageNum << "---" << rid.slotNum << endl;
+      cout << rid.pageNum << ":" << i << endl;
+      assert(rid.pageNum == i);
+      assert(rid.slotNum == i);
+      i++;
+      
+    }
+  assert (i == 25001);
+  cout << "Low-Key Not Available for VarChar Scan Completed Successfully!" << endl;
+
+  // Test CloseScan
+  rc = ixScanNoLow.CloseScan();
+  assert (rc == success);
+
+  // Test Scan No High
+  IX_IndexScan ixScanNoHigh;
+  offset = 0;
+
+  lowKey = "15000";
+  length = lowKey.size();
+  memcpy((char *)lowKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  memcpy((char *)lowKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  offset += entry.size();
+
+  highKey = "25000";
+  length = highKey.size();
+  memcpy((char *)highKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  offset = 0;
+  memcpy((char *)highKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  offset += entry.size();
+
+  rc = ixScanNoHigh.OpenScan(ixHandle, lowKeyPtr, highKeyPtr, true, true);
+  assert (rc == success);
+
+  // Test IndexScan Iterator
+  i = 15000;
+  while(ixScanNoHigh.GetNextEntry(rid) == success)
+    {
+      //cout << rid.pageNum << ":" << rids[i].pageNum << "---" << rid.slotNum << endl;
+      assert(rid.pageNum == i);
+      assert(rid.slotNum == i);
+      i++; 
+    }
+  assert (i == 5001);
+  cout << "High-Key Not Available for VarChar Scan Completed Successfully!" << endl;
+  
+  // Test CloseScan
+  rc = ixScanNoHigh.CloseScan();
+  assert (rc == success);
+
+  // Test CloseIndex    
+  rc = ixManager->CloseIndex(ixHandle);
+  assert (rc == success); 
+
+  // Test DestroyIndex
+  rc = ixManager->DestroyIndex(tablename, attrname);
+  assert (rc == success);
+
+  free(lowKeyPtr);
+  free(highKeyPtr);
+
+  return;
+}
+
 
 void ourTests()
 {
@@ -2058,6 +2206,7 @@ void ourTests()
   testCase_O4(); 
   // testCase_O5(); // Basic duplicate checking
   testCase_O6();
+  testCase_O7();
 }
 int main()
 {
@@ -2084,7 +2233,7 @@ int main()
   // Duplicat Entries
   /// testCase_extra_1("tbl_employee", "Age");
   // TypeVarChar
-  testCase_extra_2("tbl_employee", "EmpName");
+  //testCase_extra_2("tbl_employee", "EmpName");
     
   return 0;
 }
