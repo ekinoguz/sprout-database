@@ -250,9 +250,8 @@ RC CLI::process(const string input)
     }
 
     ////////////////////////////////////////////
-    // load <tableName> <fileName>
-    // drop index <indexName>
-    // drop attribute <attributeName> from <tableName>
+    // print <tableName>
+    // print attributes <tableName>
     ////////////////////////////////////////////
     else if (expect(tokenizer, "print")) {
       tokenizer = next();
@@ -738,19 +737,23 @@ RC CLI::printAttributes()
 // print every tuples in given tableName
 RC CLI::printTable(const string tableName)
 {
+  vector<Attribute> attributes;
+  RC rc = this->getAttributesFromCatalog(tableName, attributes);
+  if (rc != 0)
+    return error ("table: " + tableName + " does not exist");
+
   // Set up the iterator
   RM_ScanIterator rmsi;
   RID rid;
-  vector<Attribute> attributes;
   void *data_returned = malloc(4096);
-  this->getAttributesFromCatalog(tableName, attributes);
+  
 
   // convert attributes to vector<string>
   vector<string> stringAttributes;
   for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
     stringAttributes.push_back(it->name);
 
-  RC rc = rm->scan(tableName, "", NO_OP, NULL, stringAttributes, rmsi);
+  rc = rm->scan(tableName, "", NO_OP, NULL, stringAttributes, rmsi);
   if (rc != 0)
     return rc;
 
