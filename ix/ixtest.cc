@@ -2020,7 +2020,7 @@ void ourTests()
   testCase_O3();
   testCase_O2();
   testCase_O4(); 
-  testCase_O5(); // Basic duplicate checking
+  // testCase_O5(); // Basic duplicate checking
   testCase_O6();
 }
 int main()
