@@ -151,7 +151,7 @@ void Test04()
   string command;
   
   // test add attribute
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName=varchar(100), Age=int, Height=real, Salary=int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -159,7 +159,7 @@ void Test04()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  cout << "Before adding attibute major=varhar(40) and year=int: " << endl;
+  cout << "Before adding attibute major=varhar(100) and year=int: " << endl;
   command = "print tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
@@ -168,7 +168,7 @@ void Test04()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "add attribute Major=varchar(40) to tbl_employee";
+  command = "add attribute Major=varchar(100) to tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -176,7 +176,7 @@ void Test04()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  cout << "After adding attibute major=varhar(40) and year=int: " << endl;
+  cout << "After adding attibute major=varhar(100) and year=int: " << endl;
   command = "print cli_columns";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
@@ -184,11 +184,13 @@ void Test04()
   command = "print columns";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
-  
+   
   command = "load tbl_employee employee_Year_1";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
   
+return;
+
   command = "print tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
@@ -495,9 +497,9 @@ void Test09()
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
 
-    command = ("drop table tbl_employee2");
-    cout << ">>> " << command << endl;  
-    assert (cli->process(command) == SUCCESS);
+  command = ("drop table tbl_employee2");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
 }
 
 int main()
@@ -507,15 +509,15 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    Test01();
-    Test02();
-    Test03();
+    // Test01();
+    // Test02();
+    // Test03();
     Test04();
-    Test05();
-    Test06();
-    Test07();
-    Test08();
-    Test09();
+    // Test05();
+    // Test06();
+    // Test07();
+    // Test08();
+    // Test09();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

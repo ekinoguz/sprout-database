@@ -672,6 +672,7 @@ RC CLI::load()
       token = string(tokenizer);
       if (attr.type == TypeVarChar) {
         length = token.size();
+        cout << length << ":" << token <<  endl;
         memcpy((char *)buffer + offset, &length, sizeof(int));
         offset += sizeof(int);
         memcpy((char *)buffer + offset, token.c_str(), token.size());
@@ -686,7 +687,8 @@ RC CLI::load()
         // TODO: this should be fixed, not sure about size
         int num = atoi(tokenizer);
         memcpy((char *)buffer + offset, &num, sizeof(num));
-        offset += sizeof(num);  
+        offset += sizeof(num);
+        return -1; 
       }
       tokenizer = strtok(NULL, CVS_DELIMITERS);
     }
@@ -739,7 +741,7 @@ RC CLI::printTable(const string tableName)
   RM_ScanIterator rmsi;
   RID rid;
   vector<Attribute> attributes;
-  void *data_returned = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
+  void *data_returned = malloc(4096);
   this->getAttributesFromCatalog(tableName, attributes);
 
   // convert attributes to vector<string>
@@ -757,9 +759,17 @@ RC CLI::printTable(const string tableName)
     outputBuffer.push_back(it->name);
   }
 
-  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
-    if (this->updateOutputBuffer(outputBuffer, data_returned, attributes) != 0)
+  while( (rc = rmsi.getNextTuple(rid, data_returned)) != RM_EOF) {
+    if ( rc != 0) {
+      cout << "fata" << endl;
+      exit(1);
+    }
+      
+    if (this->updateOutputBuffer(outputBuffer, data_returned, attributes) != 0) {
+      free(data_returned);
       return error("problem in updateOutputBuffer");
+    }
+  }
   rmsi.close();
   free(data_returned);
 
@@ -1010,15 +1020,15 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
   
   // check if tableName is what we want
   while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
-    int length, offset = 0;
-    char *str=(char *)malloc(length+1);
+    int length = 0, offset = 0;
   
-    length = 0;
     memcpy(&length, (char *)data_returned+offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(str, (char *)data_returned+offset, length);
+    char *str=(char *)malloc(length+1);
     str[length] = '\0';
+    
+    memcpy(str, (char *)data_returned+offset, length);
     offset += length;
 
     if(tableName.compare(string(str)) == 0) {
