@@ -188,8 +188,6 @@ void Test04()
   command = "load tbl_employee employee_Year_1";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
-  
-return;
 
   command = "print tbl_employee";
   cout << ">>> " << command << endl;
@@ -509,15 +507,15 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    // Test01();
-    // Test02();
-    // Test03();
+    Test01();
+    Test02();
+    Test03();
     Test04();
-    // Test05();
-    // Test06();
-    // Test07();
-    // Test08();
-    // Test09();
+    Test05();
+    Test06();
+    Test07();
+    Test08();
+    Test09();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

@@ -672,7 +672,6 @@ RC CLI::load()
       token = string(tokenizer);
       if (attr.type == TypeVarChar) {
         length = token.size();
-        cout << length << ":" << token <<  endl;
         memcpy((char *)buffer + offset, &length, sizeof(int));
         offset += sizeof(int);
         memcpy((char *)buffer + offset, token.c_str(), token.size());
