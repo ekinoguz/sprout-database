@@ -2096,7 +2096,7 @@ void testCase_O7()
       free (key);
 
       if (i == firstEnd)
-        i = second;
+        i = second-1;
     }
 
   // Test Scan No Low
@@ -2113,13 +2113,13 @@ void testCase_O7()
   memcpy((char *)lowKeyPtr+offset, lowKey.c_str(), lowKey.size());
   offset += entry.size();
 
+  offset = 0;
   string highKey = "50000";
   length = highKey.size();
   memcpy((char *)highKeyPtr + offset, &length, sizeof(int));
   offset += 4;
 
-  offset = 0;
-  memcpy((char *)highKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  memcpy((char *)highKeyPtr+offset, highKey.c_str(), highKey.size());
   offset += entry.size();
 
   rc = ixScanNoLow.OpenScan(ixHandle, lowKeyPtr, highKeyPtr, true, true);
@@ -2127,16 +2127,15 @@ void testCase_O7()
 
   // Test IndexScan Iterator
   int i = second;
+  int count = 0;
   while(ixScanNoLow.GetNextEntry(rid) == success)
     {
-      //cout << rid.pageNum << ":" << rids[i].pageNum << "---" << rid.slotNum << endl;
-      cout << rid.pageNum << ":" << i << endl;
       assert(rid.pageNum == i);
       assert(rid.slotNum == i);
       i++;
-      
+      count++;
     }
-  assert (i == 25001);
+  assert (count == 20001);
   cout << "Low-Key Not Available for VarChar Scan Completed Successfully!" << endl;
 
   // Test CloseScan
@@ -2145,8 +2144,8 @@ void testCase_O7()
 
   // Test Scan No High
   IX_IndexScan ixScanNoHigh;
-  offset = 0;
 
+  offset = 0;
   lowKey = "15000";
   length = lowKey.size();
   memcpy((char *)lowKeyPtr + offset, &length, sizeof(int));
@@ -2155,13 +2154,13 @@ void testCase_O7()
   memcpy((char *)lowKeyPtr+offset, lowKey.c_str(), lowKey.size());
   offset += entry.size();
 
+  offset = 0;
   highKey = "25000";
   length = highKey.size();
   memcpy((char *)highKeyPtr + offset, &length, sizeof(int));
   offset += 4;
 
-  offset = 0;
-  memcpy((char *)highKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  memcpy((char *)highKeyPtr+offset, highKey.c_str(), highKey.size());
   offset += entry.size();
 
   rc = ixScanNoHigh.OpenScan(ixHandle, lowKeyPtr, highKeyPtr, true, true);
@@ -2169,14 +2168,15 @@ void testCase_O7()
 
   // Test IndexScan Iterator
   i = 15000;
+  count = 0;
   while(ixScanNoHigh.GetNextEntry(rid) == success)
     {
-      //cout << rid.pageNum << ":" << rids[i].pageNum << "---" << rid.slotNum << endl;
       assert(rid.pageNum == i);
       assert(rid.slotNum == i);
       i++; 
+      count++;
     }
-  assert (i == 5001);
+  assert (count == 5001);
   cout << "High-Key Not Available for VarChar Scan Completed Successfully!" << endl;
   
   // Test CloseScan
