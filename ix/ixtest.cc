@@ -10,6 +10,7 @@
 #include "ix.h"
 
 #define ASSERT_ALL
+#define LARGE_TESTS
 
 using namespace std;
 
@@ -17,6 +18,16 @@ using namespace std;
 IX_Manager *ixManager;
 const int success = 0;
 
+
+// Only works for var char
+void printKey(void * key){
+  int key_size = *(int *)key;
+  char * tmp = (char *) malloc(key_size);
+  memcpy(tmp, (char *)key+4, key_size);
+  cout << "Key: " << tmp << endl;
+
+  free(tmp);
+}
 
 void createTable(RM *rm, const string tablename)
 {
@@ -96,8 +107,8 @@ void prepareTuple(const int index, void *buffer, int *tuple_size, bool no_duplic
 void createTuples(vector<void *> &tuples, int number, bool uniq = false, int dups = 1){
   for(int i=0; i < number; i++){
     // Test insert Tuple
-    void * tuple = malloc(1000);
     for(int j=0; j < dups; j++){
+      void * tuple = malloc(1000);
       int size = 0;
       memset(tuple, 0, 1000);
       prepareTuple(i, tuple, &size, uniq);
@@ -118,7 +129,7 @@ void insertTuples(string tablename, vector<RID> &rids, vector<void *> &tuples, i
   }
 }
 
-vector<void *> getKeys(vector<void *> &tuples, int offset, bool is_variable){
+vector<void *> getKeys(const vector<void *> &tuples, int offset, bool is_variable){
   vector<void *> keys;
   void  * key;
   for(uint i=0; i < tuples.size(); i++){
@@ -136,8 +147,9 @@ vector<void *> getKeys(vector<void *> &tuples, int offset, bool is_variable){
 }
 
 void freeTuples(vector<void *> &tuples){
-  for(uint i=0; i < tuples.size(); i++)
+  for(uint i=0; i < tuples.size(); i++){
     free(tuples[i]);
+  }
   tuples.clear();
 }
 
@@ -265,10 +277,10 @@ void testCase_2(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Entry..." << endl;
+    cout << "Failed Inserting Entry..." << endl;
         }     
     }
     
@@ -424,10 +436,10 @@ void testCase_4(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Entry..." << endl;
+       cout << "Failed Inserting Entry..." << endl;
         }     
     }
 
@@ -453,7 +465,7 @@ void testCase_4(const string tablename, const string attrname)
   while(ixScan.GetNextEntry(rid) == success) 
     {
       if(rid.pageNum != key)
-	cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
+  cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
 
       assert(rid.pageNum == key);
       assert(rid.slotNum == key+1);
@@ -570,10 +582,10 @@ void testCase_5(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
     
@@ -589,10 +601,10 @@ void testCase_5(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
     
@@ -625,10 +637,10 @@ void testCase_5(const string tablename, const string attrname)
       if (rid.pageNum < 501 || rid.slotNum < 501)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
 
       start += 1;
@@ -740,10 +752,10 @@ void testCase_6(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -758,10 +770,10 @@ void testCase_6(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -788,25 +800,25 @@ void testCase_6(const string tablename, const string attrname)
   while(ixScan.GetNextEntry(rid) == success) 
     {
       if (i <= 2000) {
-	assert(rid.pageNum == i);
-	assert(rid.slotNum == i);
+  assert(rid.pageNum == i);
+  assert(rid.slotNum == i);
       } else {
-	assert(rid.pageNum == i);
-	assert(rid.slotNum == (i-(unsigned)500));
+  assert(rid.pageNum == i);
+  assert(rid.slotNum == (i-(unsigned)500));
       }
       if (i == 2000)
-	i = 6000;
+  i = 6000;
       else
-	i++;
+  i++;
       // if(rid.pageNum % 500 == 0)
-      // 	cout << rid.pageNum << " " << rid.slotNum << endl;
+      //   cout << rid.pageNum << " " << rid.slotNum << endl;
       if ((rid.pageNum > 2000 && rid.pageNum < 6000) || rid.pageNum >= 6500)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
     }
 
@@ -905,7 +917,7 @@ void testCase_7(const string tablename, const string attrname)
     }  
     
   // Test InsertEntry
-  //  unsigned numOfTuples = 175000;
+  // unsigned numOfTuples = 175000;
   unsigned numOfTuples = 10000;
   for(unsigned i = 1; i <= numOfTuples; i++) 
     {
@@ -917,10 +929,10 @@ void testCase_7(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -949,7 +961,7 @@ void testCase_7(const string tablename, const string attrname)
       i++;
       assert(rid.pageNum == i);
       assert(rid.slotNum == i);
-	
+  
       // cout << rid.pageNum << " " << rid.slotNum << endl;
 
       float key = (float)rid.pageNum;
@@ -957,10 +969,10 @@ void testCase_7(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed deleting entry in Scan..." << endl;
+    cout << "Failed deleting entry in Scan..." << endl;
         }
     }
   cout << endl;
@@ -1003,10 +1015,10 @@ void testCase_7(const string tablename, const string attrname)
       if(rid.pageNum < 100)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Entry returned: " << rid.pageNum << " " << rid.slotNum << "--- failure" << endl;
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Entry returned: " << rid.pageNum << " " << rid.slotNum << "--- failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
     }
 
@@ -1119,10 +1131,10 @@ void testCase_8(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1158,10 +1170,10 @@ void testCase_8(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed deleting entry in Scan..." << endl;
+    cout << "Failed deleting entry in Scan..." << endl;
         }
     }
   // cout << endl;
@@ -1194,10 +1206,10 @@ void testCase_8(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1227,9 +1239,9 @@ void testCase_8(const string tablename, const string attrname)
       if(rid.pageNum <= 450 || rid.slotNum <= 450)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
     }
   // cout << endl;
@@ -1343,9 +1355,9 @@ void testCase_extra_1(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1360,10 +1372,10 @@ void testCase_extra_1(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         } 
     }
     
@@ -1390,7 +1402,7 @@ void testCase_extra_1(const string tablename, const string attrname)
   while(ixScan.GetNextEntry(rid) == success) 
     {
       if(count % 1000 == 0)
-	cout << rid.pageNum << " " << rid.slotNum << endl;
+  cout << rid.pageNum << " " << rid.slotNum << endl;
       count++;
     }
   cout << count << endl;
@@ -1483,7 +1495,7 @@ void testCase_extra_2(const string tablename, const string attrname)
 #endif
       cout << "Failed Opening Index..." << endl;
     }  
-    
+  vector<RID> rids;
   // Test InsertEntry
   unsigned numOfTuples = 500;
   for(unsigned i = 1; i <= numOfTuples; i++) 
@@ -1494,19 +1506,25 @@ void testCase_extra_2(const string tablename, const string attrname)
    
       for(unsigned j = 0; j < count; j++)
         {
-	  *((char *)key+4+j) = 96+count;
+    *((char *)key+4+j) = 96+count;
         }
+
 
       rid.pageNum = i;
       rid.slotNum = i;
         
+        if (count == 20) {
+          rids.push_back(rid);
+          cout << i << endl;
+        }
+
       rc = ixHandle.InsertEntry(key, rid);
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1518,6 +1536,7 @@ void testCase_extra_2(const string tablename, const string attrname)
   for(unsigned j = 0; j < offset; j++)
     {
       *((char *)key+4+j) = 96+offset;
+      cout << *((char *)key+4+j) << endl;
     }
 
   rc = ixScan.OpenScan(ixHandle, key, key, true, true);
@@ -1534,14 +1553,19 @@ void testCase_extra_2(const string tablename, const string attrname)
     }
 
   // Test IndexScan Iterator
-  //  int i = 2000;
+  int i = rids.size()-1;
+  //int i = 0;
   while(ixScan.GetNextEntry(rid) == success)
     {
       // TODO: THis is a scan of one key why does it return so many thigns?
       //      assert(rid.pageNum == i);
       //      assert(rid.slotNum == i);
       //      i++;
-      cout << rid.pageNum << " " << rid.slotNum << endl;
+      cout << rid.pageNum << ":" << rids[i].pageNum << "---" << rid.slotNum << endl;
+      assert(rid.pageNum == rids[i].pageNum);
+      assert(rid.slotNum == rids[i].pageNum);
+      i--;
+      
     }
   //cout << endl;
 
@@ -1777,11 +1801,14 @@ void testCase_O4()
 
   // Test Delete Entry which is not there
   age = -1;
+  cout << "**** Supposed to fail *****" << endl;
   rc = ixHandle.DeleteEntry(&age, rid);
   assert (rc != success);
 
   rc = ixHandle.DeleteEntry(&(ages[0]), rids[1]);
   assert (rc != success);
+  cout << "*****-----------------*****" << endl;
+
 
 
   for(uint i = 0; i < numOfTuples; i++) 
@@ -1818,7 +1845,12 @@ void testCase_O5(){
   // Insert Data
   vector<RID> rids;
   vector<void *>tuples;
-  insertTuples(tablename, rids,tuples,1000, true, 4);
+
+  #ifdef LARGE_TESTS
+  insertTuples(tablename, rids,tuples,50000, true, 4);
+  #else
+  insertTuples(tablename, rids,tuples,5000, true, 4);
+  #endif
   
   vector<void *> keys = getKeys(tuples, 0, true);
 
@@ -1847,38 +1879,49 @@ void testCase_O5(){
     for(uint j=0; j < 4; j++){
       rc = ixs.GetNextEntry(rid);
       assert(rc == success);
-
+      
       for(uint k=0; k < possible.size(); k++){
-	if(possible[k].slotNum == rid.slotNum &&
-	   possible[k].pageNum == rid.pageNum) 
-	  {
-	    possible.erase( possible.begin()+k );
-	    break;
-	  }
+  if(possible[k].slotNum == rid.slotNum &&
+     possible[k].pageNum == rid.pageNum) 
+    {
+      possible.erase( possible.begin()+k );
+      break;
+    }
       }
     }
-    // Make sure we saw all versions and no more
-    assert(ixs.GetNextEntry(rid) != 0 );
-    assert(possible.size() == 0); 
+    for(uint l=0; l < possible.size();l++){
+      cout << "Old: " << rid.pageNum << ":" << rid.slotNum << endl;
+      cout << "RID: " << l << ":" << i << " " << possible[l].pageNum << ":" << possible[l].slotNum << " ";
+      printKey(keys[i+l]);
+    }
 
+    rc = ixs.GetNextEntry(rid);
+    
+    if(rc == 0){
+      cout << "RID: " << rid.pageNum << ":" << rid.slotNum << endl;
+    }
+    // Make sure we saw all versions and no more
+    assert(rc != 0);
+    assert(possible.size() == 0); 
+    
     ixs.CloseScan();
   }
-
+  
   // Test deleting just the first one
   for(uint i=0; i < rids.size(); i+= 4){
     key = keys[i];
     rc = ixs.OpenScan(ixHandle, key, key, true, true);
     assert(rc == success);
-
+    
     rid = rids[i];
     rc = ixHandle.DeleteEntry(key, rid);
     assert(rc == success);
-
+    
     ixs.CloseScan();
   }
-
+  
   // Make sure only the first was deleted
-    for(uint i=0; i < rids.size(); i+= 4){
+  for(uint i=0; i < rids.size(); i+= 4){
     
     key = keys[i];
     rc = ixs.OpenScan(ixHandle, key, key, true, true);
@@ -1892,20 +1935,20 @@ void testCase_O5(){
     for(uint j=0; j < 3; j++){
       rc = ixs.GetNextEntry(rid);
       assert(rc == success);
-
+      
       for(uint k=0; k < possible.size(); k++){
-	if(possible[k].slotNum == rid.slotNum &&
-	   possible[k].pageNum == rid.pageNum) 
-	  {
-	    possible.erase( possible.begin()+k );
-	    break;
-	  }
+  if(possible[k].slotNum == rid.slotNum &&
+     possible[k].pageNum == rid.pageNum) 
+    {
+      possible.erase( possible.begin()+k );
+      break;
+    }
       }
     }
     // Make sure we saw all versions and no more
     assert(ixs.GetNextEntry(rid) != 0 );
     assert(possible.size() == 0); 
-
+    
     ixs.CloseScan();
   }
 
@@ -1916,6 +1959,250 @@ void testCase_O5(){
 }
 // TODO: test insert varchar variables
 
+void testCase_O6()
+{
+  cout << endl << "****In Test Case O6****" << endl;
+
+  string tablename = "testing_scan";
+  string attrname = "Age";
+  createTable(RM::Instance(), tablename);
+  RC rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+    
+  // Test OpenIndex
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert(rc == success);
+
+  RID rid;
+  for (uint key = 5000; key <= 10000; key++)
+    {
+      rid.pageNum = key;
+      rid.slotNum = key + 1;
+      rc = ixHandle.InsertEntry(&key, rid);
+      assert(rc == success);
+    }
+
+  for (uint key = 20000; key <= 30000; key++)
+    {
+      rid.pageNum = key;
+      rid.slotNum = key + 1;
+      rc = ixHandle.InsertEntry(&key, rid);
+      assert(rc == success);
+    }
+  cout << "Keys Inserted Successfully!" << endl;
+
+  // Scan Low-Key is not present
+  IX_IndexScan ixScan;
+  uint lowKey = 15000;
+  uint highKey = 25000;
+  rc = ixScan.OpenScan(ixHandle, &lowKey, &highKey, true, true);
+  assert(rc == success);
+  cout << "Scan Opened Successfully!" << endl;
+  
+  uint key = 20000;
+  uint count = 0;
+  while(ixScan.GetNextEntry(rid) == success) 
+    {
+      if(rid.pageNum != key)
+  cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
+
+      assert(rid.pageNum == key);
+      assert(rid.slotNum == key + 1);
+      key ++;
+      count++;
+    }
+  assert(count == 5001);
+  cout << "Low-Key Not Available Scan Completed Successfully!" << endl;
+
+  rc = ixScan.CloseScan();
+  assert(rc == success);
+
+  // Scan High-Key is not present
+  IX_IndexScan ixScanHigh;
+  lowKey = 7500;
+  highKey = 15000;
+  rc = ixScanHigh.OpenScan(ixHandle, &lowKey, &highKey, true, true);
+  assert(rc == success);
+  
+  key = 7500;
+  count = 0;
+  while(ixScanHigh.GetNextEntry(rid) == success) 
+    {
+      if(rid.pageNum != key)
+  cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
+
+      assert(rid.pageNum == key);
+      assert(rid.slotNum == key + 1);
+      key ++;
+      count++;
+    }
+  assert(count == 2501);
+  cout << "High-Key Not Avaiable Scan Completed Successfully!" << endl;
+
+  rc = ixScanHigh.CloseScan();
+  assert(rc == success);
+
+  // Close Index
+  rc = ixManager->CloseIndex(ixHandle);
+  assert(rc == success);
+  
+  // Destroy Index
+  rc = ixManager->DestroyIndex(tablename, attrname);
+  assert(rc == success);
+
+  cout << "*** O6 Passed ***" << endl;
+  return;
+}
+
+// test for exclusive/inclusive keys in scan when using VarChar data
+void testCase_O7()
+{
+  cout << endl << "****In Our Test Case07****" << endl;
+    
+  string tablename = "emptestO7";
+  string attrname = "EmpName";
+  createTable(RM::Instance(), tablename);
+  RC rc = ixManager->CreateIndex(tablename, attrname);
+  assert(rc == success);
+
+  RID rid;
+  // Test OpenIndex
+  IX_IndexHandle ixHandle;
+  rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
+  assert (rc == success);
+
+  vector<RID> rids;
+  // Test InsertEntry
+  const unsigned first = 10000;
+  const unsigned firstEnd = 20000;
+  const unsigned second = 30000;
+  const unsigned secondEnd = 60000;
+  string entry;
+
+  for(unsigned i = first; i <= secondEnd; i++) 
+    {
+      int offset=0;
+      void *key = malloc(100);
+      entry = to_string(i);
+      int length = entry.size();
+
+      memcpy((char *)key + offset, &length, sizeof(int));
+      offset += 4;
+
+      memcpy((char *)key+offset, entry.c_str(), entry.size());
+      offset += entry.size();
+
+      rid.pageNum = i;
+      rid.slotNum = i;
+
+      rc = ixHandle.InsertEntry(key, rid);
+      assert (rc == success);
+      free (key);
+
+      if (i == firstEnd)
+        i = second-1;
+    }
+
+  // Test Scan No Low
+  IX_IndexScan ixScanNoLow;
+  unsigned offset = 0;
+  void *lowKeyPtr = malloc(100);
+  void *highKeyPtr = malloc(100);
+
+  string lowKey = "25000";
+  int length = lowKey.size();
+  memcpy((char *)lowKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  memcpy((char *)lowKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  offset += entry.size();
+
+  offset = 0;
+  string highKey = "50000";
+  length = highKey.size();
+  memcpy((char *)highKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  memcpy((char *)highKeyPtr+offset, highKey.c_str(), highKey.size());
+  offset += entry.size();
+
+  rc = ixScanNoLow.OpenScan(ixHandle, lowKeyPtr, highKeyPtr, true, true);
+  assert (rc == success);
+
+  // Test IndexScan Iterator
+  int i = second;
+  int count = 0;
+  while(ixScanNoLow.GetNextEntry(rid) == success)
+    {
+      assert(rid.pageNum == i);
+      assert(rid.slotNum == i);
+      i++;
+      count++;
+    }
+  assert (count == 20001);
+  cout << "Low-Key Not Available for VarChar Scan Completed Successfully!" << endl;
+
+  // Test CloseScan
+  rc = ixScanNoLow.CloseScan();
+  assert (rc == success);
+
+  // Test Scan No High
+  IX_IndexScan ixScanNoHigh;
+
+  offset = 0;
+  lowKey = "15000";
+  length = lowKey.size();
+  memcpy((char *)lowKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  memcpy((char *)lowKeyPtr+offset, lowKey.c_str(), lowKey.size());
+  offset += entry.size();
+
+  offset = 0;
+  highKey = "25000";
+  length = highKey.size();
+  memcpy((char *)highKeyPtr + offset, &length, sizeof(int));
+  offset += 4;
+
+  memcpy((char *)highKeyPtr+offset, highKey.c_str(), highKey.size());
+  offset += entry.size();
+
+  rc = ixScanNoHigh.OpenScan(ixHandle, lowKeyPtr, highKeyPtr, true, true);
+  assert (rc == success);
+
+  // Test IndexScan Iterator
+  i = 15000;
+  count = 0;
+  while(ixScanNoHigh.GetNextEntry(rid) == success)
+    {
+      assert(rid.pageNum == i);
+      assert(rid.slotNum == i);
+      i++; 
+      count++;
+    }
+  assert (count == 5001);
+  cout << "High-Key Not Available for VarChar Scan Completed Successfully!" << endl;
+  
+  // Test CloseScan
+  rc = ixScanNoHigh.CloseScan();
+  assert (rc == success);
+
+  // Test CloseIndex    
+  rc = ixManager->CloseIndex(ixHandle);
+  assert (rc == success); 
+
+  // Test DestroyIndex
+  rc = ixManager->DestroyIndex(tablename, attrname);
+  assert (rc == success);
+
+  free(lowKeyPtr);
+  free(highKeyPtr);
+
+  return;
+}
+
+
 void ourTests()
 {
   testCase_O1();
@@ -1923,6 +2210,8 @@ void ourTests()
   testCase_O2();
   testCase_O4(); 
   testCase_O5(); // Basic duplicate checking
+  testCase_O6();
+  testCase_O7();
 }
 int main()
 {
@@ -1947,9 +2236,9 @@ int main()
 
   // Extra Credit Work
   // Duplicat Entries
-  /// testCase_extra_1("tbl_employee", "Age");
+  // testCase_extra_1("tbl_employee", "Age");
   // TypeVarChar
-  // testCase_extra_2("tbl_employee", "EmpName");
+  //testCase_extra_2("tbl_employee", "EmpName");
     
   return 0;
 }

@@ -485,15 +485,31 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 
   while (type == IX_NODE)
     {
-      prevPageNum = pageNum;
       // Parse IX node and set pageNum
       // free_pointer must not be zero
       uint16_t free_pointer = 0;
       memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
+      if(doSplit){
+	if(free_pointer + max_key_size + 4 > PF_PAGE_SIZE - 3 - 2){
+	  pageNum = split(pageNum, prevPageNum, key);
+	  if(pageNum < 0)
+	    return -3;	  
+	} 
+
+	if (fileHandle.ReadPage(pageNum, page) != 0)
+	  {
+	    free(page);
+	    return error(__LINE__, -2);
+	  }
+      }
+
+      prevPageNum = pageNum;
+
       uint16_t offset = 2;    // Start pointing to the first key on the page, first 2 bytes are pageNum
       while (offset < free_pointer)
 	{  
+
 	  if(key == NULL) { // Just move to the page to the left, since we want the left most leaf
 	    memcpy(&pageNum, (char *)page, 2);
 	    break;
@@ -533,14 +549,6 @@ RC IX_IndexHandle::FindEntryPage(const void *key, uint16_t &pageNum, const bool 
 	}
       // Read node type
       memcpy(&type, (char *)page + PF_PAGE_SIZE - 3, 1);
-
-      if(doSplit){
-	if(free_pointer + max_key_size + 4 > PF_PAGE_SIZE - 3 - 2){
-	  pageNum = split(pageNum, prevPageNum, key);
-	  if(pageNum < 0)
-	    return -3;
-	} 
-      }
     }
 
   // Check the final leaf and split if necessary
@@ -577,8 +585,14 @@ int IX_IndexHandle::getKeySize(const void *key, int * shift_offset) const{
   return key_size;
 }
 
+
+// TODO: REMOVE
+// Only works for var char
+void printKey(void * key);
+// ************
+
 // toPage must be an internal page
-RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){
+RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){    
   void * page = malloc(PF_PAGE_SIZE);
   
   if(fileHandle.ReadPage(toPage, page) != 0)
@@ -601,16 +615,17 @@ RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){
       // Read key on page
       void *key_on_page = (void *)((char *)page + offset);
       int key_on_page_size = getKeySize(key_on_page);
-
+      
       int cmp = keycmp(key, key_on_page);
-
-      if (cmp <= 0)
+      
+      if (cmp == 0)
+	error("Duplicate internal keys not supported.", -3);	
+      else if (cmp < 0)
 	break;
       else
 	offset += key_on_page_size + 2;
-
+      
     }  
-
 
   if( offset >= free_pointer )
     offset = free_pointer;
@@ -631,6 +646,8 @@ RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){
 
   // Update the free pointer
   free_pointer += key_size + 2;
+  if(free_pointer >= PF_PAGE_SIZE - 5)
+    error("THe impossible happened!",-3);
   memcpy((char *)page + PF_PAGE_SIZE - 2, &free_pointer, 2);
    
   RC rc = fileHandle.WritePage(toPage, page);
@@ -679,6 +696,30 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
       offset += key_size + pointer_size;
     }
 
+    int split_key_offset = offset;
+    bool too_far = false;
+    while(!too_far && keycmp((char *)page+split_key_offset, (char *)page+offset) == 0){
+      key_size = getKeySize((char *)page+split_key_offset+key_offset);
+      offset += key_size + pointer_size;
+      
+      if(offset >= free_pointer) {
+	too_far = true;
+      }
+    }
+
+    // We walked off the page let's try walking backwards
+    if(too_far){
+      offset = 0;
+      while( keycmp((char *)page+split_key_offset, (char *)page+offset) != 0){
+	key_size = getKeySize((char *)page+split_key_offset+key_offset);
+	offset += key_size + pointer_size;      
+      }
+
+      if(offset == 0) {
+	error("Too many duplicates to continue", -3);
+      }
+    }
+   
     // Copy the other records to the new page
     memcpy(newPage, (char*)page+offset, free_pointer-offset);
     
@@ -710,7 +751,9 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Copy the old root to the left page
     void * leftPage = malloc(PF_PAGE_SIZE);
     memcpy(leftPage, page,PF_PAGE_SIZE);
-    memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
+    // If we memset here we lose the key that we need to promote
+    //   in order to uncomment this line make sure to first copy the key
+    // memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
 
     if(fileHandle.AppendPage(leftPage) != 0)
       return -2;
@@ -719,14 +762,18 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
     // To make debugging easier just clear the page
     memset(page, 0, PF_PAGE_SIZE);
-        
-    // Add in the promoted key
-    key_size = getKeySize((char*)newPage + key_offset);
-    memcpy((char *)page+2, (char *)newPage+key_offset, key_size);
+    
+    // The promoted key here is NOT the leftmost entry of the IX_NODE but instead, it is the
+    // Key that we deleted!! This is true for both kinds of splits
+
+    // Add in the promoted key. This must be the deleted key for IX_NODES! For leaf nodes, this is still the left most key on the right page
+    void * promoted_key = (char *)leftPage+tmp;
+    key_size = getKeySize(promoted_key);
+    memcpy((char *)page+2, promoted_key, key_size);
+
     // Add in new pointers
     memcpy(page, &left_page, 2);
     memcpy((char *)page+key_size+2, &right_page, 2);
-    
     
     // Delete everything else by changing the free pointer
     tmp = 4 + key_size;
@@ -743,11 +790,39 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     memcpy((char *)newPage + PF_PAGE_SIZE - 3 - 2,&next_page, 2);
     memcpy((char *)page + PF_PAGE_SIZE - 3 - 2, &new_page_num, 2);
 
+    int key_offset = 0;
+    int pointer_size = 4;
 
+    int key_size;
     while(offset <= (free_pointer / 2)){
-      int key_size = getKeySize((char*)page+offset);
-      offset += key_size + 4;
+      key_size = getKeySize((char*)page+offset);
+      offset += key_size + pointer_size;
     }
+
+    int split_key_offset = offset;
+    bool too_far = false;
+    while(!too_far && keycmp((char *)page+split_key_offset, (char *)page+offset) == 0){
+      key_size = getKeySize((char *)page+split_key_offset+key_offset);
+      offset += key_size + pointer_size;
+      
+      if(offset >= free_pointer) {
+	too_far = true;
+      }
+    }
+
+    // We walked off the page let's try walking backwards
+    if(too_far){
+      offset = 0;
+      while( keycmp((char *)page+split_key_offset, (char *)page+offset) != 0){
+	key_size = getKeySize((char *)page+split_key_offset+key_offset);
+	offset += key_size + pointer_size;      
+      }
+
+      if(offset == 0) {
+	error("Too many duplicates to continue", -3);
+      }
+    }
+
 
     // Copy the other records to the new page
     memcpy(newPage, (char*)page+offset, free_pointer-offset);
@@ -767,10 +842,38 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
   } else if( type == IX_NODE ){
     int key_size;
+
+    int key_offset = 2;
+    int pointer_size = 2;
     while(offset <= (free_pointer / 2)){
-      key_size = getKeySize((char*)page+offset+4);
-      offset += key_size + 2;
+      key_size = getKeySize((char*)page+offset+key_offset);
+      offset += key_size + pointer_size;
     }
+
+    int split_key_offset = offset;
+    bool too_far = false;
+    while(!too_far && keycmp((char *)page+split_key_offset, (char *)page+offset) == 0){
+      key_size = getKeySize((char *)page+split_key_offset+key_offset);
+      offset += key_size + pointer_size;
+      
+      if(offset >= free_pointer) {
+	too_far = true;
+      }
+    }
+
+    // We walked off the page let's try walking backwards
+    if(too_far){
+      offset = 0;
+      while( keycmp((char *)page+split_key_offset, (char *)page+offset) != 0){
+	key_size = getKeySize((char *)page+split_key_offset+key_offset);
+	offset += key_size + pointer_size;      
+      }
+
+      if(offset == 0) {
+	error("Too many duplicates to continue", -3);
+      }
+    }
+
 
     // Copy the other records to the new page
     memcpy(newPage, (char*)page+offset, free_pointer-offset);
@@ -780,11 +883,11 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     memcpy((char*)newPage+PF_PAGE_SIZE-2, &tmp, 2);
 
     // Update the old free_pointer (minus the last key)
-    // Note: We don't premote this key, although we could
     tmp = offset - key_size;
     memcpy((char *)page+PF_PAGE_SIZE-2, &tmp, 2);
     
-    if(insertKey((char *)newPage+2, new_page_num, prevPageNum) != 0)
+    // Promote the deleted key which happens to be siting at the free_pointer boundry
+    if(insertKey((char *)page+tmp, new_page_num, prevPageNum) != 0)
       return -3;
     
   } else{
@@ -840,34 +943,38 @@ RC IX_IndexHandle::DeleteEntry(void *key, const RID &rid){
   uint16_t free_pointer = 0;
   memcpy(&free_pointer, (char *)page + PF_PAGE_SIZE - 2, 2);
 
-  if(offset >= free_pointer){
-    // Not found
-    free(page);
-    return error("Key not found", 2);
-  }
+  int key_size;
+  bool found = false;
+  do  {
 
-  int key_size = getKeySize((char *)page+offset);
+    if(offset >= free_pointer){
+      // Not found anywhere
+      free(page);
+      return error("Entry not found on page", 2);
+    }
+
+    key_size = getKeySize((char *)page+offset);
   
-  // If we want to implement duplicates we will need to continue searching here
-  if( keycmp(key, (char *)page + offset) != 0 ){
-    free(page);
-    return error("Key not on page", 2);
-  }
+    // If we want to implement duplicates we will need to continue searching here
+    int cmp = keycmp(key, (char *)page + offset);
+    if( cmp != 0 ){
+      free(page);
+      return error("Key not on page", 2);
+    }
 
-
-  offset += key_size;
+    offset += key_size;
    
-  uint16_t key_pageNum = 0;
-  uint16_t key_slotNum = 0;
-  memcpy(&key_pageNum, (char *)page + offset, 2);
-  offset += sizeof(key_pageNum);
-  memcpy(&key_slotNum, (char *)page + offset, 2);
-  offset += sizeof(key_slotNum);
+    uint16_t key_pageNum = 0;
+    uint16_t key_slotNum = 0;
+    memcpy(&key_pageNum, (char *)page + offset, 2);
+    offset += sizeof(key_pageNum);
+    memcpy(&key_slotNum, (char *)page + offset, 2);
+    offset += sizeof(key_slotNum);
 
-  if(rid.pageNum != key_pageNum || rid.slotNum != key_slotNum){
-    free(page);
-    return 2;
-  }
+    if(rid.pageNum == key_pageNum && rid.slotNum == key_slotNum){
+      found = true;
+    }
+  } while(!found);
 
   // Actually delete the key by shifting records and the free pointer
   int subsequent_keys_size = free_pointer - offset;
@@ -931,7 +1038,6 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
   
   if(lowKey != NULL) {
     // Search for the first key that meets our requirements
-    
     if(this->indexHandle->findOnPage(page, lowKey, offset, lowKeyInclusive) != 0)
       return -3;
 
