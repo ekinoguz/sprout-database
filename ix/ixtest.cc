@@ -276,10 +276,10 @@ void testCase_2(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Entry..." << endl;
+    cout << "Failed Inserting Entry..." << endl;
         }     
     }
     
@@ -435,10 +435,10 @@ void testCase_4(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Entry..." << endl;
+       cout << "Failed Inserting Entry..." << endl;
         }     
     }
 
@@ -464,7 +464,7 @@ void testCase_4(const string tablename, const string attrname)
   while(ixScan.GetNextEntry(rid) == success) 
     {
       if(rid.pageNum != key)
-	cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
+  cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
 
       assert(rid.pageNum == key);
       assert(rid.slotNum == key+1);
@@ -581,10 +581,10 @@ void testCase_5(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
     
@@ -600,10 +600,10 @@ void testCase_5(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
     
@@ -636,10 +636,10 @@ void testCase_5(const string tablename, const string attrname)
       if (rid.pageNum < 501 || rid.slotNum < 501)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
 
       start += 1;
@@ -751,10 +751,10 @@ void testCase_6(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -769,10 +769,10 @@ void testCase_6(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -799,25 +799,25 @@ void testCase_6(const string tablename, const string attrname)
   while(ixScan.GetNextEntry(rid) == success) 
     {
       if (i <= 2000) {
-	assert(rid.pageNum == i);
-	assert(rid.slotNum == i);
+  assert(rid.pageNum == i);
+  assert(rid.slotNum == i);
       } else {
-	assert(rid.pageNum == i);
-	assert(rid.slotNum == (i-(unsigned)500));
+  assert(rid.pageNum == i);
+  assert(rid.slotNum == (i-(unsigned)500));
       }
       if (i == 2000)
-	i = 6000;
+  i = 6000;
       else
-	i++;
+  i++;
       // if(rid.pageNum % 500 == 0)
-      // 	cout << rid.pageNum << " " << rid.slotNum << endl;
+      //   cout << rid.pageNum << " " << rid.slotNum << endl;
       if ((rid.pageNum > 2000 && rid.pageNum < 6000) || rid.pageNum >= 6500)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
     }
 
@@ -928,10 +928,10 @@ void testCase_7(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -960,7 +960,7 @@ void testCase_7(const string tablename, const string attrname)
       i++;
       assert(rid.pageNum == i);
       assert(rid.slotNum == i);
-	
+  
       // cout << rid.pageNum << " " << rid.slotNum << endl;
 
       float key = (float)rid.pageNum;
@@ -968,10 +968,10 @@ void testCase_7(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed deleting entry in Scan..." << endl;
+    cout << "Failed deleting entry in Scan..." << endl;
         }
     }
   cout << endl;
@@ -1014,10 +1014,10 @@ void testCase_7(const string tablename, const string attrname)
       if(rid.pageNum < 100)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Entry returned: " << rid.pageNum << " " << rid.slotNum << "--- failure" << endl;
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Entry returned: " << rid.pageNum << " " << rid.slotNum << "--- failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
     }
 
@@ -1130,10 +1130,10 @@ void testCase_8(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1169,10 +1169,10 @@ void testCase_8(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed deleting entry in Scan..." << endl;
+    cout << "Failed deleting entry in Scan..." << endl;
         }
     }
   // cout << endl;
@@ -1205,10 +1205,10 @@ void testCase_8(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1238,9 +1238,9 @@ void testCase_8(const string tablename, const string attrname)
       if(rid.pageNum <= 450 || rid.slotNum <= 450)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Wrong entries output...failure" << endl;
+    cout << "Wrong entries output...failure" << endl;
         }
     }
   // cout << endl;
@@ -1354,9 +1354,9 @@ void testCase_extra_1(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1371,10 +1371,10 @@ void testCase_extra_1(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
 
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         } 
     }
     
@@ -1401,7 +1401,7 @@ void testCase_extra_1(const string tablename, const string attrname)
   while(ixScan.GetNextEntry(rid) == success) 
     {
       if(count % 1000 == 0)
-	cout << rid.pageNum << " " << rid.slotNum << endl;
+  cout << rid.pageNum << " " << rid.slotNum << endl;
       count++;
     }
   cout << count << endl;
@@ -1505,7 +1505,7 @@ void testCase_extra_2(const string tablename, const string attrname)
    
       for(unsigned j = 0; j < count; j++)
         {
-	  *((char *)key+4+j) = 96+count;
+    *((char *)key+4+j) = 96+count;
         }
 
       rid.pageNum = i;
@@ -1515,9 +1515,9 @@ void testCase_extra_2(const string tablename, const string attrname)
       if(rc != success)
         {
 #ifdef ASSERT_ALL
-	  assert(false);
+    assert(false);
 #endif
-	  cout << "Failed Inserting Keys..." << endl;
+    cout << "Failed Inserting Keys..." << endl;
         }     
     }
 
@@ -1861,12 +1861,12 @@ void testCase_O5(){
       assert(rc == success);
       
       for(uint k=0; k < possible.size(); k++){
-	if(possible[k].slotNum == rid.slotNum &&
-	   possible[k].pageNum == rid.pageNum) 
-	  {
-	    possible.erase( possible.begin()+k );
-	    break;
-	  }
+  if(possible[k].slotNum == rid.slotNum &&
+     possible[k].pageNum == rid.pageNum) 
+    {
+      possible.erase( possible.begin()+k );
+      break;
+    }
       }
     }
     for(uint l=0; l < possible.size();l++){
@@ -1917,12 +1917,12 @@ void testCase_O5(){
       assert(rc == success);
       
       for(uint k=0; k < possible.size(); k++){
-	if(possible[k].slotNum == rid.slotNum &&
-	   possible[k].pageNum == rid.pageNum) 
-	  {
-	    possible.erase( possible.begin()+k );
-	    break;
-	  }
+  if(possible[k].slotNum == rid.slotNum &&
+     possible[k].pageNum == rid.pageNum) 
+    {
+      possible.erase( possible.begin()+k );
+      break;
+    }
       }
     }
     // Make sure we saw all versions and no more
@@ -1972,7 +1972,7 @@ void testCase_O6()
     }
   cout << "Keys Inserted Successfully!" << endl;
 
-  // Scan
+  // Scan Low-Key is not present
   IX_IndexScan ixScan;
   uint lowKey = 15000;
   uint highKey = 25000;
@@ -1985,7 +1985,7 @@ void testCase_O6()
   while(ixScan.GetNextEntry(rid) == success) 
     {
       if(rid.pageNum != key)
-	cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
+  cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
 
       assert(rid.pageNum == key);
       assert(rid.slotNum == key + 1);
@@ -1993,23 +1993,45 @@ void testCase_O6()
       count++;
     }
   assert(count == 5001);
-  cout << "Scan Completed Successfully!" << endl;
+  cout << "Low-Key Not Available Scan Completed Successfully!" << endl;
 
   rc = ixScan.CloseScan();
   assert(rc == success);
-  cout << "Scan Closed Successfully!" << endl;
-      
+
+  // Scan High-Key is not present
+  IX_IndexScan ixScanHigh;
+  lowKey = 7500;
+  highKey = 15000;
+  rc = ixScanHigh.OpenScan(ixHandle, &lowKey, &highKey, true, true);
+  assert(rc == success);
+  
+  key = 7500;
+  count = 0;
+  while(ixScanHigh.GetNextEntry(rid) == success) 
+    {
+      if(rid.pageNum != key)
+  cout << key << ":" <<rid.pageNum << ":" << rid.slotNum << endl; 
+
+      assert(rid.pageNum == key);
+      assert(rid.slotNum == key + 1);
+      key ++;
+      count++;
+    }
+  assert(count == 2501);
+  cout << "High-Key Not Avaiable Scan Completed Successfully!" << endl;
+
+  rc = ixScanHigh.CloseScan();
+  assert(rc == success);
+
   // Close Index
   rc = ixManager->CloseIndex(ixHandle);
   assert(rc == success);
-  cout << "Index Closed Successfully!" << endl;
   
   // Destroy Index
   rc = ixManager->DestroyIndex(tablename, attrname);
   assert(rc == success);
-  cout << "Index Destroyed Successfully!" << endl;
 
-  cout << "O6 Passed" << endl;
+  cout << "*** O6 Passed ***" << endl;
   return;
 }
 
