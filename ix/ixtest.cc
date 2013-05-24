@@ -1830,7 +1830,7 @@ void testCase_O5(){
   vector<RID> rids;
   vector<void *>tuples;
   // Here 50000 causes a fail
-  insertTuples(tablename, rids,tuples,1000, true, 4);
+  insertTuples(tablename, rids,tuples,50000, true, 4);
   
   vector<void *> keys = getKeys(tuples, 0, true);
 
@@ -1857,9 +1857,6 @@ void testCase_O5(){
     }
     
     for(uint j=0; j < 4; j++){
-      //      cout << i << ":" << j << endl;
-      //      printKey(keys[i+j]);
-      
       rc = ixs.GetNextEntry(rid);
       assert(rc == success);
       
@@ -1872,8 +1869,19 @@ void testCase_O5(){
 	  }
       }
     }
+    for(uint l=0; l < possible.size();l++){
+      cout << "Old: " << rid.pageNum << ":" << rid.slotNum << endl;
+      cout << "RID: " << l << ":" << i << " " << possible[l].pageNum << ":" << possible[l].slotNum << " ";
+      printKey(keys[i+l]);
+    }
+
+    rc = ixs.GetNextEntry(rid);
+    
+    if(rc == 0){
+      cout << "RID: " << rid.pageNum << ":" << rid.slotNum << endl;
+    }
     // Make sure we saw all versions and no more
-    assert(ixs.GetNextEntry(rid) != 0 );
+    assert(rc != 0);
     assert(possible.size() == 0); 
     
     ixs.CloseScan();
