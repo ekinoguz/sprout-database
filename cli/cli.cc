@@ -165,8 +165,10 @@ RC CLI::start()
     // check for EOF
     if (!input)
       break;
-    if ((this->process(string(input))) == EXIT_CODE)
+    if ((this->process(string(input))) == EXIT_CODE) {
+      free(input);
       break;
+    }
     add_history(input);
     // Free Input
     free(input);
