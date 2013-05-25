@@ -726,7 +726,6 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Copy the other records to the new page
     memcpy(newPage, (char*)page+offset, free_pointer-offset);
     
-    
     // Add the free_pointer
     uint16_t tmp = free_pointer-offset;
     memcpy((char*)newPage+PF_PAGE_SIZE-2, &tmp, 2);
@@ -739,7 +738,6 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     }
     // Update the old free_pointer
     memcpy((char *)page+PF_PAGE_SIZE-2, &tmp, 2);
-
 
     uint16_t left_page = fileHandle.GetNumberOfPages(); 
     uint16_t right_page = left_page + 1;
@@ -754,12 +752,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Copy the old root to the left page
     void * leftPage = malloc(PF_PAGE_SIZE);
     memcpy(leftPage, page,PF_PAGE_SIZE);
-    // If we memset here we lose the key that we need to promote
-    //   in order to uncomment this line make sure to first copy the key
-    // memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
-
-    if(fileHandle.AppendPage(leftPage) != 0)
-      return -2;
+    
 
     // To make debugging easier just clear the page
     memset(page, 0, PF_PAGE_SIZE);
@@ -773,6 +766,12 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     key_size = getKeySize(promoted_key);
     memcpy((char *)page+2, promoted_key, key_size);
 
+    // We memset/append here so we don't lose access to the key
+    memset((char *)leftPage+tmp, 0, PF_PAGE_SIZE - tmp -3 -2);
+
+    if(fileHandle.AppendPage(leftPage) != 0)
+      return -2;
+    
     // Add in new pointers
     memcpy(page, &left_page, 2);
     memcpy((char *)page+key_size+2, &right_page, 2);
@@ -784,7 +783,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // Ensure the root is now an IX_NODE
     nodeType new_type = IX_NODE;
     memcpy((char *)page + PF_PAGE_SIZE - 3,&new_type, 1);
-    
+
     free(leftPage);
   } else if( type == LEAF_NODE ) {
     // Set up the linked pointers 
@@ -921,6 +920,8 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
   else
     return_page = new_page_num;
 
+  if(new_page_num == 335)
+    exit(-1);
   free(page);
   free(newPage);
   return return_page;
