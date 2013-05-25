@@ -1516,7 +1516,6 @@ void testCase_extra_2(const string tablename, const string attrname)
         
         if (count == 20) {
           rids.push_back(rid);
-          cout << i << endl;
         }
 
       rc = ixHandle.InsertEntry(key, rid);
@@ -1537,7 +1536,6 @@ void testCase_extra_2(const string tablename, const string attrname)
   for(unsigned j = 0; j < offset; j++)
     {
       *((char *)key+4+j) = 96+offset;
-      cout << *((char *)key+4+j) << endl;
     }
 
   rc = ixScan.OpenScan(ixHandle, key, key, true, true);
@@ -1843,6 +1841,8 @@ void testCase_O5(){
   string attrname = "EmpName";
   createTable(RM::Instance(), tablename);
 
+  cout << "...it takes time, be patient..." << endl;
+
   // Insert Data
   vector<RID> rids;
   vector<void *>tuples;
@@ -1852,9 +1852,7 @@ void testCase_O5(){
   #else
   insertTuples(tablename, rids,tuples,5000, true, 4);
   #endif
-  
 
-  cout << "...it takes time, be patient..." << endl;
   vector<void *> keys = getKeys(tuples, 0, true);
 
   RC rc = ixManager->CreateIndex(tablename, attrname);
