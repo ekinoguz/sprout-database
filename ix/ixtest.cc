@@ -2283,7 +2283,7 @@ void testCase_O8()
   assert (rc == success);
 
   // Test IndexScan Iterator
-  int i = second;
+  uint i = second;
   int count = 0;
   while(ixScanNoLow.GetNextEntry(rid) == success)
     {
