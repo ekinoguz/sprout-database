@@ -588,7 +588,7 @@ int IX_IndexHandle::getKeySize(const void *key, int * shift_offset) const{
 
 // TODO: REMOVE
 // Only works for var char
-void printKey(void * key);
+void printKey(const void * key);
 // ************
 
 // toPage must be an internal page
@@ -658,7 +658,7 @@ RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){
 
 int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
-  cout << "P#: " << pageNum << ", PP#: " << prevPageNum << endl;
+  // cout << "P#: " << pageNum << ", PP#: " << prevPageNum << endl;
 
   void * page = malloc(PF_PAGE_SIZE);
   void * newPage = malloc(PF_PAGE_SIZE);
@@ -699,13 +699,10 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
       offset += key_size + pointer_size;
     }
 
-    if(type == IX_NODE)
-      offset += pointer_size;
-
     int split_key_offset = offset;
     bool too_far = false;
-    while(!too_far && keycmp((char *)page+split_key_offset, (char *)page+offset) == 0){
-      key_size = getKeySize((char *)page+split_key_offset);  // + key_offset removed
+    while(!too_far && keycmp((char *)page+split_key_offset+key_offset, (char *)page+offset+key_offset) == 0){
+      key_size = getKeySize((char *)page+split_key_offset+key_offset);
       offset += key_size + pointer_size;
       
       if(offset >= free_pointer) {
@@ -716,7 +713,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     // We walked off the page let's try walking backwards
     if(too_far){
       offset = 0;
-      while( keycmp((char *)page+split_key_offset, (char *)page+offset) != 0){
+      while( keycmp((char *)page+split_key_offset+key_offset, (char *)page+offset+key_offset) != 0){
 	key_size = getKeySize((char *)page+split_key_offset+key_offset);
 	offset += key_size + pointer_size;      
       }
@@ -734,13 +731,12 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     uint16_t tmp = free_pointer-offset;
     memcpy((char*)newPage+PF_PAGE_SIZE-2, &tmp, 2);
     
-    // if( type == IX_NODE) {
-    //   tmp = offset - key_size;
-    // }
-    // else {
-    //   tmp = offset;
-    // }
-    tmp = offset;
+    if( type == IX_NODE) {
+      tmp = offset - key_size;
+    }
+    else {
+      tmp = offset;
+    }
     // Update the old free_pointer
     memcpy((char *)page+PF_PAGE_SIZE-2, &tmp, 2);
 
@@ -765,8 +761,6 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     if(fileHandle.AppendPage(leftPage) != 0)
       return -2;
 
-    free(leftPage);
-
     // To make debugging easier just clear the page
     memset(page, 0, PF_PAGE_SIZE);
     
@@ -775,6 +769,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
     // Add in the promoted key. This must be the deleted key for IX_NODES! For leaf nodes, this is still the left most key on the right page
     void * promoted_key = (char *)leftPage+tmp;
+    printKey(promoted_key);
     key_size = getKeySize(promoted_key);
     memcpy((char *)page+2, promoted_key, key_size);
 
@@ -783,13 +778,14 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     memcpy((char *)page+key_size+2, &right_page, 2);
     
     // Delete everything else by changing the free pointer
-    tmp = 4 + key_size;
+    tmp = 4 + key_size; // 2 for each pointer
     memcpy((char *)page+PF_PAGE_SIZE-2, &tmp, 2);
         
     // Ensure the root is now an IX_NODE
     nodeType new_type = IX_NODE;
     memcpy((char *)page + PF_PAGE_SIZE - 3,&new_type, 1);
     
+    free(leftPage);
   } else if( type == LEAF_NODE ) {
     // Set up the linked pointers 
     uint16_t next_page = 0;
@@ -802,14 +798,14 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
     int key_size;
     while(offset <= (free_pointer / 2)){
-      key_size = getKeySize((char*)page+offset);
+      key_size = getKeySize((char*)page+offset+key_offset);
       offset += key_size + pointer_size;
     }
 
     int split_key_offset = offset;
     bool too_far = false;
     while(!too_far && keycmp((char *)page+split_key_offset, (char *)page+offset) == 0){
-      key_size = getKeySize((char *)page+split_key_offset+key_offset);
+      key_size = getKeySize((char *)page+split_key_offset);
       offset += key_size + pointer_size;
       
       if(offset >= free_pointer) {
@@ -821,7 +817,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
     if(too_far){
       offset = 0;
       while( keycmp((char *)page+split_key_offset, (char *)page+offset) != 0){
-	key_size = getKeySize((char *)page+split_key_offset+key_offset);
+	key_size = getKeySize((char *)page+split_key_offset);
 	offset += key_size + pointer_size;      
       }
 
@@ -857,31 +853,29 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
       offset += key_size + pointer_size;
     }
 
-    offset += pointer_size;
-
     int split_key_offset = offset;
     bool too_far = false;
-    while(!too_far && keycmp((char *)page+split_key_offset, (char *)page+offset) == 0){
+    while(!too_far && keycmp((char *)page+split_key_offset+key_offset, (char *)page+offset+key_offset) == 0){
       key_size = getKeySize((char *)page+split_key_offset+key_offset);
       offset += key_size + pointer_size;
       
       if(offset >= free_pointer) {
-	too_far = true;
+    	too_far = true;
       }
     }
 
     // We walked off the page let's try walking backwards
     if(too_far){
-      offset = pointer_size;
-      while( keycmp((char *)page+split_key_offset, (char *)page+offset) != 0){
-	key_size = getKeySize((char *)page+split_key_offset); // + key_offset removed
-	offset += key_size + pointer_size;
+      offset = 0;
+      while( keycmp((char *)page+split_key_offset+key_offset, (char *)page+offset+key_offset) != 0){
+    	key_size = getKeySize((char *)page+split_key_offset+key_offset);
+    	offset += key_size + pointer_size;
       }
 
       if(offset == 0) {
-	error("Too many duplicates to continue", -3);
+    	error("Too many duplicates to continue", -3);
       }
-    }
+    } 
 
 
     // Copy the other records to the new page
@@ -913,7 +907,7 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
   // Set the return page
   int key_start_offset = 0;  
   if(type == IX_NODE)
-    key_start_offset = 4;
+    key_start_offset = 2;
   
   int cmp = keycmp(key, ((char *)newPage+key_start_offset));
 

@@ -20,7 +20,7 @@ const int success = 0;
 
 
 // Only works for var char
-void printKey(void * key){
+void printKey(const void * key){
   int key_size = *(int *)key;
   char * tmp = (char *) malloc(key_size);
   memcpy(tmp, (char *)key+4, key_size);
@@ -2358,12 +2358,12 @@ void testCase_O8()
 
 void ourTests()
 {
-  testCase_O1();
-  testCase_O3();
-  testCase_O2();
-  testCase_O4(); 
+  // testCase_O1();
+  // testCase_O3();
+  // testCase_O2();
+  // testCase_O4(); 
   //testCase_O5(); // Basic duplicate checking
-  testCase_O6();
+  // testCase_O6();
   testCase_O7();
   testCase_O8();
 }
@@ -2376,14 +2376,14 @@ int main()
   RM *rm = RM::Instance();
   createTable(rm, "tbl_employee");
     
-  testCase_1("tbl_employee", "Age");
-  testCase_2("tbl_employee", "Age"); 
-  testCase_3("tbl_employee", "Age");
-  testCase_4("tbl_employee", "Age");
-  testCase_5("tbl_employee", "Age");
-  testCase_6("tbl_employee", "Height");  
-  testCase_7("tbl_employee", "Height"); 
-  testCase_8("tbl_employee", "Height");
+  // testCase_1("tbl_employee", "Age");
+  // testCase_2("tbl_employee", "Age"); 
+  // testCase_3("tbl_employee", "Age");
+  // testCase_4("tbl_employee", "Age");
+  // testCase_5("tbl_employee", "Age");
+  // testCase_6("tbl_employee", "Height");  
+  // testCase_7("tbl_employee", "Height"); 
+  // testCase_8("tbl_employee", "Height");
   ourTests();
 
   
