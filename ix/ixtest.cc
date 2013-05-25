@@ -22,8 +22,9 @@ const int success = 0;
 // Only works for var char
 void printKey(const void * key){
   int key_size = *(int *)key;
-  char * tmp = (char *) malloc(key_size);
+  char * tmp = (char *) malloc(key_size+1);
   memcpy(tmp, (char *)key+4, key_size);
+  *((char *)tmp+key_size) = '\0';
   cout << "Key: " << tmp << endl;
 
   free(tmp);
