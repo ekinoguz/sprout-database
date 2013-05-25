@@ -5,10 +5,12 @@
 #include <string>
 #include <cstring>
 #include <iomanip>
+#include <cmath>
 
 #include "../shared.h"
 #include "../pf/pf.h"
 #include "../rm/rm.h"
+#include "../ix/ix.h"
 
 using namespace std;
 
@@ -34,12 +36,12 @@ private:
   RC createTable();
   RC createIndex();
   RC dropTable();
-  RC dropIndex();
+  RC dropIndex(const string tableName="", const string columnName="", bool fromCommand=true);
   RC addAttribute();
   RC dropAttribute();
   RC load();
   RC printTable(const string tableName);
-  RC printColumns();
+  RC printAttributes();
   RC help(const string input);
   RC history();
 
@@ -47,16 +49,18 @@ private:
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
   RC addAttributeToCatalog(const Attribute &attr, const string tableName, const int position);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
+  RC addIndexToCatalog(const string tableName, const string indexName);
 
   // helper functions
   char *  next();
   bool expect(char * tokenizer, const string expected);
-  bool checkAttribute(const string tableName, const string columnName, RID &rid);
+  bool checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns=true);
   RC error(const string errorMessage);
-  RC printTuple(void *data, vector<Attribute> &attrs);
-  void printAttributes(vector<Attribute> &attributes);
+  RC printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial=false);
+  RC updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs);
 
   RM * rm;
+  IX_Manager * ixManager;
   static CLI * _cli;
 };
 

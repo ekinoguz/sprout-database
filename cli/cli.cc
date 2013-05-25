@@ -11,9 +11,10 @@
 #define CVS_DELIMITERS ","
 #define CLI_TABLES "cli_tables"
 #define CLI_COLUMNS "cli_columns"
+#define CLI_INDEXES "cli_indexes"
 #define COLUMNS_TABLE_RECORD_MAX_LENGTH 150   // It is actually 112
-#define OUTPUT_MIN_WIDTH 10
-#define OUTPUT_MAX_WIDTH 25
+#define DIVISOR "  |  "
+#define DIVISOR_LENGTH 5
 #define EXIT_CODE -99
 
 CLI * CLI::_cli = 0;
@@ -29,6 +30,7 @@ CLI* CLI::Instance()
 CLI::CLI()
 {
   rm = RM::Instance();
+  ixManager = IX_Manager::Instance();
   Attribute attr;
 
   // create cli columns table
@@ -82,7 +84,8 @@ CLI::CLI()
   attr.length = 20;
   table_attrs.push_back(attr);
   
-  rm->createTable(CLI_TABLES, table_attrs);
+  if (rm->createTable(CLI_TABLES, table_attrs) != 0)
+    return;
 
   // add cli catalog attributes to cli columns table
   for(uint i=0; i < table_attrs.size(); i ++) {
@@ -96,6 +99,41 @@ CLI::CLI()
 
   file_url = string(DATABASE_FOLDER) + '/' + CLI_TABLES;
   if (this->addTableToCatalog(CLI_TABLES, file_url, "heap") != 0)
+    return;
+
+  // Adding the index table attributes to the columns table
+  vector<Attribute> index_attr;
+  attr.name = "table_name";
+  attr.type = TypeVarChar;
+  attr.length = 50;
+  index_attr.push_back(attr); 
+
+  attr.name = "column_name";
+  attr.length = 30;
+  attr.type = TypeVarChar;
+  index_attr.push_back(attr);
+
+  attr.name = "max_key_length";
+  attr.length = 4;
+  attr.type = TypeInt;
+  index_attr.push_back(attr);
+
+  attr.name = "is_variable_length";
+  attr.length = 1;
+  attr.type = TypeBoolean;
+  index_attr.push_back(attr);
+  
+  if(rm->createTable(CLI_INDEXES, index_attr) != 0)
+    return;
+
+  // add cli index attributes to cli columns table
+  for(uint i=0; i < index_attr.size(); i ++) {
+    this->addAttributeToCatalog(index_attr[i], CLI_INDEXES, i);
+  }
+
+  // add cli catalog information to itself
+  file_url = string(DATABASE_FOLDER) + '/' + CLI_INDEXES;
+  if (this->addTableToCatalog(CLI_INDEXES, file_url, "heap") != 0)
     return;
 }
 
@@ -127,8 +165,10 @@ RC CLI::start()
     // check for EOF
     if (!input)
       break;
-    if ((this->process(string(input))) == EXIT_CODE)
+    if ((this->process(string(input))) == EXIT_CODE) {
+      free(input);
       break;
+    }
     add_history(input);
     // Free Input
     free(input);
@@ -152,7 +192,7 @@ RC CLI::process(const string input)
   {
 
     ////////////////////////////////////////////
-    // create table <tableName> TODO: write structure
+    // create table <tableName> (col1=type1, col2=type2, ...)
     // create index <columnName> on <tableName>
     ////////////////////////////////////////////
     if (expect(tokenizer, "create")) {
@@ -182,7 +222,7 @@ RC CLI::process(const string input)
 
     ////////////////////////////////////////////
     // drop table <tableName>
-    // drop index <indexName>
+    // drop index <columnName> on <tableName>
     // drop attribute <attributeName> from <tableName>
     ////////////////////////////////////////////
     else if (expect(tokenizer, "drop")) {
@@ -210,14 +250,13 @@ RC CLI::process(const string input)
     }
 
     ////////////////////////////////////////////
-    // load <tableName> <fileName>
-    // drop index <indexName>
-    // drop attribute <attributeName> from <tableName>
+    // print <tableName>
+    // print attributes <tableName>
     ////////////////////////////////////////////
     else if (expect(tokenizer, "print")) {
       tokenizer = next();
       if (expect(tokenizer, "body") || expect(tokenizer, "attributes"))
-        code = printColumns();
+        code = printAttributes();
       else if (tokenizer != NULL)
         code = printTable(string(tokenizer));
       else
@@ -280,8 +319,7 @@ RC CLI::createTable()
     // get type
     tokenizer = next();
     if (tokenizer == NULL) {
-      cout << "expecting type" << endl;
-      break;
+      return error("expecting type");
     }
     if (expect(tokenizer, "int")) {
       attr.type = TypeInt;
@@ -306,7 +344,6 @@ RC CLI::createTable()
       attr.length = 1;
     }
     else {
-      // TODO this is actually error
       return error ("problem in attribute type in create table: " + string(tokenizer));
     }
     table_attrs.push_back(attr);
@@ -339,7 +376,6 @@ RC CLI::createIndex()
 {
   char * tokenizer = next();
   string columnName = string(tokenizer);
-  cout << columnName << endl;
 
   tokenizer = next();
   if (!expect(tokenizer, "on")) {
@@ -348,7 +384,6 @@ RC CLI::createIndex()
 
   tokenizer = next();
   string tableName = string(tokenizer);
-
   
   // check if columnName, tableName is valid
   RID rid;
@@ -356,9 +391,17 @@ RC CLI::createIndex()
     return error("Given tableName-columnName does not exist");
 
   // check if index is already there
+  IX_IndexHandle ixHandle;
+  if (ixManager->OpenIndex(tableName, columnName, ixHandle) == 0)
+    return error("index is already there");
 
   // create index
+  if (ixManager->CreateIndex(tableName, columnName) != 0)
+    return error("cannot create index, ixManager error");
 
+  // add index to cli_indexes table
+  if (this->addIndexToCatalog(tableName, columnName) != 0)
+    return error("error in adding index to cli_indexes table");
 
   return 0;
 }
@@ -441,14 +484,20 @@ RC CLI::dropTable()
 
   string tableName = string(tokenizer);
 
-  // delete tableName from CLI_TABLES
-  Attribute attr;
+
+  // delete indexes if there are
+  RID rid;
   vector<Attribute> attributes;
-  this->getAttributesFromCatalog(CLI_TABLES, attributes);
+  this->getAttributesFromCatalog(tableName, attributes);
+  for (uint i = 0; i < attributes.size(); i++) {
+    if(this->checkAttribute(tableName, attributes[i].name, rid, false))
+      if(this->dropIndex(tableName, attributes[i].name, false) != 0)
+        return error("error while dropping an index in dropTable");
+  }
 
   // Set up the iterator
+  Attribute attr;
   RM_ScanIterator rmsi;
-  RID rid;
   void *data_returned = malloc(PF_PAGE_SIZE);
 
   // convert attributes to vector<string>
@@ -457,13 +506,14 @@ RC CLI::dropTable()
   if( rm->scan(CLI_TABLES, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
   
+  // delete tableName from CLI_TABLES
   while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
     if(rm->deleteTuple(CLI_TABLES, rid) != 0)
       return -1;
   }
   rmsi.close();
 
-  // Delete columns    
+  // Delete columns from CLI_COLUMNS  
   if( rm->scan(CLI_COLUMNS, "table_name", EQ_OP, tableName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
 
@@ -478,12 +528,56 @@ RC CLI::dropTable()
     return -1;
 
   free(data_returned);
-  return rm->deleteTable(tableName);
+
+  // and finally DeleteTable
+  ret = rm->deleteTable(tableName);
+  if (ret != 0)
+    return error("error in deleting table in recordManager");
+
+  return 0;
 }
 
-RC CLI::dropIndex()
+// drop index <columnName> on <tableName>
+RC CLI::dropIndex(const string tableName, const string columnName, bool fromCommand)
 {
-  return 0;
+  string realTable;
+  string realColumn;
+  if (fromCommand == false) {
+    realTable = tableName;
+    realColumn = columnName;
+  }
+  else {
+    // parse willDelete from command line
+    char * tokenizer = next();
+    realColumn = string(tokenizer);
+
+    tokenizer = next();
+    if (!expect(tokenizer, "on")) {
+      return error ("syntax error: expecting \"on\"");
+    }
+
+    tokenizer = next();
+    realTable = string(tokenizer);
+  }
+  RC rc;
+  // check if index is there or not
+  RID rid;
+  if (!this->checkAttribute(realTable, realColumn, rid, false)) {
+    if (fromCommand)
+      return error("given " + realTable + ":" + realColumn + " index does not exist in cli_indexes");
+    else // return error but print nothing
+      return -1;
+  }
+
+  // drop the index
+  rc = ixManager->DestroyIndex(realTable, realColumn);
+  if (rc != 0)
+    return error("error while destroying index in ixManager");
+
+  // delete the index from cli_indexes table
+  rc = rm->deleteTuple(CLI_INDEXES, rid) != 0;
+
+  return rc;
 }
 
 RC CLI::dropAttribute()
@@ -507,7 +601,22 @@ RC CLI::dropAttribute()
     return rc;
 
   // drop attribute
-  return rm->dropAttribute(tableName, attrName);
+  rc = rm->dropAttribute(tableName, attrName);
+  if (rc != 0)
+    return rc;
+
+  // if there is an index on dropped attribute
+  //    delete the index from cli_indexes table
+  bool hasIndex = this->checkAttribute(tableName, attrName, rid, false);
+
+  if (hasIndex) {
+    // drop index if there is one
+    rc = this->dropIndex(tableName, attrName, false);
+    if (rc != 0)
+      return rc;
+  }
+
+  return 0;
 }
 
 // CSV reader without escaping commas
@@ -543,10 +652,8 @@ RC CLI::load()
   string file_url = DATABASE_FOLDER"/../data/" + fileName;
   ifs.open (file_url, ifstream::in);
 
-  if (!ifs.is_open()) {
-    cout << "could not open file: " << file_url << endl;
-    return -1;
-  }
+  if (!ifs.is_open())
+    return error("could not open file: " + file_url);
 
   string line, token;
   char * tokenizer;
@@ -580,9 +687,9 @@ RC CLI::load()
         // TODO: this should be fixed, not sure about size
         int num = atoi(tokenizer);
         memcpy((char *)buffer + offset, &num, sizeof(num));
-        offset += sizeof(num);  
+        offset += sizeof(num);
+        return -1; 
       }
-      //cout << token << endl;
       tokenizer = strtok(NULL, CVS_DELIMITERS);
     }
     rm->insertTuple(tableName, buffer, rid);
@@ -597,115 +704,87 @@ RC CLI::load()
   return 0;
 }
 
-RC CLI::printColumns()
+RC CLI::printAttributes()
 {  
   char * tokenizer = next();
   if (tokenizer == NULL) {
-    error ("I expect tableName to print its columns");
+    error ("I expect tableName to print its attributes/columns");
     return -1;
   }
 
   string tableName = string(tokenizer);
-  //cout << "we will print columns of <" << tableName << ">" << endl;
 
   // get attributes of tableName
   Attribute attr;
   vector<Attribute> attributes;
   this->getAttributesFromCatalog(tableName, attributes);
 
-  // print attributes
-  //cout << setw(20) << left << "attr.name" << setw(15) << "attr.type" << setw(15) << "attr.length" << endl;
-  //cout << "==============================================" << endl;
-  printAttributes(attributes);
-  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
-    cout << setw(20) << left << it->name << setw(20) << left << it->type << setw(20) << it->length << endl;
+  // update attributes
+  vector<string> outputBuffer;
+  outputBuffer.push_back("name");
+  outputBuffer.push_back("type");
+  outputBuffer.push_back("length");
 
-  return 0;
+  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
+    outputBuffer.push_back(it->name);
+    outputBuffer.push_back(to_string(it->type));
+    outputBuffer.push_back(to_string(it->length));
+  }
+
+  return this->printOutputBuffer(outputBuffer, 3, true);
 }
 
 // print every tuples in given tableName
 RC CLI::printTable(const string tableName)
 {
-  //cout << "print every tuples in table <" << tableName << ">" << endl;
+  vector<Attribute> attributes;
+  RC rc = this->getAttributesFromCatalog(tableName, attributes);
+  if (rc != 0)
+    return error ("table: " + tableName + " does not exist");
+
   // Set up the iterator
   RM_ScanIterator rmsi;
   RID rid;
-  vector<Attribute> attributes;
-  void *data_returned = malloc(COLUMNS_TABLE_RECORD_MAX_LENGTH);
-  this->getAttributesFromCatalog(tableName, attributes);
+  void *data_returned = malloc(4096);
+  
 
   // convert attributes to vector<string>
   vector<string> stringAttributes;
   for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
     stringAttributes.push_back(it->name);
 
-  RC rc = rm->scan(tableName, "", NO_OP, NULL, stringAttributes, rmsi);
+  rc = rm->scan(tableName, "", NO_OP, NULL, stringAttributes, rmsi);
   if (rc != 0)
     return rc;
 
-  printAttributes(attributes);
-  while(rmsi.getNextTuple(rid, data_returned) != RM_EOF)
-    printTuple(data_returned, attributes);
-  rmsi.close();
+  // print
+  vector<string> outputBuffer;
+  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
+    outputBuffer.push_back(it->name);
+  }
 
-  free(data_returned);
-  return 0;
-}
-
-RC CLI::printTuple(void *data, vector<Attribute> &attrs)
-{
-  int length, offset = 0, number;
-  char *str;
-  string record = "";
-  for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
-    int w = it->name.size();
-    if (w >= OUTPUT_MIN_WIDTH)
-    	w = OUTPUT_MAX_WIDTH;
-    else
-    	w += 2;
-    switch(it->type) {
-      case TypeInt:
-      case TypeReal:
-        number = 0;
-        memcpy(&number, (char *)data+offset, sizeof(int));
-        offset += sizeof(int);
-        cout << setw(w) << left << number;
-        break;
-      case TypeVarChar:
-        length = 0;
-        memcpy(&length, (char *)data+offset, sizeof(int));
-	if(length == 0){
-	  cout << setw(w) << left << "--";
-	  break;
-	}
-        offset += sizeof(int);
-
-        str = (char *)malloc(length+1);
-        memcpy(str, (char *)data+offset, length);
-        str[length] = '\0';
-        offset += length;
-
-        cout << setw(w) << left << str;
-        free(str);
-        break;
-      case TypeShort:       
-        cout << setw(it->name.size()) << left << (int)(*((char*)data+offset));
-        offset += 1;
-        break;
-      case TypeBoolean:
-        error ("should not see this, in printTuple, type is: " + (it->type)+47);
-        break;
-      break;
+  while( (rc = rmsi.getNextTuple(rid, data_returned)) != RM_EOF) {
+    if ( rc != 0) {
+      cout << "fata" << endl;
+      exit(1);
+    }
+      
+    if (this->updateOutputBuffer(outputBuffer, data_returned, attributes) != 0) {
+      free(data_returned);
+      return error("problem in updateOutputBuffer");
     }
   }
-  cout << endl;
-  return 0;
+  rmsi.close();
+  free(data_returned);
+
+  return this->printOutputBuffer(outputBuffer, attributes.size(), true);
 }
 
 RC CLI::help(const string input)
 {
   if (input.compare("create") == 0) {
     cout << "\tcreate table <tableName> (col1=type1, col2=type2, ...): creates table with given properties" << endl;
+    cout << "\tcreate index <columnName> on <tableName>: creates index for <columnName> in table <tableName>" << endl;
   }
   else if (input.compare("add") == 0) {
     cout << "\tadd attribute \"attributeName=type\" to \"tableName\": drops given table" << endl;
@@ -713,7 +792,7 @@ RC CLI::help(const string input)
   else if (input.compare("drop") == 0) {
     cout << "\tdrop table <tableName>: drops given table" << endl;
     cout << "\tdrop index \"indexName\": drops given index" << endl;
-    cout << "\tdrop attribute \"tableName\" from \"tableName\": drops attributeName from tableName" << endl;
+    cout << "\tdrop attribute \"attributeName\" from \"tableName\": drops attributeName from tableName" << endl;
   }
   else if (input.compare("load") == 0) {
     cout << "\tload <tableName> \"fileName\"";
@@ -817,6 +896,62 @@ RC CLI::addAttributeToCatalog(const Attribute &attr, const string tableName, con
   return ret;
 }
 
+// Add given index to CLI_INDEXES
+RC CLI::addIndexToCatalog(const string tableName, const string columnName)
+{
+  // Collect information from the catalog for the columnName
+  vector<Attribute> columns;
+  if (this->getAttributesFromCatalog(tableName, columns) != 0)
+    return -1;
+
+  int max_size = -1;
+  bool is_variable = false;
+  for (uint i = 0; i < columns.size(); i++) {
+    if (columns[i].name == columnName) {
+      if (columns[i].type == TypeVarChar) {
+        max_size = columns[i].length + 2;
+        is_variable = true;
+      }
+      else {
+        max_size = columns[i].length;
+      }
+      break;
+    }
+  }
+
+  if(max_size == -1)
+    return error("max-size returns -1");
+
+  int offset = 0;
+  int length;
+  void *buffer = malloc(tableName.size() + columnName.size()+8+4+1);
+ 
+  length = tableName.size();
+  memcpy((char *)buffer + offset, &length, sizeof(int));
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, tableName.c_str(), tableName.size());
+  offset += tableName.size();
+
+  length = columnName.size();
+  memcpy((char *)buffer + offset, &length, sizeof(int));
+  offset += sizeof(int);
+  memcpy((char *)buffer + offset, columnName.c_str(), columnName.size());
+  offset += length;
+
+  memcpy((char *)buffer + offset, &max_size, sizeof(max_size));
+  offset += sizeof(max_size);
+
+  memcpy((char *)buffer + offset, &is_variable, sizeof(is_variable));
+  offset += sizeof(is_variable);
+
+  RID rid;
+  RC rc = rm->insertTuple(CLI_INDEXES, buffer, rid);
+  
+  free(buffer);
+  
+  return rc;
+}
+
 RC CLI::history()
 {
 #ifndef NO_HISTORY_LIST
@@ -864,9 +999,13 @@ RC CLI::error(const string errorMessage)
   return -2;
 }
 
-// checks whether given tableName-columnName exists or not
-bool CLI::checkAttribute(const string tableName, const string columnName, RID &rid)
+// checks whether given tableName-columnName exists or not in cli_columns or cli_indexes
+bool CLI::checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns)
 {
+  string searchTable = CLI_COLUMNS;
+  if (searchColumns == false)
+    searchTable = CLI_INDEXES;
+
   vector<Attribute> attributes;
   this->getAttributesFromCatalog(CLI_COLUMNS, attributes);
 
@@ -876,55 +1015,117 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
 
   // convert attributes to vector<string>
   vector<string> stringAttributes;
-  stringAttributes.push_back("column_name");
+  //stringAttributes.push_back("column_name");
   stringAttributes.push_back("table_name");
-    
-  // Find columns which is columnName
-  if( rm->scan(CLI_COLUMNS, "column_name", EQ_OP, columnName.c_str(), stringAttributes, rmsi) != 0)
+  
+  // Find records whose column is columnName
+  if( rm->scan(searchTable, "column_name", EQ_OP, columnName.c_str(), stringAttributes, rmsi) != 0)
     return -1;
   
+  // check if tableName is what we want
   while(rmsi.getNextTuple(rid, data_returned) != RM_EOF){
-    // check if tableName is what we want
-    int length, offset = 0;
-    char *str;
-    // first iteration reads the column_name
-    for (uint i = 0; i < 2; i++) {
-      length = 0;
-      memcpy(&length, (char *)data_returned+offset, sizeof(int));
-      offset += sizeof(int);
+    int length = 0, offset = 0;
+  
+    memcpy(&length, (char *)data_returned+offset, sizeof(int));
+    offset += sizeof(int);
 
-      str = (char *)malloc(length+1);
-      memcpy(str, (char *)data_returned+offset, length);
-      str[length] = '\0';
-      offset += length;
-      free(str);
-    }
+    char *str=(char *)malloc(length+1);
+    str[length] = '\0';
+    
+    memcpy(str, (char *)data_returned+offset, length);
+    offset += length;
+
     if(tableName.compare(string(str)) == 0) {
       free(data_returned);
+      free(str);
       return true;
     }
+    free(str);
   }
   free(data_returned);
   return false;
 }
 
-void CLI::printAttributes(vector<Attribute> &attributes)
+RC CLI::updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs)
 {
-  int length = 0, used = 0;
-  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it) {
-    used = it->name.size();
-    if (used >= OUTPUT_MIN_WIDTH)
-      used = OUTPUT_MAX_WIDTH;
-    else
-    	used += 2;
-    cout << setw(used) << left << it->name;
-    length += used;
-    if (it == attributes.end()) {
-    	length = length - used + it->length;
+  int length, offset = 0, number;
+  char *str;
+  string record = "";
+  for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
+    switch(it->type) {
+      case TypeInt:
+      case TypeReal:
+        number = 0;
+        memcpy(&number, (char *)data+offset, sizeof(int));
+        offset += sizeof(int);
+        buffer.push_back(to_string(number));
+        break;
+      case TypeVarChar:
+        length = 0;
+        memcpy(&length, (char *)data+offset, sizeof(int));
+        
+        if(length == 0){
+          buffer.push_back("--");
+          break;
+        }
+
+        offset += sizeof(int);
+
+        str = (char *)malloc(length+1);
+        memcpy(str, (char *)data+offset, length);
+        str[length] = '\0';
+        offset += length;
+
+        buffer.push_back(str);
+        free(str);
+        break;
+      case TypeShort:       
+      case TypeBoolean:
+        buffer.push_back(to_string((int)(*((char*)data+offset))));
+        offset += 1;
+        break;
     }
   }
+  return 0;
+}
+
+// 2-pass output function
+RC CLI::printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial)
+{
+  // find max for each column
+  uint *maxLengths = new uint[mod];
+  for(uint i=0; i < mod; i++)
+    maxLengths[i] = 0;
+
+  int index;
+  for (uint i=0; i < buffer.size(); i++) {
+    index = i%mod;
+    maxLengths[index] = fmax(maxLengths[index], buffer[i].size());
+  }
+
+  uint startIndex = 0;
+  int totalLength = 0;
+
+  if (firstSpecial) {
+    for(uint i=0; i < mod; i++) {
+      cout << setw(maxLengths[i]) << left << buffer[i] << DIVISOR;
+      totalLength += maxLengths[i] + DIVISOR_LENGTH;
+    }
+    cout << endl;
+
+    // totalLength - 2 because I do not want to count for extra spaces after last column
+    for (int i=0; i < totalLength-2; i++)
+      cout << "=";
+    startIndex = mod;
+  }
+
+  // output columns
+  for (uint i=startIndex; i < buffer.size(); i++) {
+    if (i % mod == 0)
+      cout << endl;
+    cout << setw(maxLengths[i%mod]) << left << buffer[i] << DIVISOR;
+  }
   cout << endl;
-  for (int i = 0; i < length; i++)
-    cout << "=";
-  cout << endl;
+  delete[] maxLengths;
+  return 0;
 }
