@@ -2359,12 +2359,12 @@ void testCase_O8()
 
 void ourTests()
 {
-  // testCase_O1();
-  // testCase_O3();
-  // testCase_O2();
-  // testCase_O4(); 
-  // testCase_O5(); // Basic duplicate checking
-  // testCase_O6();
+  testCase_O1();
+  testCase_O3();
+  testCase_O2();
+  testCase_O4(); 
+  testCase_O5(); // Basic duplicate checking
+  testCase_O6();
   testCase_O7();
   testCase_O8();
 }
@@ -2377,14 +2377,14 @@ int main()
   RM *rm = RM::Instance();
   createTable(rm, "tbl_employee");
     
-  // testCase_1("tbl_employee", "Age");
-  // testCase_2("tbl_employee", "Age"); 
-  // testCase_3("tbl_employee", "Age");
-  // testCase_4("tbl_employee", "Age");
-  // testCase_5("tbl_employee", "Age");
-  // testCase_6("tbl_employee", "Height");  
-  // testCase_7("tbl_employee", "Height"); 
-  // testCase_8("tbl_employee", "Height");
+  testCase_1("tbl_employee", "Age");
+  testCase_2("tbl_employee", "Age"); 
+  testCase_3("tbl_employee", "Age");
+  testCase_4("tbl_employee", "Age");
+  testCase_5("tbl_employee", "Age");
+  testCase_6("tbl_employee", "Height");  
+  testCase_7("tbl_employee", "Height"); 
+  testCase_8("tbl_employee", "Height");
   ourTests();
 
   
@@ -2393,7 +2393,7 @@ int main()
   // Duplicat Entries
   // testCase_extra_1("tbl_employee", "Age");
   // TypeVarChar
-  //testCase_extra_2("tbl_employee", "EmpName");
+  testCase_extra_2("tbl_employee", "EmpName");
     
   return 0;
 }
