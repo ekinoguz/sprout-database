@@ -5,7 +5,7 @@ Sky Faber	Ekin Oguz	Cesar Ghali
 
 B+ Tree Node Page Format
 ------------------------
-Each node in a B+ tree is a page on physical files on disk. The page format is as follows:
+Each node in a B+ tree is a page on a physical file. The page format is as follows:
 
 Leaf Node: the page contains a sequence of the tuple <Key, PID, S#> where PID is the page ID where the record is found in the data file, and S# is the slot number of that record. Basically PID and S# determine the record ID, RID.
 Non-Leaf Node: the page contains the sequence <PID, Key, PID, Key, PID, .... PID, Key, PID> where PID is pointing to a page number in the index file and not the data file.
@@ -19,16 +19,16 @@ Note that the first page on the file, page 0, is always the root page of the B+ 
 
 Splitting
 ---------
-We are implementing top-down splitting. While searching the tree to insert a new key entry, if a node is full we split it. We split a node by finding the middle key on that page (keeping into account that duplicate keys should all be on one page and should not be splitted). After we identify the middle middle key, if the node is leaf, we simply split it and add an entry to the parent node. If the node is non-leaf, we promot the middle key to its parent and split the rest of the keys on two pages.
+We are implementing top-down splitting. While searching the tree to insert a new key entry, if a node is full we split it. We split a node by finding the middle key on that page (keeping into account that duplicate keys should all be on one page and should not be split). After we identify the middle middle key, if the node is leaf, we simply split it and add an entry to the parent node. If the node is non-leaf, we promote the middle key to its parent and split the rest of the keys on two pages.
 
 When we find the leaf node where the key should inserted, we scan the whole page and find the location of the new key in a way that keeps the keys sorted on the page.
 
 Deletion
 --------
-We search for the key to be deleted. If found, we simply delete the key and shift all the subsequent keys to its right by one <Key, PID, S#> spot.
+We search for the key to be deleted. If found, we simply delete the key and shift all the subsequent keys on its right by one <Key, PID, S#> spot to the left.
 
 Get Next Entry while Scanning
 ------------------------------
-This function can be used after a scan iterator is opened using the OpenScan function. The OpenScan function finds the page where the low key should be located, scan the page and points to the first key with valye greater than or equal to the low key. After that you can use the get next entry function that returns the current key that is pointed at and advance to the next key. If the current key is greater than the high key, the function returns -1 to indicate the end of scanning.
+This function can be used after a scan iterator is opened using the OpenScan function. The OpenScan function finds the page where the low key should be located, scan the page and points to the first key with value greater than or equal to the low key. After that you can use the get next entry function that returns the current key that is pointed at and advance to the next key. If the current key is greater than the high key, the function returns -1 to indicate the end of scanning.
 
 Note that equality when comparing the keys in leaf nodes with the low and high key is determined by the inclusive boolean flags that are input to the OpenScan function.
