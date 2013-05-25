@@ -586,11 +586,6 @@ int IX_IndexHandle::getKeySize(const void *key, int * shift_offset) const{
 }
 
 
-// TODO: REMOVE
-// Only works for var char
-void printKey(const void * key);
-// ************
-
 // toPage must be an internal page
 RC IX_IndexHandle::insertKey(void * key, int pointerPage, int toPage){    
   void * page = malloc(PF_PAGE_SIZE);
@@ -762,7 +757,6 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
 
     // Add in the promoted key. This must be the deleted key for IX_NODES! For leaf nodes, this is still the left most key on the right page
     void * promoted_key = (char *)leftPage+tmp;
-    printKey(promoted_key);
     key_size = getKeySize(promoted_key);
     memcpy((char *)page+2, promoted_key, key_size);
 
@@ -920,8 +914,6 @@ int IX_IndexHandle::split(int pageNum, int prevPageNum, const void * key){
   else
     return_page = new_page_num;
 
-  if(new_page_num == 335)
-    exit(-1);
   free(page);
   free(newPage);
   return return_page;

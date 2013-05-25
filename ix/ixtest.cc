@@ -2097,8 +2097,8 @@ void testCase_O7()
       memcpy((char *)key+offset, entry.c_str(), entry.size());
       offset += entry.size();
 
-      rid.pageNum = i;
-      rid.slotNum = i;
+      rid.pageNum = i % 65534;
+      rid.slotNum = i % 65534;
 
       rc = ixHandle.InsertEntry(key, rid);
       assert (rc == success);
@@ -2139,9 +2139,9 @@ void testCase_O7()
   int count = 0;
   while(ixScanNoLow.GetNextEntry(rid) == success)
     {
-      cout << i << ":" << rid.pageNum << "---" << rid.slotNum << endl;
-      assert(rid.pageNum == (unsigned)i);
-      assert(rid.slotNum == (unsigned)i);
+      // cout << i << ":" << rid.pageNum << "---" << rid.slotNum << endl;
+      assert(rid.pageNum == (unsigned)i % 65534);
+      assert(rid.slotNum == (unsigned)i % 65534);
       i++;
       count++;
     }
@@ -2181,8 +2181,8 @@ void testCase_O7()
   count = 0;
   while(ixScanNoHigh.GetNextEntry(rid) == success)
     {
-      assert(rid.pageNum == (unsigned)i);
-      assert(rid.slotNum == (unsigned)i);
+      assert(rid.pageNum == (unsigned)i % 65534);
+      assert(rid.slotNum == (unsigned)i % 65534);
       i++; 
       count++;
     }
@@ -2363,7 +2363,7 @@ void ourTests()
   // testCase_O3();
   // testCase_O2();
   // testCase_O4(); 
-  //testCase_O5(); // Basic duplicate checking
+  // testCase_O5(); // Basic duplicate checking
   // testCase_O6();
   testCase_O7();
   testCase_O8();
