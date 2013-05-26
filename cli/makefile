@@ -1,7 +1,7 @@
 
 include ../makefile.inc
 
-all: libcli.a clitest
+all: libcli.a clitest start
 
 # lib file dependencies
 libcli.a: libcli.a(cli.o)  # and possibly other .o files
@@ -11,8 +11,11 @@ cli.o: cli.h
 
 clitest.o: cli.h
 
+start.o: cli.h
+
 # binary dependencies
 clitest: clitest.o libcli.a $(CODEROOT)/ix/libix.a $(CODEROOT)/rm/librm.a $(CODEROOT)/pf/libpf.a
+start: start.o libcli.a $(CODEROOT)/ix/libix.a $(CODEROOT)/rm/librm.a $(CODEROOT)/pf/libpf.a
 
 $(CODEROOT)/rm/librm.a:
 	$(MAKE) -C $(CODEROOT)/rm librm.a
@@ -29,7 +32,7 @@ $(CODEROOT)/ix/libix.a:
 
 .PHONY: clean
 clean:
-	-rm clitest *.a *.o *~
+	-rm clitest start *.a *.o *~
 	$(MAKE) -C $(CODEROOT)/pf clean
 	$(MAKE) -C $(CODEROOT)/rm clean
 	$(MAKE) -C $(CODEROOT)/ix clean	

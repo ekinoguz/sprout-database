@@ -1,0 +1,72 @@
+Demo-1
+======
+create table "tbl_employee" (EmpName=varchar(30), Age=int, Height=real, Salary=int)
+print cli_columns
+print tbl_employee
+
+load tbl_employee "employee_5"
+print tbl_employee
+
+drop attribute "Height" from tbl_employee
+print tbl_employee
+
+load tbl_employee "employee_5_no_height"
+print tbl_employee
+
+add attribute Major=varchar(80) to tbl_employee
+print tbl_employee
+load tbl_employee "employee_major"
+print tbl_employee
+
+Random Data
+-----------
+cs200_students
+cs222_students
+employee_200
+employee_5
+employee_50
+employee_50_no_salary
+employee_5_no_salary
+employee_Year_1
+names
+
+Demo-2
+======
+What we have done?
+------------------
+* Index functionalities are added to CLI
+* Added cli_indexes table which is a cli version of original indexes table
+* CLI prints out everything in "neat" format
+* CLI has functionalities for command histroy, auto-complete file, arrow keys (via readline library)
+
+Scenario for Demonstration
+--------------------------
+help
+
+create table "tbl_employee" (EmpName=varchar(30), Age=int, Height=real, Salary=int)
+
+create table "tbl_employee2" (EmpName=varchar(30), Age=int, Height=real, Salary=int)
+
+load tbl_employee "employee_200"
+print tbl_employee
+
+create index Age on tbl_employee
+print indexes
+print cli_indexes
+
+create index EmpName on tbl_employee
+create index EmpName on tbl_employee2
+create index Height on tbl_employee2
+print indexes
+
+drop attribute Height from tbl_employee2
+print indexes
+
+drop table tbl_employee
+print indexes
+
+history
+
+What will we done?
+------------------
+* We will add all the functionalies in query engine to CLI
