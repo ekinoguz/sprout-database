@@ -18,6 +18,7 @@ rm/rmtest
 cli/clitest
 cli/start
 ix/ixtest
+qe/qetest
 
 #db files
 db/
