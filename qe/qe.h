@@ -40,7 +40,7 @@ class Iterator {
     public:
         virtual RC getNextTuple(void *data) = 0;
         virtual void getAttributes(vector<Attribute> &attrs) const = 0;
-        virtual ~Iterator() {};
+        virtual ~Iterator();
 };
 
 
@@ -79,7 +79,7 @@ class TableScan : public Iterator
         void setIterator()
         {
             iter->close();
-            delete iter;
+            delete iter; // WARNING, add virtual to RM_ScanIterator destructor
             iter = new RM_ScanIterator();
             rm.scan(tablename, "", NO_OP, NULL, attrNames, *iter);
         };
@@ -195,7 +195,7 @@ class Filter : public Iterator {
         );
         ~Filter();
 
-        RC getNextTuple(void *data) {return QE_EOF;};
+        RC getNextTuple(void *data);
         // For attribute in vector<Attribute>, name it as rel.attr
         void getAttributes(vector<Attribute> &attrs) const;
 };

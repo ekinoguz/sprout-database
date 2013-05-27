@@ -97,7 +97,7 @@ protected:
 class RM_ScanIterator : public RM_ScanFormattedIterator {
 public:
   RM_ScanIterator() : RM_ScanFormattedIterator() {};
-  ~RM_ScanIterator() {};
+  virtual ~RM_ScanIterator() {};
   
   vector<Column> projectedColumns;
   
