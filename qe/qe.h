@@ -221,7 +221,6 @@ class Project : public Iterator {
     // private API:
     private:
         RM *rm;
-        //RM_ScanIterator *iter;
         RM_ScanIterator rmsi;
         vector<Attribute> attrs;
         string tablename;

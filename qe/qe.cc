@@ -1,6 +1,14 @@
 #include "qe.h"
 
 
+string stripTableName(string attribute) {
+	size_t loc = attribute.find( ".", 0 );
+	if( loc != string::npos )
+		return attribute.substr(loc+1, attribute.size() - loc - 1);
+	cout << "Didn't find ." << endl;
+	return "";
+}
+
 void Iterator::getAttributes(vector<Attribute> &attrs) const {
 
 }
@@ -155,7 +163,8 @@ void Filter::getAttributes(vector<Attribute> &attrs) const {
 // vector containing attribute names
 Project::Project(Iterator *input, const vector<string> &attrNames) {
 	rm = RM::Instance();
-	this->tablename = input->tablename;
+	TableScan * ts = static_cast<TableScan*>(input);
+	this->tablename = ts->tablename;
 
 	// get attributes from catalog
 	vector<Attribute> fromCatalog;
@@ -163,19 +172,22 @@ Project::Project(Iterator *input, const vector<string> &attrNames) {
 	if (rc != 0)
 		error(__LINE__, rc);
 
-	rc = rm->scan(this->tablename, "", NO_OP, NULL, attrNames, rmsi);
-	if (rc != 0)
-		error(__LINE__, rc);
+	vector<string> stringAttributes;
 
 	for (unsigned i=0; i < attrNames.size(); i++) {
+		stringAttributes.push_back(stripTableName(attrNames[i]));
 		// find the given attrName[i] in fromCatalog and add it to this->attrs
 		for (unsigned index=0; index < fromCatalog.size(); index++) {
-			if (fromCatalog[index].name.compare(attrNames[i]) == 0) {
+			if (fromCatalog[index].name.compare(stringAttributes[i]) == 0) {
 				this->attrs.push_back(fromCatalog[index]);
 				break;
 			}
 		}
 	}
+
+	rc = rm->scan(this->tablename, "", NO_OP, NULL, stringAttributes, rmsi);
+	if (rc != 0)
+		error(__LINE__, rc);	
 }
 
 Project::~Project() {
