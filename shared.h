@@ -6,6 +6,16 @@
 #define NO_HISTORY_LIST
 #endif
 
+#include <iostream>
+#include <string>
 
+inline int error(std::string err, int rc){
+  std::cout << "ERROR!: " << err << std::endl;
+  return rc;
+}
+inline int error(int err, int rc){
+  std::cout << "Line: " << err << std::endl;
+  return rc;
+}
 
 #endif

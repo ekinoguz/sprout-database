@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "../shared.h"
 #include "pf/pf.h"
 #include "rm/rm.h"
 #include "ix/ix.h"

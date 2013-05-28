@@ -4,17 +4,6 @@
 #define INDEX_TABLE_RECORD_MAX_LENGTH 160   // Actual value is 93
 #define DIRECTORY_ENTRY_SIZE 2
 
-
-RC error(string error, RC rc){
-  cout << "ERROR!: " << error << endl;
-  return rc;
-}
-RC error(int error, RC rc){
-  cout << "Line: " << error << endl;
-  return rc;
-}
-
-
 IX_Manager IX_Manager::_ix_manager;
 
 IX_Manager* IX_Manager::Instance()

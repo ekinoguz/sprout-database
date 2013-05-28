@@ -1,16 +1,5 @@
 #include "qe.h"
 
-
-RC error(string error, RC rc){
-  cout << "ERROR!: " << error << endl;
-  return rc;
-}
-RC error(int error, RC rc){
-  cout << "Line: " << error << endl;
-  return rc;
-}
-
-
 RC Iterator::getNextTuple(void *data) {
 	return -1;
 }
