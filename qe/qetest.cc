@@ -9,8 +9,8 @@
 using namespace std;
 
 // Global Initialization
-// RM *rm = RM::Instance();
-// IX_Manager *ixManager = IX_Manager::Instance();
+RM *rm;
+IX_Manager *ixManager;
 
 const int success = 0;
 
@@ -20,7 +20,7 @@ const int tuplecount = 1000;
 // Buffer size and character buffer size
 const unsigned bufsize = 200;
 
-/*
+
 void createLeftTable()
 {
     // Functions Tested;
@@ -1026,6 +1026,10 @@ void extraTestCase_4()
 
 int main() 
 {
+    system("rm -r " DATABASE_FOLDER " 2> /dev/null");
+    ixManager = IX_Manager::Instance();
+    rm = RM::Instance();
+    
     // Create the left table, and populate the table
     vector<RID> leftRIDs;
     createLeftTable();
@@ -1062,11 +1066,5 @@ int main()
     extraTestCase_3();
     extraTestCase_4();
 
-    return 0;
-}
-
-*/
-int main() {
-    cout << "hey" << endl;
     return 0;
 }
