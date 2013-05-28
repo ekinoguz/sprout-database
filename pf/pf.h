@@ -61,7 +61,9 @@ class PF_FileHandle
 {
  public:
   PF_FileHandle();                                                    // Default constructor
+  PF_FileHandle(PF_FileHandle & other);
   ~PF_FileHandle();                                                   // Destructor
+  PF_FileHandle & operator= (const PF_FileHandle & other);
   
   RC ReadPage(PageNum pageNum, void *data);                           // Get a specific page
   RC WritePage(PageNum pageNum, const void *data);                    // Write a specific page

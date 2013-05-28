@@ -123,7 +123,7 @@ class IndexScan : public Iterator
         string tablename;
         vector<Attribute> attrs;
 
-        IndexScan(RM &rm, const IX_IndexHandle &indexHandle, const string tablename, const char *alias = NULL):rm(rm)
+        IndexScan(RM &rm, IX_IndexHandle &indexHandle, const string tablename, const char *alias = NULL):rm(rm)
         {
             // Get Attributes from RM
             rm.getAttributes(tablename, attrs);

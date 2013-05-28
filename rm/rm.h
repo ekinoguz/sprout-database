@@ -70,7 +70,7 @@ typedef enum { EQ_OP = 0,  // =
 class RM_ScanFormattedIterator {
 public:
   RM_ScanFormattedIterator() {current.pageNum = 1; current.slotNum = 0; buffered_page = 0; page = malloc(PF_PAGE_SIZE); };
-  ~RM_ScanFormattedIterator() {if(page != NULL) free(page);};
+  virtual ~RM_ScanFormattedIterator() {if(page != NULL) free(page);};
 
   virtual RC getNextTuple(RID &rid, void *data);
 
@@ -97,7 +97,7 @@ protected:
 class RM_ScanIterator : public RM_ScanFormattedIterator {
 public:
   RM_ScanIterator() : RM_ScanFormattedIterator() {};
-  virtual ~RM_ScanIterator() {};
+  virtual  ~RM_ScanIterator() {};
   
   vector<Column> projectedColumns;
   

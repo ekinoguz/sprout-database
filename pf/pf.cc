@@ -197,6 +197,21 @@ PF_FileHandle::~PF_FileHandle()
   PF_Manager::Instance()->CloseFile(*this);
 }
 
+PF_FileHandle & PF_FileHandle::operator=(const PF_FileHandle & other)
+{
+  if(other.filestr.is_open())
+    PF_Manager::Instance()->OpenFile(other.fileName.c_str(), *this);  
+
+  return *this;
+}
+
+PF_FileHandle::PF_FileHandle(PF_FileHandle & other)
+{
+  if(other.filestr.is_open())
+    PF_Manager::Instance()->OpenFile(other.fileName.c_str(), *this);
+  // If the file isn't currently open, ther is nothing worth while to copy
+}
+
 RC PF_FileHandle::ReadPage(PageNum pageNum, void *data)
 {
 #ifdef FUCK_CACHE
