@@ -211,7 +211,10 @@ Project::Project(Iterator *input, const vector<string> &attrNames) {
 }
 
 Project::~Project() {
-  // TODO: delete everything in results
+  // free everything in results vector
+  for (auto it=results.begin(); it != results.end(); ++it) {
+    free(*it);
+  }
 }
 
 RC Project::getNextTuple(void *data) {
