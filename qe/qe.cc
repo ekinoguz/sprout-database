@@ -1,15 +1,27 @@
 #include "qe.h"
 
-void Iterator::getAttributes(vector<Attribute> &attrs) const {
-
-}
-
-Iterator::~Iterator() {
-
-}
-
-RC Iterator::getNextTuple(void *data) {
-  return -1;
+RC getAttributeOffsetAndIndex(const vector<Attribute> attrs, const string targetName, int &dataOffset, int &index) {
+  // find the desired attribute in data
+  for (int i = 0; i < attrs.size(); i++) {
+    if (0 == attrs[i].name.compare(targetName)) {
+      index = i;
+      break;
+    }
+    // calculate the offset to reach desired attribute
+    switch(attrs[i].type) {
+      case TypeInt:
+      case TypeReal:
+      case TypeShort:
+      case TypeBoolean:
+        dataOffset += attrs[i].length;
+        break;
+      case TypeVarChar:
+        dataOffset += sizeof(int) + attrs[i].length;
+        break;
+    }
+  }
+  cout << dataOffset << endl;
+  return (index != -1) ? 0 : error(__LINE__, -1);
 }
 
 ///////////////////////////////////////////////
@@ -126,22 +138,93 @@ void Aggregate::getAttributes(vector<Attribute> &attrs) const {
 ///////////////////////////////////////////////
 
 Filter::Filter(Iterator* input, const Condition &condition) {
+  input->getAttributes(this->attrs);
+  this->nextIndex = 0;
+  RC rc;
+  void *data = malloc(PF_PAGE_SIZE);
+  int dataOffset, filteredDataOffset;
 
+  while (0 == (rc = input->getNextTuple(data)))
+  {
+    void *filteredData = malloc(PF_PAGE_SIZE);
+
+    // check if data satisfies the given condition or not
+
+    // get the left hand side attribute
+    Attribute leftAttribute;
+    rc = getAttribute(condition.lhsAttr, leftAttribute);
+    if (rc != 0) {
+      error(__LINE__, rc);
+      return;
+    }
+
+    // bool condition = false;
+    // switch(compOp){
+    //   case EQ_OP:
+    //   case NE_OP:
+    //     switch(type){
+    //     case TypeInt:
+    //       condition = ( *(int*)lvalue == *(int*)value );
+    //       break;
+    //     case TypeReal:
+    //       condition = (*(float*)lvalue == *(float*)value); 
+    //       break;
+    //     case TypeVarChar:
+    //       if( strcmp((char *)lvalue,(char *)value ) == 0 )
+    //         condition = true;
+
+    //       break;
+    //     case TypeShort:
+    //       condition = (*(char*)lvalue == *(char*)value);
+    //       break;  
+    //     case TypeBoolean:
+    //       condition = (*(bool*)lvalue == *(bool*)value);
+    //       break;  
+    //     }
+    //   }    
+    // condition = condition ^ (compOp == NE_OP);
+
+    // compare left hand side attribute with right hand side value
+    
+
+    results.push_back(filteredData);
+    sizes.push_back(filteredDataOffset);
+  }
+  free(data);
+  if (rc != 0)
+    error(__LINE__, rc);
 }
 
 Filter::~Filter() {
-
+  // free everything in results vector
+  for (auto it=results.begin(); it != results.end(); ++it) {
+    free(*it);
+  }
 }
 
 RC Filter::getNextTuple(void *data) {
+  if (nextIndex < results.size()) {
+    memcpy(data, results[nextIndex], sizes[nextIndex]);
+    nextIndex += 1;
+    return 0;
+  }
   return QE_EOF;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
 void Filter::getAttributes(vector<Attribute> &attrs) const {
-
+  attrs = this->attrs;
 }
 
+RC Filter::getAttribute(const string name, Attribute &attr) {
+  for (unsigned i=0; i < this->attrs.size(); i++) {
+    if (0 == this->attrs[i].name.compare(name)) {
+      attr = this->attrs[i];
+      return 0;
+    }
+  }
+  return error(__LINE__, -1);
+}
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -156,7 +239,7 @@ Project::Project(Iterator *input, const vector<string> &attrNames) {
   this->nextIndex = 0;
   RC rc;
   void *data = malloc(PF_PAGE_SIZE);
-  int dataOffset, projectedDataOffset;
+  int projectedDataOffset;
 
   while (0 == (rc = input->getNextTuple(data)))
   {
@@ -165,27 +248,13 @@ Project::Project(Iterator *input, const vector<string> &attrNames) {
     
     // project data to desired attributes
     for (unsigned i=0; i < attrNames.size(); i++) {
-      dataOffset = 0;
-      unsigned index;
+      int dataOffset = 0;
+      int index = -1;
 
       // find the desired attribute in data
-      for (index = 0; index < this->attrs.size(); index++) {
-        if (0 == this->attrs[index].name.compare(attrNames[i]))
-          break;
-
-        // calculate the offset to reach desired attribute
-        switch(this->attrs[index].type) {
-          case TypeInt:
-            case TypeReal:
-            case TypeShort:
-            case TypeBoolean:
-              dataOffset += this->attrs[index].length;
-              break;
-            case TypeVarChar:
-              dataOffset += sizeof(int) + this->attrs[index].length;
-              break;
-          }
-      }
+      rc = getAttributeOffsetAndIndex(this->attrs, attrNames[i], dataOffset, index);
+      if (rc != 0)
+        error(__LINE__, rc);
 
       // copy desired attribute to projectedData
       switch(this->attrs[index].type){
@@ -230,3 +299,4 @@ RC Project::getNextTuple(void *data) {
 void Project::getAttributes(vector<Attribute> &attrs) const {
   attrs = this->attrs;
 }
+

@@ -39,9 +39,9 @@ struct Condition {
 class Iterator {
     // All the relational operators and access methods are iterators.
     public:
-        virtual RC getNextTuple(void *data) = 0;
+        virtual RC getNextTuple(void *data) = 0 ;
         virtual void getAttributes(vector<Attribute> &attrs) const = 0;
-        virtual ~Iterator();
+        virtual ~Iterator() {};
 };
 
 
@@ -199,6 +199,14 @@ class Filter : public Iterator {
         RC getNextTuple(void *data);
         // For attribute in vector<Attribute>, name it as rel.attr
         void getAttributes(vector<Attribute> &attrs) const;
+    // private API:
+    private:
+        RC getAttribute(const string name, Attribute &attr);
+
+        vector<Attribute> attrs;
+        vector<void *> results;
+        vector<unsigned> sizes;
+        unsigned nextIndex;
 };
 
 

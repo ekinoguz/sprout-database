@@ -419,7 +419,7 @@ void testCase_3()
         memset(data, 0, bufsize);
         i += 1;
     }
-    
+    assert (i == 1000);
     free(data);
     return;
 }
