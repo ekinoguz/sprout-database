@@ -1,14 +1,5 @@
 #include "qe.h"
 
-
-string stripTableName(string attribute) {
-	size_t loc = attribute.find( ".", 0 );
-	if( loc != string::npos )
-		return attribute.substr(loc+1, attribute.size() - loc - 1);
-	cout << "Didn't find ." << endl;
-	return "";
-}
-
 void Iterator::getAttributes(vector<Attribute> &attrs) const {
 
 }
@@ -18,9 +9,8 @@ Iterator::~Iterator() {
 }
 
 RC Iterator::getNextTuple(void *data) {
-	return -1;
+  return -1;
 }
-
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -37,7 +27,7 @@ NLJoin::NLJoin(Iterator *leftIn,
                TableScan *rightIn,
                const Condition &condition,
                const unsigned numPages
-        			) {
+              ) {
 
 }
 
@@ -46,7 +36,7 @@ NLJoin::~NLJoin() {
 }
 
 RC NLJoin::getNextTuple(void *data) {
-	return QE_EOF;
+  return QE_EOF;
 }
 // For attribute in vector<Attribute>, name it as rel.attr
 void NLJoin::getAttributes(vector<Attribute> &attrs) const{
@@ -63,11 +53,11 @@ void NLJoin::getAttributes(vector<Attribute> &attrs) const{
 // IndexScan Iterator of input S
 // Join condition
 // Number of pages can be used to do join (decided by the optimizer)
-INLJoin::INLJoin(	Iterator *leftIn,
-					        IndexScan *rightIn,
-					        const Condition &condition,
-					        const unsigned numPages
-								) {
+INLJoin::INLJoin(  Iterator *leftIn,
+                  IndexScan *rightIn,
+                  const Condition &condition,
+                  const unsigned numPages
+                ) {
 
 }
 
@@ -76,7 +66,7 @@ INLJoin::~INLJoin() {
 }
 
 RC INLJoin::getNextTuple(void *data) {
-	return QE_EOF;
+  return QE_EOF;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
@@ -93,10 +83,10 @@ void INLJoin::getAttributes(vector<Attribute> &attrs) const {
 // Iterator of input R
 // The attribute over which we are computing an aggregate
 // Aggregate operation
-Aggregate::Aggregate(	Iterator *input,
-						          Attribute aggAttr,
-						          AggregateOp op
-										) {
+Aggregate::Aggregate(  Iterator *input,
+                      Attribute aggAttr,
+                      AggregateOp op
+                    ) {
 
 }
 
@@ -106,10 +96,10 @@ Aggregate::Aggregate(	Iterator *input,
 // The attribute over which we are grouping the tuples
 // Aggregate operation
 Aggregate::Aggregate(Iterator *input,
-					          Attribute aggAttr,
-					          Attribute gAttr,
-					          AggregateOp op
-							) {
+                    Attribute aggAttr,
+                    Attribute gAttr,
+                    AggregateOp op
+              ) {
 
 }
 
@@ -118,7 +108,7 @@ Aggregate::~Aggregate(){
 }
 
 RC Aggregate::Aggregate::getNextTuple(void *data) {
-	return QE_EOF;
+  return QE_EOF;
 }
 
 // Please name the output attribute as aggregateOp(aggAttr)
@@ -144,7 +134,7 @@ Filter::~Filter() {
 }
 
 RC Filter::getNextTuple(void *data) {
-	return QE_EOF;
+  return QE_EOF;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
@@ -162,56 +152,78 @@ void Filter::getAttributes(vector<Attribute> &attrs) const {
 // input: Iterator of input R
 // vector containing attribute names
 Project::Project(Iterator *input, const vector<string> &attrNames) {
-	rm = RM::Instance();
-	TableScan * ts = static_cast<TableScan*>(input);
-	this->tablename = ts->tablename;
+  input->getAttributes(this->attrs);
+  this->nextIndex = 0;
+  RC rc;
+  void *data = malloc(PF_PAGE_SIZE);
+  int dataOffset, projectedDataOffset;
 
-	// get attributes from catalog
-	vector<Attribute> fromCatalog;
-	RC rc = rm->getAttributes(this->tablename, fromCatalog);
-	if (rc != 0)
-		error(__LINE__, rc);
+  while (0 == (rc = input->getNextTuple(data)))
+  {
+  	void *projectedData = malloc(PF_PAGE_SIZE);
+    projectedDataOffset = 0;
+    
+    // project data to desired attributes
+    for (unsigned i=0; i < attrNames.size(); i++) {
+      dataOffset = 0;
+      unsigned index;
 
-	vector<string> stringAttributes;
+      // find the desired attribute in data
+      for (index = 0; index < this->attrs.size(); index++) {
+        if (0 == this->attrs[index].name.compare(attrNames[i]))
+          break;
 
-	for (unsigned i=0; i < attrNames.size(); i++) {
-		stringAttributes.push_back(stripTableName(attrNames[i]));
-		// find the given attrName[i] in fromCatalog and add it to this->attrs
-		for (unsigned index=0; index < fromCatalog.size(); index++) {
-			if (fromCatalog[index].name.compare(stringAttributes[i]) == 0) {
-				this->attrs.push_back(fromCatalog[index]);
-				break;
-			}
-		}
-	}
+        // calculate the offset to reach desired attribute
+        switch(this->attrs[index].type) {
+          case TypeInt:
+            case TypeReal:
+            case TypeShort:
+            case TypeBoolean:
+              dataOffset += this->attrs[index].length;
+              break;
+            case TypeVarChar:
+              dataOffset += sizeof(int) + this->attrs[index].length;
+              break;
+          }
+      }
 
-	rc = rm->scan(this->tablename, "", NO_OP, NULL, stringAttributes, rmsi);
-	if (rc != 0)
-		error(__LINE__, rc);	
+      // copy desired attribute to projectedData
+      switch(this->attrs[index].type){
+        case TypeInt:
+        case TypeReal:
+        case TypeShort:
+        case TypeBoolean:
+            memcpy((char *)projectedData+projectedDataOffset, (char *) data+dataOffset, this->attrs[index].length);
+            projectedDataOffset += this->attrs[index].length;
+            break;
+        case TypeVarChar:
+            memcpy((char *)projectedData+projectedDataOffset, (char *)data+dataOffset, sizeof(int)+this->attrs[index].length);
+            projectedDataOffset += sizeof(int)+this->attrs[index].length;
+            break;
+      }
+    }
+    results.push_back(projectedData);
+    sizes.push_back(projectedDataOffset);
+  }
+  free(data);
+  if (rc != 0)
+    error(__LINE__, rc);
 }
 
 Project::~Project() {
-	rmsi.close();
+  // TODO: delete everything in results
 }
 
 RC Project::getNextTuple(void *data) {
-	RID rid;
-	RC rc = rmsi.getNextTuple(rid, data);
-	return rc != RM_EOF ? 0 : rc;
+  if (nextIndex < results.size()) {
+  	memcpy(data, results[nextIndex], sizes[nextIndex]);
+    nextIndex += 1;
+    return 0;
+  }
+  return QE_EOF;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
 void Project::getAttributes(vector<Attribute> &attrs) const {
-  attrs.clear();
   attrs = this->attrs;
-  
-  string tmp;
-  // For attribute in vector<Attribute>, name it as rel.attr
-  for(unsigned i = 0; i < attrs.size(); ++i)
-  {
-      tmp = tablename;
-      tmp += ".";
-      tmp += attrs[i].name;
-      attrs[i].name = tmp;
-  }
 }

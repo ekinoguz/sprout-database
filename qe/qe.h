@@ -42,11 +42,6 @@ class Iterator {
         virtual RC getNextTuple(void *data) = 0;
         virtual void getAttributes(vector<Attribute> &attrs) const = 0;
         virtual ~Iterator();
-
-    // private API
-    public:
-        string tablename;
-
 };
 
 
@@ -220,10 +215,10 @@ class Project : public Iterator {
 
     // private API:
     private:
-        RM *rm;
-        RM_ScanIterator rmsi;
         vector<Attribute> attrs;
-        string tablename;
+        vector<void *> results;
+        vector<unsigned> sizes;
+        unsigned nextIndex;
 };
 
 
