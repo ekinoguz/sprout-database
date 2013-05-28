@@ -1,17 +1,134 @@
 #include "qe.h"
 
-RC Iterator::getNextTuple(void *data) {
-	return -1;
-}
 
-void Iterator::getAttributes(vector<Attribute> &attrs) const{
+void Iterator::getAttributes(vector<Attribute> &attrs) const {
+
 }
 
 Iterator::~Iterator() {
 
 }
 
+RC Iterator::getNextTuple(void *data) {
+	return -1;
+}
+
+
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+// Nested Loop Join Interface //
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+
+
+// Iterator of input R
+// TableScan Iterator of input S
+// Join condition
+// Number of pages can be used to do join (decided by the optimizer)
+NLJoin::NLJoin(Iterator *leftIn,
+               TableScan *rightIn,
+               const Condition &condition,
+               const unsigned numPages
+        			) {
+
+}
+
+NLJoin::~NLJoin() {
+
+}
+
+RC NLJoin::getNextTuple(void *data) {
+	return QE_EOF;
+}
+// For attribute in vector<Attribute>, name it as rel.attr
+void NLJoin::getAttributes(vector<Attribute> &attrs) const{
+
+}
+
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+// Index Nested Loop Join Interface //
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+
+// Iterator of input R
+// IndexScan Iterator of input S
+// Join condition
+// Number of pages can be used to do join (decided by the optimizer)
+INLJoin::INLJoin(	Iterator *leftIn,
+					        IndexScan *rightIn,
+					        const Condition &condition,
+					        const unsigned numPages
+								) {
+
+}
+
+INLJoin::~INLJoin() {
+
+}
+
+RC INLJoin::getNextTuple(void *data) {
+	return QE_EOF;
+}
+
+// For attribute in vector<Attribute>, name it as rel.attr
+void INLJoin::getAttributes(vector<Attribute> &attrs) const {
+
+}
+
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+// Aggregate Interface //
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+
+// Iterator of input R
+// The attribute over which we are computing an aggregate
+// Aggregate operation
+Aggregate::Aggregate(	Iterator *input,
+						          Attribute aggAttr,
+						          AggregateOp op
+										) {
+
+}
+
+// Extra Credit
+// Iterator of input R
+// The attribute over which we are computing an aggregate
+// The attribute over which we are grouping the tuples
+// Aggregate operation
+Aggregate::Aggregate(Iterator *input,
+					          Attribute aggAttr,
+					          Attribute gAttr,
+					          AggregateOp op
+							) {
+
+}
+
+Aggregate::~Aggregate(){
+
+}
+
+RC Aggregate::Aggregate::getNextTuple(void *data) {
+	return QE_EOF;
+}
+
+// Please name the output attribute as aggregateOp(aggAttr)
+// E.g. Relation=rel, attribute=attr, aggregateOp=MAX
+// output attrname = "MAX(rel.attr)"
+void Aggregate::getAttributes(vector<Attribute> &attrs) const {
+
+}
+
+
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+// Filter Interface //
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+
 Filter::Filter(Iterator* input, const Condition &condition) {
+
 }
 
 Filter::~Filter() {
@@ -27,6 +144,12 @@ void Filter::getAttributes(vector<Attribute> &attrs) const {
 
 }
 
+
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+// Project Interface //
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 
 // input: Iterator of input R
 // vector containing attribute names
