@@ -8,6 +8,7 @@
 
 using namespace std;
 
+
 // Global Initialization
 RM *rm;
 IX_Manager *ixManager;
@@ -19,7 +20,7 @@ const int tuplecount = 1000;
 
 // Buffer size and character buffer size
 const unsigned bufsize = 200;
-
+/*
 
 void createLeftTable()
 {
@@ -1067,4 +1068,46 @@ int main()
     extraTestCase_4();
 
     return 0;
+}*/
+
+void testCase_3()
+{
+    // Functions Tested
+    // 1. Project -- TableScan as input  
+    cout << "****In Test Case 3****" << endl;
+    
+    TableScan *ts = new TableScan(*rm, "right");
+    
+    vector<string> attrNames;
+    attrNames.push_back("right.C");
+    attrNames.push_back("right.D");
+    
+    // Create Projector 
+    Project project(ts, attrNames);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    while(project.getNextTuple(data) != QE_EOF)
+    {
+        int offset = 0;
+ 
+        // Print right.C
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.D
+        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+        memset(data, 0, bufsize);
+    }
+    
+    free(data);
+    return;
+}
+
+int main() {
+    system("rm -r " DATABASE_FOLDER " 2> /dev/null");
+    ixManager = IX_Manager::Instance();
+    rm = RM::Instance();
 }
