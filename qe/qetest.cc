@@ -398,25 +398,31 @@ void testCase_3()
     
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i = 0;
     while(project.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
+        int b = i + 20;
+        float c = (float)(i + 25);
+        int d = i;
  
         // Print right.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        assert(c == *(float *)((char *)data + offset));
         offset += sizeof(float);
-        
+
         // Print right.D
         cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        assert(d == *(int *)((char *)data + offset));
         offset += sizeof(int);
-        
+
         memset(data, 0, bufsize);
+        i += 1;
     }
     
     free(data);
     return;
 }
-
 
 void testCase_4()
 {
