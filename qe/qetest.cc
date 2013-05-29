@@ -1103,7 +1103,6 @@ void ourTest_01()
 
     // MAX int
     TableScan *input2 = new TableScan(*rm, "left");
-    aggAttr;
     aggAttr.name = "left.C";
     aggAttr.type = TypeReal;
     aggAttr.length = 4;   
@@ -1150,10 +1149,53 @@ void ourTest_02()
     return;
 }
 
+// Aggregate -- SUM
+void ourTest_03()
+{
+    cout << "****In Our Extra Test Case 3****" << endl;
+    
+    // Create TableScan
+    TableScan *input1 = new TableScan(*rm, "left");
+    
+    // Create Aggregate
+    Attribute aggAttr;
+    aggAttr.name = "left.A";
+    aggAttr.type = TypeInt;
+    aggAttr.length = 4;   
+    Aggregate agg1(input1, aggAttr, SUM);
+    
+    void *data = malloc(bufsize);
+    while(agg1.getNextTuple(data) != QE_EOF)
+    {
+        cout << "SUM(left.A) " << *(int *)data << endl;
+        assert (499500 == *(int *) data);
+        memset(data, 0, sizeof(int));
+    }
+    
+   // MAX int
+    TableScan *input2 = new TableScan(*rm, "right");
+    aggAttr.name = "right.C";
+    aggAttr.type = TypeReal;
+    aggAttr.length = 4;   
+    Aggregate agg2(input2, aggAttr, SUM);
+    
+    data = malloc(bufsize);
+    while(agg2.getNextTuple(data) != QE_EOF)
+    {
+        cout << "SUM(right.C) " << *(float *)data << endl;
+        assert (524500.0 == *(float *)data);
+        memset(data, 0, sizeof(float));
+    }
+    free(data);
+    cout << "****Our Extra Test Case 3 passed! ****" << endl << endl;
+    return;
+}
+
 void ourTests()
 {
     ourTest_01();
     ourTest_02();
+    ourTest_03();
 }
 
 int main() 
