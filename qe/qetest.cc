@@ -1078,7 +1078,7 @@ void extraTestCase_4()
 // Aggregate -- MIN MAX for Real
 void ourTest_01()
 {
-    cout << "****In Our Extra Test Case 1****" << endl << endl;
+    cout << "****In Our Extra Test Case 1****" << endl;
     
     // Create TableScan
     TableScan *input1 = new TableScan(*rm, "left");
@@ -1122,9 +1122,38 @@ void ourTest_01()
     return;
 }
 
+// Aggregate -- COUNT
+void ourTest_02()
+{
+    cout << "****In Our Extra Test Case 2****" << endl;
+    
+    // Create TableScan
+    TableScan *input1 = new TableScan(*rm, "left");
+    
+    // Create Aggregate
+    Attribute aggAttr;
+    aggAttr.name = "left.C";
+    aggAttr.type = TypeReal;
+    aggAttr.length = 4;   
+    Aggregate agg1(input1, aggAttr, COUNT);
+    
+    void *data = malloc(bufsize);
+    while(agg1.getNextTuple(data) != QE_EOF)
+    {
+        cout << "COUNT(left.C) " << *(int *)data << endl;
+        assert (1000 == *(int *) data);
+        memset(data, 0, sizeof(int));
+    }
+    
+    free(data);
+    cout << "****Our Extra Test Case 2 passed! ****" << endl << endl;
+    return;
+}
+
 void ourTests()
 {
     ourTest_01();
+    ourTest_02();
 }
 
 int main() 

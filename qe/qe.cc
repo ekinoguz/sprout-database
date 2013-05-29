@@ -266,6 +266,14 @@ RC Aggregate::AVG(Iterator *input) {
 }
 
 RC Aggregate::COUNT(Iterator *input) {
+  int count = 0;
+  void *data = malloc(PF_PAGE_SIZE);
+  while (QE_EOF != input->getNextTuple(data))
+  {
+    count += 1;
+  }
+  memcpy(result, &count, sizeof(int));
+  free(data);
   return 0;
 }
 
