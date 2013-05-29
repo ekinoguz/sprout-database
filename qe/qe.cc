@@ -317,9 +317,13 @@ RC Aggregate::MAX(Iterator *input) {
     switch(attrs[aggIndex].type) {
     case TypeInt:
       intTmp = *((int *) val);
-      
       if (isGroupBy) {
-
+        string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
+        auto got = results.find(str);
+        if (got == results.end())
+          results.emplace(str, intTmp);
+        else
+          results[str] = fmax(got->second, intTmp);
       } else {
         intMax = fmax(intMax, intTmp);
         this->updateResultMap("no-group-by", intMax, false);  
@@ -327,9 +331,13 @@ RC Aggregate::MAX(Iterator *input) {
       break;
     case TypeReal:
       floatTmp = *((float *) val);
-      
       if (isGroupBy) {
-
+        string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
+        auto got = results.find(str);
+        if (got == results.end())
+          results.emplace(str, floatTmp);
+        else
+          results[str] = fmax(got->second, floatTmp);
       } else {
         floatMax = fmax(floatMax, floatTmp);
         this->updateResultMap("no-group-by", floatMax, false);  
@@ -347,28 +355,27 @@ RC Aggregate::MAX(Iterator *input) {
 RC Aggregate::SUM(Iterator *input) {
   void *data = malloc(PF_PAGE_SIZE);
   void *val = malloc(sizeof(int));
-  int intSum = 0, intTmp=0;
-  float floatSum = 0.0, floatTmp=0.0;
+  int intTmp=0;
+  float floatTmp=0.0;
+  string str;
   while (QE_EOF != input->getNextTuple(data))
   {
+    str = "no-group-by";
     memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
     switch(attrs[aggIndex].type) {
     case TypeInt:
       intTmp = *((int *) val);
-      
       if (isGroupBy) {
-
-      } else {
-        this->updateResultMap("no-group-by", intTmp, true);  
+        str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
+      this->updateResultMap(str, intTmp, true);
       break;
     case TypeReal:
       floatTmp = *((float *) val);
       if (isGroupBy) {
-
-      } else {
-        this->updateResultMap("no-group-by", floatTmp, true);  
+        string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
+      this->updateResultMap(str, floatTmp, true);
       break;
     default:
       break;
@@ -382,31 +389,29 @@ RC Aggregate::SUM(Iterator *input) {
 RC Aggregate::AVG(Iterator *input) {
   void *data = malloc(PF_PAGE_SIZE);
   void *val = malloc(sizeof(int));
-  int intSum = 0, intTmp=0;
-  float floatSum = 0.0, floatTmp=0.0;
-  int count = 0;
+  int intTmp=0;
+  float floatTmp=0.0;
+  string str;
   while (QE_EOF != input->getNextTuple(data))
   {
-    count++;
+    str = "no-group-by";
     memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
     switch(attrs[aggIndex].type) {
     case TypeInt:
       intTmp = *((int *) val);
       if (isGroupBy) {
-
-      } else {
-        this->updateResultMap("no-group-by", intTmp, true);
-        this->updateCounterMap("no-group-by");
+        str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
+      this->updateResultMap(str, intTmp, true);
+      this->updateCounterMap(str);
       break;
     case TypeReal:
       floatTmp = *((float *) val);
       if (isGroupBy) {
-
-      } else {
-        this->updateResultMap("no-group-by", floatTmp, true);
-        this->updateCounterMap("no-group-by");
+        str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
+      this->updateResultMap(str, floatTmp, true);
+      this->updateCounterMap(str);
       break;
     default:
       break;
@@ -427,13 +432,14 @@ RC Aggregate::AVG(Iterator *input) {
 
 RC Aggregate::COUNT(Iterator *input) {
   void *data = malloc(PF_PAGE_SIZE);
+  string str;
   while (QE_EOF != input->getNextTuple(data))
   {
+    str = "no-group-by";
     if (isGroupBy) {
-
-    } else {
-      this->updateResultMap("no-group-by", 1, true);  
+      str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
     }
+    this->updateResultMap(str, 1, true);
   }
   free(data);
   return 0;
@@ -536,7 +542,7 @@ Filter::Filter(Iterator* input, const Condition &condition) {
   void *data = malloc(PF_PAGE_SIZE);
   void *lvalue = malloc(PF_PAGE_SIZE);
   void *value = malloc(PF_PAGE_SIZE);
-  int dataOffset, filteredDataOffset;
+  int filteredDataOffset;
 
   while (QE_EOF != input->getNextTuple(data))
   {

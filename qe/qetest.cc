@@ -1207,21 +1207,25 @@ void extraTestCase_4()
     Aggregate agg(input, aggAttr, gAttr, SUM);
     
     void *data = malloc(bufsize);
+    int i = 0;
     while(agg.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
-        
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        cout << "right.C " << *(float *)((char *)data + offset) << "\t";
+        float c = *(float *)((char *)data + offset);
         offset += sizeof(float);
         
         // Print right.B
-        cout << "SUM(right.B) " << *(float *)((char *)data + offset) << endl;
+        // TODO: this was float
+        cout << "SUM(right.B) " << *(int *)((char *)data + offset) << endl;
+        int b = *(int *)((char *)data + offset);
         offset += sizeof(int);
-
         memset(data, 0, bufsize);
+        assert ( (c-b) == 5);
+        i += 1;
     }
-    
+    assert (i == 1000);
     free(data);
     return;
 }
@@ -1432,7 +1436,7 @@ int main()
     extraTestCase_1();
     extraTestCase_2();
     extraTestCase_3();
-    // extraTestCase_4();
+    extraTestCase_4();
 
     // Create Tables with VarChar
     // Create the left table, and populate the table
