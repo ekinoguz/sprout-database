@@ -4,6 +4,9 @@
 #include <vector>
 
 #include "../shared.h"
+#include <limits.h>
+#include <float.h>
+#include <math.h>
 #include "pf/pf.h"
 #include "rm/rm.h"
 #include "ix/ix.h"
@@ -285,6 +288,20 @@ class Aggregate : public Iterator {
         // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
         // output attrname = "MAX(rel.attr)"
         void getAttributes(vector<Attribute> &attrs) const;
+            // private API:
+    private:
+        vector<Attribute> attrs;
+        void * result;
+        bool done;
+        int dataOffset;
+        int index;
+
+        void init();
+        RC MIN(Iterator *input);
+        RC MAX(Iterator *input);
+        RC SUM(Iterator *input);
+        RC AVG(Iterator *input);
+        RC COUNT(Iterator *input);
 };
 
 #endif

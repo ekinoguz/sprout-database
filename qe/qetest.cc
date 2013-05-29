@@ -911,24 +911,49 @@ void extraTestCase_1()
 {
     // Functions Tested
     // 1. TableScan
-    // 2. Aggregate -- MAX
+    // 2. Aggregate -- MIN MAX
     cout << "****In Extra Test Case 1****" << endl;
     
     // Create TableScan
-    TableScan *input = new TableScan(*rm, "left");
+    TableScan *input1 = new TableScan(*rm, "left");
     
     // Create Aggregate
     Attribute aggAttr;
     aggAttr.name = "left.B";
     aggAttr.type = TypeInt;
     aggAttr.length = 4;   
-    Aggregate agg(input, aggAttr, MAX);
+    Aggregate agg1(input1, aggAttr, MIN);
     
     void *data = malloc(bufsize);
-    while(agg.getNextTuple(data) != QE_EOF)
+    // MIN int
+    while(agg1.getNextTuple(data) != QE_EOF)
     {
-        cout << "MAX(left.B) " << *(float *)data << endl;
-        memset(data, 0, sizeof(float));
+        // TODO: this was like that:
+        // cout << "MIN(left.B) " << *(float *)data << endl;
+        // memset(data, 0, sizeof(float));
+        cout << "MIN(left.B) " << *(int *)data << endl;
+        assert (10 == *(int *) data);
+        memset(data, 0, sizeof(int));
+    }
+    
+    free(data);
+
+    // MAX int
+    TableScan *input2 = new TableScan(*rm, "left");
+    aggAttr.name = "left.B";
+    aggAttr.type = TypeInt;
+    aggAttr.length = 4;   
+    Aggregate agg2(input2, aggAttr, MAX);
+    
+    data = malloc(bufsize);
+    while(agg2.getNextTuple(data) != QE_EOF)
+    {
+        // TODO: this was like that:
+        // cout << "MIN(left.B) " << *(float *)data << endl;
+        // memset(data, 0, sizeof(float));
+        cout << "MAX(left.B) " << *(int *)data << endl;
+        assert (1009 == *(int *)data);
+        memset(data, 0, sizeof(int));
     }
     
     free(data);
@@ -1050,6 +1075,57 @@ void extraTestCase_4()
     return;
 }
 
+// Aggregate -- MIN MAX for Real
+void ourTest_01()
+{
+    cout << "****In Our Extra Test Case 1****" << endl << endl;
+    
+    // Create TableScan
+    TableScan *input1 = new TableScan(*rm, "left");
+    
+    // Create Aggregate
+    Attribute aggAttr;
+    aggAttr.name = "left.C";
+    aggAttr.type = TypeReal;
+    aggAttr.length = 4;   
+    Aggregate agg1(input1, aggAttr, MIN);
+    
+    void *data = malloc(bufsize);
+    // MIN int
+    while(agg1.getNextTuple(data) != QE_EOF)
+    {
+        cout << "MIN(left.C) " << *(float *)data << endl;
+        assert (50.0 == *(float *) data);
+        memset(data, 0, sizeof(float));
+    }
+    
+    free(data);
+
+    // MAX int
+    TableScan *input2 = new TableScan(*rm, "left");
+    aggAttr;
+    aggAttr.name = "left.C";
+    aggAttr.type = TypeReal;
+    aggAttr.length = 4;   
+    Aggregate agg2(input2, aggAttr, MAX);
+    
+    data = malloc(bufsize);
+    while(agg2.getNextTuple(data) != QE_EOF)
+    {
+        cout << "MAX(left.C) " << *(float *)data << endl;
+        assert (1049.0 == *(float *)data);
+        memset(data, 0, sizeof(float));
+    }
+    
+    free(data);
+    cout << "****Our Extra Test Case 1 passed! ****" << endl << endl;
+    return;
+}
+
+void ourTests()
+{
+    ourTest_01();
+}
 
 int main() 
 {
@@ -1088,10 +1164,12 @@ int main()
     // testCase_10();
 
     // // Extra Credit
-    // extraTestCase_1();
+    extraTestCase_1();
     // extraTestCase_2();
     // extraTestCase_3();
     // extraTestCase_4();
+
+    ourTests();
 
     return 0;
 }

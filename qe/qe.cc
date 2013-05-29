@@ -132,12 +132,41 @@ void INLJoin::getAttributes(vector<Attribute> &attrs) const {
 // Iterator of input R
 // The attribute over which we are computing an aggregate
 // Aggregate operation
-Aggregate::Aggregate(  Iterator *input,
+Aggregate::Aggregate( Iterator *input,
                       Attribute aggAttr,
                       AggregateOp op
-                    ) {
+                    ) 
+{
+  init();
+  input->getAttributes(this->attrs);
+  RC rc = getAttributeOffsetAndIndex(attrs, aggAttr.name, dataOffset, index);
+  if (rc != 0)
+    error(__LINE__, rc);
 
+  switch(op) {
+  case 0:
+    rc = MIN(input);
+    break;
+  case 1:
+    rc = MAX(input);
+    break;
+  case 2:
+    rc = SUM(input);
+    break;
+  case 3:
+    rc = AVG(input);
+    break;
+  case 4:
+    rc = COUNT(input);
+    break;
+  default:
+    cout << "do not support this aggreate operation" << endl;
+    break; 
+  }
 }
+
+
+
 
 // Extra Credit
 // Iterator of input R
@@ -148,15 +177,104 @@ Aggregate::Aggregate(Iterator *input,
                     Attribute aggAttr,
                     Attribute gAttr,
                     AggregateOp op
-              ) {
-
+                    ) 
+{
+  init();
 }
 
 Aggregate::~Aggregate(){
+  free(result);
+}
 
+void Aggregate::init() {
+  this->done = false;
+  this->dataOffset = 0;
+  this->index = 0;
+  this->result = malloc(PF_PAGE_SIZE);
+}
+
+RC Aggregate::MIN(Iterator *input) {
+  void *data = malloc(PF_PAGE_SIZE);
+  void *val = malloc(sizeof(int));
+  int intMin = INT_MAX, intTmp=0;
+  float floatMin = FLT_MAX, floatTmp=0.0;
+  while (QE_EOF != input->getNextTuple(data))
+  {
+    memcpy((char *)val, (char *)data+dataOffset, sizeof(int));
+    switch(attrs[index].type) {
+    case TypeInt:
+      intTmp = *((int *) val);
+      intMin = fmin(intMin, intTmp); 
+      break;
+    case TypeReal:
+      floatTmp = *((float *) val);
+      floatMin = fmin(floatMin, floatTmp);
+      break;
+    default:
+      break;
+    }
+  }
+  if (intMin != INT_MAX)
+    memcpy(result, &intMin, sizeof(int));
+  else if (floatMin != FLT_MAX)
+    memcpy(result, &floatMin, sizeof(float));
+  else
+    return error(__LINE__, -87);
+  free(data);
+  free(val);
+  return 0;
+}
+
+RC Aggregate::MAX(Iterator *input) {
+  void *data = malloc(PF_PAGE_SIZE);
+  void *val = malloc(sizeof(int));
+  int intMax = INT_MIN, intTmp=0;
+  float floatMax = FLT_MIN, floatTmp=0.0;
+  while (QE_EOF != input->getNextTuple(data))
+  {
+    memcpy((char *)val, (char *)data+dataOffset, sizeof(int));
+    switch(attrs[index].type) {
+    case TypeInt:
+      intTmp = *((int *) val);
+      intMax = fmax(intMax, intTmp); 
+      break;
+    case TypeReal:
+      floatTmp = *((float *) val);
+      floatMax = fmax(floatMax, floatTmp);
+      break;
+    default:
+      break;
+    }
+  }
+  if (intMax != INT_MIN)
+    memcpy(result, &intMax, sizeof(int));
+  else if (floatMax != FLT_MIN)
+    memcpy(result, &floatMax, sizeof(float));
+  else
+    return error(__LINE__, -87);
+  free(data);
+  free(val);
+  return 0;
+}
+
+RC Aggregate::SUM(Iterator *input) {
+  return 0;
+}
+
+RC Aggregate::AVG(Iterator *input) {
+  return 0;
+}
+
+RC Aggregate::COUNT(Iterator *input) {
+  return 0;
 }
 
 RC Aggregate::Aggregate::getNextTuple(void *data) {
+  if (!done) {
+    memcpy(data, result, sizeof(int));
+    done = true;
+    return 0;
+  }
   return QE_EOF;
 }
 
@@ -164,7 +282,7 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
 // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
 // output attrname = "MAX(rel.attr)"
 void Aggregate::getAttributes(vector<Attribute> &attrs) const {
-
+  attrs = this->attrs;
 }
 
 
