@@ -305,29 +305,38 @@ void testCase_1()
     
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i = 0;
     while(filter.getNextTuple(data) != QE_EOF)
     {
+        int a = i;
+        int b = i + 10;
+        float c = (float)(i + 50);
+
         int offset = 0;
         // Print left.A
         cout << "left.A " << *(int *)((char *)data + offset) << endl;
+        assert (a == *(int *)((char *)data + offset));
         offset += sizeof(int);
         
         // Print left.B
         cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        assert (b == *(int *)((char *)data + offset));
+        assert (*(int *)((char *)data + offset) <= 25);
         offset += sizeof(int);
         
         // Print left.C
         cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        assert (c == *(float *)((char *)data + offset));
         offset += sizeof(float);
         
         memset(data, 0, bufsize);
+        i++;
     }
    
     free(value.data); 
     free(data);
     return;
 }
-
 
 void testCase_2()
 {
@@ -1056,9 +1065,9 @@ int main()
     createIndexforRightC(rightRIDs);   
    
     // Test Cases
-    // testCase_1();
+    testCase_1();
     // testCase_2();
-    testCase_3();
+    // testCase_3();
     // testCase_4();
     // testCase_5();
     // testCase_6();
