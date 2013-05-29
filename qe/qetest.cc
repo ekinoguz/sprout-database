@@ -263,7 +263,7 @@ void createIndexforRightC(vector<RID> &rids)
     IX_IndexHandle ixHandle;
     rc = ixManager->OpenIndex("right", "C", ixHandle);
     assert(rc == success);
-    
+
     // Insert Entry
     for(int i = 0; i < tuplecount; ++i)
     {
@@ -332,7 +332,7 @@ void testCase_1()
         memset(data, 0, bufsize);
         i++;
     }
-   
+    assert (i == 16);
     free(value.data); 
     free(data);
     return;
@@ -365,27 +365,39 @@ void testCase_2()
     
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i = 75;
+    int counter = 0;
     while(filter.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
+        int b = i + 20;
+        float c = (float)(i + 25);
+        int d = i;
+
         // Print right.B
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        cout << "right.B " << *(int *)((char *)data + offset) << ": ";
+        assert(b == *(int *)((char *)data + offset));
         offset += sizeof(int);
         
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        cout << "right.C " << *(float *)((char *)data + offset) << ": ";
+        assert(c == *(float *)((char *)data + offset));
+        assert( *(float *)((char *)data + offset) >= 100.0 );
         offset += sizeof(float);
         
         // Print right.D
         cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        assert(d == *(int *)((char *)data + offset));
         offset += sizeof(int);
         
         memset(data, 0, bufsize);
+        i += (counter++) % 2;
     }
 
     ixManager->CloseIndex(ixHandle);
     free(value.data);
     free(data);
+   
     return;
 }
 
@@ -411,7 +423,6 @@ void testCase_3()
     while(project.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
-        int b = i + 20;
         float c = (float)(i + 25);
         int d = i;
  
@@ -1066,8 +1077,8 @@ int main()
    
     // Test Cases
     testCase_1();
-    // testCase_2();
-    // testCase_3();
+    testCase_2();
+    testCase_3();
     // testCase_4();
     // testCase_5();
     // testCase_6();
