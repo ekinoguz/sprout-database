@@ -1,6 +1,8 @@
 #include "qe.h"
 
 RC getAttributeOffsetAndIndex(const vector<Attribute> attrs, const string targetName, int &dataOffset, int &index) {
+  index = -1;
+  dataOffset = 0;
   // find the desired attribute in data
   for (int i = 0; i < attrs.size(); i++) {
     if (0 == attrs[i].name.compare(targetName)) {
@@ -59,6 +61,46 @@ int getDataSize(const vector<Attribute> attr, const void *data) {
       }
   }
   return size;
+}
+
+RC getAttribute(const string name, const vector<Attribute> pool, Attribute &attr) {
+  for (unsigned i=0; i < pool.size(); i++) {
+    if (0 == pool[i].name.compare(name)) {
+      attr = pool[i];
+      return 0;
+    }
+  }
+  return error(__LINE__, -1);
+}
+
+string getAttributeName(const void *data, const vector<Attribute> attrs, const int dataOffset, const int index) {
+  int intVal;
+  float floatVal;
+  string output;
+  std::ostringstream ss;
+  char *str;
+  
+  switch(attrs[index].type) {
+  case TypeInt:
+    memcpy(&intVal, (char *)data+dataOffset, sizeof(int));
+    ss << intVal;
+    return ss.str();
+  case TypeReal:
+    memcpy(&floatVal, (char *)data+dataOffset, sizeof(float));
+    ss << floatVal;
+    return ss.str();
+  case TypeVarChar:
+    str = (char *)malloc(attrs[index].length);
+    memset(str, 0, attrs[index].length);
+    memcpy(&intVal, (char *)data+dataOffset, sizeof(int));
+    memcpy(str, (char *)data+dataOffset+sizeof(int), intVal);
+    output = str;
+    free(str);
+    return output;
+  default:
+    cout << "should not see this in getAttributeName" << endl;
+    return "";
+  }
 }
 
 ///////////////////////////////////////////////
@@ -139,30 +181,13 @@ Aggregate::Aggregate( Iterator *input,
 {
   init();
   input->getAttributes(this->attrs);
-  RC rc = getAttributeOffsetAndIndex(attrs, aggAttr.name, dataOffset, index);
+  RC rc = getAttributeOffsetAndIndex(attrs, aggAttr.name, aggOffset, aggIndex);
   if (rc != 0)
     error(__LINE__, rc);
 
-  switch(op) {
-  case 0:
-    rc = MIN(input);
-    break;
-  case 1:
-    rc = MAX(input);
-    break;
-  case 2:
-    rc = SUM(input);
-    break;
-  case 3:
-    rc = AVG(input);
-    break;
-  case 4:
-    rc = COUNT(input);
-    break;
-  default:
-    cout << "do not support this aggreate operation" << endl;
-    break; 
-  }
+  rc = this->doOp(input, op);
+  if (rc != 0)
+    error(__LINE__, rc);
 }
 
 
@@ -180,6 +205,20 @@ Aggregate::Aggregate(Iterator *input,
                     ) 
 {
   init();
+  this->isGroupBy = true;
+  this->resultAttribute = gAttr;
+  input->getAttributes(this->attrs);
+  RC rc = getAttributeOffsetAndIndex(attrs, aggAttr.name, aggOffset, aggIndex);
+  if (rc != 0)
+    error(__LINE__, rc);
+
+  rc = getAttributeOffsetAndIndex(this->attrs, resultAttribute.name, groupByOffset, groupByIndex);
+  if (0 != rc)
+    error(__LINE__, -1);
+
+  rc = this->doOp(input, op);
+  if (rc != 0)
+    error(__LINE__, rc);
 }
 
 Aggregate::~Aggregate(){
@@ -187,10 +226,37 @@ Aggregate::~Aggregate(){
 }
 
 void Aggregate::init() {
-  this->done = false;
-  this->dataOffset = 0;
-  this->index = 0;
+  this->aggOffset = 0;
+  this->aggIndex = 0;
+  this->isGroupBy = false;
+  this->outputInt = false;
   this->result = malloc(PF_PAGE_SIZE);
+}
+
+RC Aggregate::doOp(Iterator *input, AggregateOp op) {
+  RC rc;
+  switch(op) {
+  case 0:
+    if (this->attrs[aggIndex].type == TypeInt)
+      this->outputInt = true;
+    return rc = MIN(input);
+  case 1:
+  if (this->attrs[aggIndex].type == TypeInt)
+      this->outputInt = true;
+    return rc = MAX(input);
+  case 2:
+  if (this->attrs[aggIndex].type == TypeInt)
+      this->outputInt = true;
+    return rc = SUM(input);
+  case 3:
+    return rc = AVG(input);
+  case 4:
+    this->outputInt = true;
+    return rc = COUNT(input);
+  default:
+    cout << "do not support this aggreate operation" << endl;
+    return error(__LINE__, -1);
+  }
 }
 
 RC Aggregate::MIN(Iterator *input) {
@@ -198,28 +264,43 @@ RC Aggregate::MIN(Iterator *input) {
   void *val = malloc(sizeof(int));
   int intMin = INT_MAX, intTmp=0;
   float floatMin = FLT_MAX, floatTmp=0.0;
+
   while (QE_EOF != input->getNextTuple(data))
   {
-    memcpy((char *)val, (char *)data+dataOffset, sizeof(int));
-    switch(attrs[index].type) {
+    memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
+    switch(attrs[aggIndex].type) {
     case TypeInt:
       intTmp = *((int *) val);
-      intMin = fmin(intMin, intTmp); 
+      if (isGroupBy) {
+        string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
+        auto got = results.find(str);
+        if (got == results.end())
+          results.emplace(str, intTmp);
+        else
+          results[str] = fmin(got->second, intTmp);
+      } else {
+        intMin = fmin(intMin, intTmp);
+        this->updateResultMap("no-group-by", intMin, false);  
+      }
       break;
     case TypeReal:
       floatTmp = *((float *) val);
-      floatMin = fmin(floatMin, floatTmp);
+      if (isGroupBy) {
+        string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
+        auto got = results.find(str);
+        if (got == results.end())
+          results.emplace(str, floatTmp);
+        else
+          results[str] = fmin(got->second, floatTmp);
+      } else {
+        floatMin = fmin(floatMin, floatTmp);
+        this->updateResultMap("no-group-by", floatMin, false);  
+      }
       break;
     default:
       break;
     }
   }
-  if (intMin != INT_MAX)
-    memcpy(result, &intMin, sizeof(int));
-  else if (floatMin != FLT_MAX)
-    memcpy(result, &floatMin, sizeof(float));
-  else
-    return error(__LINE__, -87);
   free(data);
   free(val);
   return 0;
@@ -232,26 +313,32 @@ RC Aggregate::MAX(Iterator *input) {
   float floatMax = FLT_MIN, floatTmp=0.0;
   while (QE_EOF != input->getNextTuple(data))
   {
-    memcpy((char *)val, (char *)data+dataOffset, sizeof(int));
-    switch(attrs[index].type) {
+    memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
+    switch(attrs[aggIndex].type) {
     case TypeInt:
       intTmp = *((int *) val);
-      intMax = fmax(intMax, intTmp); 
+      
+      if (isGroupBy) {
+
+      } else {
+        intMax = fmax(intMax, intTmp);
+        this->updateResultMap("no-group-by", intMax, false);  
+      }
       break;
     case TypeReal:
       floatTmp = *((float *) val);
-      floatMax = fmax(floatMax, floatTmp);
+      
+      if (isGroupBy) {
+
+      } else {
+        floatMax = fmax(floatMax, floatTmp);
+        this->updateResultMap("no-group-by", floatMax, false);  
+      }
       break;
     default:
       break;
     }
   }
-  if (intMax != INT_MIN)
-    memcpy(result, &intMax, sizeof(int));
-  else if (floatMax != FLT_MIN)
-    memcpy(result, &floatMax, sizeof(float));
-  else
-    return error(__LINE__, -87);
   free(data);
   free(val);
   return 0;
@@ -264,26 +351,29 @@ RC Aggregate::SUM(Iterator *input) {
   float floatSum = 0.0, floatTmp=0.0;
   while (QE_EOF != input->getNextTuple(data))
   {
-    memcpy((char *)val, (char *)data+dataOffset, sizeof(int));
-    switch(attrs[index].type) {
+    memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
+    switch(attrs[aggIndex].type) {
     case TypeInt:
       intTmp = *((int *) val);
-      intSum += intTmp;
+      
+      if (isGroupBy) {
+
+      } else {
+        this->updateResultMap("no-group-by", intTmp, true);  
+      }
       break;
     case TypeReal:
       floatTmp = *((float *) val);
-      floatSum += floatTmp;
+      if (isGroupBy) {
+
+      } else {
+        this->updateResultMap("no-group-by", floatTmp, true);  
+      }
       break;
     default:
       break;
     }
   }
-  if (intSum != 0)
-    memcpy(result, &intSum, sizeof(int));
-  else if (floatSum != 0.0)
-    memcpy(result, &floatSum, sizeof(float));
-  else
-    return error(__LINE__, -87);
   free(data);
   free(val);
   return 0;
@@ -298,55 +388,103 @@ RC Aggregate::AVG(Iterator *input) {
   while (QE_EOF != input->getNextTuple(data))
   {
     count++;
-    memcpy((char *)val, (char *)data+dataOffset, sizeof(int));
-    switch(attrs[index].type) {
+    memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
+    switch(attrs[aggIndex].type) {
     case TypeInt:
       intTmp = *((int *) val);
-      intSum += intTmp;
+      if (isGroupBy) {
+
+      } else {
+        this->updateResultMap("no-group-by", intTmp, true);
+        this->updateCounterMap("no-group-by");
+      }
       break;
     case TypeReal:
       floatTmp = *((float *) val);
-      floatSum += floatTmp;
+      if (isGroupBy) {
+
+      } else {
+        this->updateResultMap("no-group-by", floatTmp, true);
+        this->updateCounterMap("no-group-by");
+      }
       break;
     default:
       break;
     }
   }
-  float out;
-  if (intSum != 0) {
-    out = intSum/(float)count;
-    memcpy(result, &out, sizeof(int));
+  double sum;
+  // calculate the average
+  for ( auto it = counters.begin(); it != counters.end(); ++it ) {
+    sum = results[it->first];
+    sum = sum / it->second;
+    this->updateResultMap(it->first, sum, false);
   }
-  else if (floatSum != 0.0) {
-    out = floatSum/(float)count;
-    memcpy(result, &out, sizeof(float));
-  }
-  else
-    return error(__LINE__, -87);
+  
   free(data);
   free(val);
   return 0;
 }
 
 RC Aggregate::COUNT(Iterator *input) {
-  int count = 0;
   void *data = malloc(PF_PAGE_SIZE);
   while (QE_EOF != input->getNextTuple(data))
   {
-    count += 1;
+    if (isGroupBy) {
+
+    } else {
+      this->updateResultMap("no-group-by", 1, true);  
+    }
   }
-  memcpy(result, &count, sizeof(int));
   free(data);
   return 0;
 }
 
 RC Aggregate::Aggregate::getNextTuple(void *data) {
-  if (!done) {
-    memcpy(data, result, sizeof(int));
-    done = true;
-    return 0;
+  auto it = results.begin();
+  if (it == results.end()) {
+    return QE_EOF;
   }
-  return QE_EOF;
+
+  int offset = 0, length = 0, intVal;
+  float floatVal;
+  // if we have a group-by attribute, add the attribute name to result
+  if (this->isGroupBy) {
+    length = (it->first).size();
+    switch(resultAttribute.type) {
+    case TypeInt:
+      intVal = atoi((it->first).c_str());
+      memcpy((char *)data+offset, &intVal, sizeof(int));
+      offset += sizeof(int);
+      break;
+    case TypeReal:
+      floatVal = ::atof((it->first).c_str());
+      memcpy((char *)data+offset, &floatVal, sizeof(float));
+      offset += sizeof(float);
+      break;
+    case TypeVarChar:
+      memcpy((char *)data+offset, &length, sizeof(int));
+      offset += sizeof(int);
+      memcpy((char *)data+offset, (it->first).c_str(), length);
+      offset += length;
+      break;
+    default:
+      cout << "should not see this in getAttributeName" << endl;
+      break;
+    }
+  }
+  // now add the result to output
+  if (this->outputInt){
+    intVal = (int)it->second;
+    memcpy((char *)data+offset, &intVal, sizeof(int));
+    offset += sizeof(int);
+  } else {
+    floatVal = it->second;
+    memcpy((char *)data+offset, &(floatVal), sizeof(float));
+    offset += sizeof(int);
+  }
+  results.erase(it->first);
+    
+  return 0;
 }
 
 // Please name the output attribute as aggregateOp(aggAttr)
@@ -356,6 +494,34 @@ void Aggregate::getAttributes(vector<Attribute> &attrs) const {
   attrs = this->attrs;
 }
 
+// if cumulative = true, add the result to previous result
+// otherwise overwrite the result
+void Aggregate::updateResultMap(const string name, const double value, const bool cumulative) {
+  auto got = results.find(name);
+  if ( got == results.end() )
+    results.emplace(name, value);
+  else {
+    int val = results.find(name)->second;
+    results.erase(name);
+    if (cumulative)
+      results.emplace(name, val+value);
+    else
+      results.emplace(name, value);
+  }
+}
+
+// increment counter by 1 for the given name
+void Aggregate::updateCounterMap(const string name) {
+  auto got = counters.find(name);
+  if ( got == counters.end() ) {
+    counters.emplace(name, 1);
+  }
+  else {
+    int val = counters.find(name)->second;
+    counters.erase(name);
+    counters.emplace(name, val+1);
+  }
+}
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -499,16 +665,6 @@ RC Filter::getNextTuple(void *data) {
 // For attribute in vector<Attribute>, name it as rel.attr
 void Filter::getAttributes(vector<Attribute> &attrs) const {
   attrs = this->attrs;
-}
-
-RC Filter::getAttribute(const string name, Attribute &attr) {
-  for (unsigned i=0; i < this->attrs.size(); i++) {
-    if (0 == this->attrs[i].name.compare(name)) {
-      attr = this->attrs[i];
-      return 0;
-    }
-  }
-  return error(__LINE__, -1);
 }
 
 ///////////////////////////////////////////////
