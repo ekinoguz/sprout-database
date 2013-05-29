@@ -290,6 +290,41 @@ RC Aggregate::SUM(Iterator *input) {
 }
 
 RC Aggregate::AVG(Iterator *input) {
+  void *data = malloc(PF_PAGE_SIZE);
+  void *val = malloc(sizeof(int));
+  int intSum = 0, intTmp=0;
+  float floatSum = 0.0, floatTmp=0.0;
+  int count = 0;
+  while (QE_EOF != input->getNextTuple(data))
+  {
+    count++;
+    memcpy((char *)val, (char *)data+dataOffset, sizeof(int));
+    switch(attrs[index].type) {
+    case TypeInt:
+      intTmp = *((int *) val);
+      intSum += intTmp;
+      break;
+    case TypeReal:
+      floatTmp = *((float *) val);
+      floatSum += floatTmp;
+      break;
+    default:
+      break;
+    }
+  }
+  float out;
+  if (intSum != 0) {
+    out = intSum/(float)count;
+    memcpy(result, &out, sizeof(int));
+  }
+  else if (floatSum != 0.0) {
+    out = floatSum/(float)count;
+    memcpy(result, &out, sizeof(float));
+  }
+  else
+    return error(__LINE__, -87);
+  free(data);
+  free(val);
   return 0;
 }
 

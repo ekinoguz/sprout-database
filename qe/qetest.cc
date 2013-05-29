@@ -1076,7 +1076,7 @@ void extraTestCase_4()
 }
 
 // Aggregate -- MIN MAX for Real
-void ourTest_01()
+void ourExtraTest_01()
 {
     cout << "****In Our Extra Test Case 1****" << endl;
     
@@ -1122,7 +1122,7 @@ void ourTest_01()
 }
 
 // Aggregate -- COUNT
-void ourTest_02()
+void ourExtraTest_02()
 {
     cout << "****In Our Extra Test Case 2****" << endl;
     
@@ -1150,7 +1150,7 @@ void ourTest_02()
 }
 
 // Aggregate -- SUM
-void ourTest_03()
+void ourExtraTest_03()
 {
     cout << "****In Our Extra Test Case 3****" << endl;
     
@@ -1191,11 +1191,54 @@ void ourTest_03()
     return;
 }
 
+// Aggregate -- AVERAGE
+void ourExtraTest_04()
+{
+    cout << "****In Our Extra Test Case 4****" << endl;
+    
+    // Create TableScan
+    TableScan *input1 = new TableScan(*rm, "left");
+    
+    // Create Aggregate
+    Attribute aggAttr;
+    aggAttr.name = "left.A";
+    aggAttr.type = TypeInt;
+    aggAttr.length = 4;   
+    Aggregate agg1(input1, aggAttr, AVG);
+    
+    void *data = malloc(bufsize);
+    while(agg1.getNextTuple(data) != QE_EOF)
+    {
+        cout << "AVG(left.A) " << *(float *)data << endl;
+        assert (499.5 == *(float *) data);
+        memset(data, 0, sizeof(float));
+    }
+    
+   // MAX int
+    TableScan *input2 = new TableScan(*rm, "right");
+    aggAttr.name = "right.C";
+    aggAttr.type = TypeReal;
+    aggAttr.length = 4;   
+    Aggregate agg2(input2, aggAttr, AVG);
+    
+    data = malloc(bufsize);
+    while(agg2.getNextTuple(data) != QE_EOF)
+    {
+        cout << "AVG(right.C) " << *(float *)data << endl;
+        assert (524.5 == *(float *)data);
+        memset(data, 0, sizeof(float));
+    }
+    free(data);
+    cout << "****Our Extra Test Case 4 passed! ****" << endl << endl;
+    return;
+}
+
 void ourTests()
 {
-    ourTest_01();
-    ourTest_02();
-    ourTest_03();
+    ourExtraTest_01();
+    ourExtraTest_02();
+    ourExtraTest_03();
+    ourExtraTest_04();
 }
 
 int main() 
