@@ -982,6 +982,7 @@ void extraTestCase_2()
     while(agg.getNextTuple(data) != QE_EOF)
     {
         cout << "AVG(right.B) " << *(float *)data << endl;
+        assert (519.5 == *(float *)data);
         memset(data, 0, sizeof(float));
     }
     
@@ -1013,21 +1014,29 @@ void extraTestCase_3()
     Aggregate agg(input, aggAttr, gAttr, MIN);
     
     void *data = malloc(bufsize);
+    int i = 0, b;
+    float c;
     while(agg.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
-        
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        cout << "left.C " << *(float *)((char *)data + offset) << " ";
+        c = *(float *)((char *)data + offset);
         offset += sizeof(float);
 
         // Print left.B
-        cout << "MIN(left.B) " << *(float *)((char *)data + offset) << endl;
+        // TODO: it was like that
+        //cout << "MIN(left.B) " << *(float *)((char *)data + offset) << endl;
+        cout << "MIN(left.B) " << *(int *)((char *)data + offset) << endl;
+        b = *(int *)((char *)data + offset);
         offset += sizeof(int);
 
+        assert ( (c-b) == 40.0);
+
         memset(data, 0, bufsize);
+        i += 1;
     }
-    
+    assert (i == 1000);
     free(data);
     return;
 }
@@ -1277,13 +1286,13 @@ int main()
     // testCase_9();
     // testCase_10();
 
+    ourTests();
+
     // // Extra Credit
     extraTestCase_1();
-    // extraTestCase_2();
-    // extraTestCase_3();
+    extraTestCase_2();
+    extraTestCase_3();
     // extraTestCase_4();
-
-    ourTests();
 
     return 0;
 }
