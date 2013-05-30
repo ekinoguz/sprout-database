@@ -247,7 +247,7 @@ void populateOurLeftTable(vector<RID> &rids)
         // Prepare the tuple data for insertion
         // a in [0,99], b in [1000, 1049], c in [50, 149.0]
         int a = i;
-        string b = to_string(i * 1000);
+        string b = to_string(i + 10000);
         float c = (float)(i + 50);
         prepareOurLeftTuple(a, b, c, buf);
         
@@ -298,7 +298,7 @@ void populateOurRightTable(vector<RID> &rids)
         
         // Prepare the tuple data for insertion
         // b in [1000, 1049], c in [50, 99.0], d in [0, 49]
-        string b = to_string(i * 1000);
+        string b = to_string(i + 10000);
         float c = (float)(i + 50);
         int d = i;
         prepareOurRightTuple(b, c, d, buf);
@@ -1416,7 +1416,7 @@ void ourTestCase_01()
     while(filter.getNextTuple(data) != QE_EOF)
     {
         int a = i;
-        string b = to_string(i * 1000);
+        string b = to_string(i + 10000);
         float c = (float)(i + 50);
 
         int offset = 0;
@@ -1454,16 +1454,87 @@ void ourTestCase_01()
     return;
 }
 
+void ourTestCase_02()
+{
+    // Functions Tested;
+    // 1. Filter -- TableScan as input, on VarChar Attribute
+    cout << "****In Our Test Case 2****" << endl;
+    
+    TableScan *ts = new TableScan(*rm, "ourleft");
+
+    // Set up condition
+    Condition cond;
+    cond.lhsAttr = "ourleft.B";
+    cond.op = LT_OP;
+    cond.bRhsIsAttr = false;
+    Value value;
+    value.type = TypeVarChar;
+    value.data = malloc(bufsize);
+
+    string in = "10023";
+    value.data = malloc(in.size()+sizeof(int)+1);
+    memset(value.data, 0, in.size()+sizeof(int)+1);
+    int ll = in.size();
+    memcpy((char *)value.data, &ll, sizeof(int));
+    memcpy((char *)value.data+sizeof(int), in.c_str(), ll);
+    cond.rhsValue = value;
+    
+    // Create Filter 
+    Filter filter(ts, cond);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    int i = 0;
+    while(filter.getNextTuple(data) != QE_EOF)
+    {
+        int a = i;
+        string b = to_string(i + 10000);
+        float c = (float)(i + 50);
+
+        int offset = 0;
+        // Print left.A
+        cout << "left.A " << *(int *)((char *)data + offset) << " ";
+        assert (a == *(int *)((char *)data + offset));
+        offset += sizeof(int);
+        
+        // Print left.B
+        int length=0;
+        memcpy(&length, (char *)data+offset, sizeof(int));
+        offset += sizeof(int);
+        
+        char *str = (char *)malloc(length+1);
+        memcpy((char *)str, (char *)data+offset, length);
+        offset += length;
+        str[length] = '\0';
+        cout << "left.B " << b << " ";
+        // assert (str.compare(b) < 0);
+        free(str);
+
+        // Print left.C
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        assert (c == *(float *)((char *)data + offset));
+        offset += sizeof(float);
+        
+        memset(data, 0, bufsize);
+        i++;
+    }
+    assert (i == 23);
+    free(value.data); 
+    free(data);
+    cout << "****In Our Test Case 2 Passed****" << endl << endl;
+    return;
+}
+
 void ourTests()
 {
 
     ourTestCase_01(); // Filter Real
-    // Filter VarChar
+    ourTestCase_02(); // Filter VarChar
     // Project VarChar
-    // ourExtraTest_01();
-    // ourExtraTest_02();
-    // ourExtraTest_03();
-    // ourExtraTest_04();
+    ourExtraTest_01();
+    ourExtraTest_02();
+    ourExtraTest_03();
+    ourExtraTest_04();
 }
 
 int main() 

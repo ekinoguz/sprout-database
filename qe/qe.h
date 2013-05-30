@@ -317,7 +317,8 @@ class Aggregate : public Iterator {
         vector<Attribute> attrs;
         unordered_map<string,double> results;
         unordered_map<string,int> counters;
-        Attribute resultAttribute;
+        Attribute groupByAttr;
+        Attribute aggAttr;
         void * result;
         bool isGroupBy;
         int aggOffset;

@@ -1,8 +1,9 @@
 #include "qe.h"
 
-RC getAttributeOffsetAndIndex(const vector<Attribute> attrs, const string targetName, int &dataOffset, int &index) {
+RC getAttributeOffsetAndIndex(const vector<Attribute> attrs, const string targetName, const void *data, int &dataOffset, int &index) {
   index = -1;
   dataOffset = 0;
+  int length=0;
   // find the desired attribute in data
   for (int i = 0; i < attrs.size(); i++) {
     if (0 == attrs[i].name.compare(targetName)) {
@@ -18,7 +19,8 @@ RC getAttributeOffsetAndIndex(const vector<Attribute> attrs, const string target
         dataOffset += attrs[i].length;
         break;
       case TypeVarChar:
-        dataOffset += sizeof(int) + attrs[i].length;
+        memcpy(&length, (char *)data+dataOffset, sizeof(int));
+        dataOffset += sizeof(int) + length;
         break;
     }
   }
@@ -406,11 +408,8 @@ Aggregate::Aggregate( Iterator *input,
 {
   init();
   input->getAttributes(this->attrs);
-  RC rc = getAttributeOffsetAndIndex(attrs, aggAttr.name, aggOffset, aggIndex);
-  if (rc != 0)
-    error(__LINE__, rc);
-
-  rc = this->doOp(input, op);
+  this->aggAttr = aggAttr;
+  RC rc = this->doOp(input, op);
   if (rc != 0)
     error(__LINE__, rc);
 }
@@ -431,17 +430,10 @@ Aggregate::Aggregate(Iterator *input,
 {
   init();
   this->isGroupBy = true;
-  this->resultAttribute = gAttr;
+  this->groupByAttr = gAttr;
+  this->aggAttr = aggAttr;
   input->getAttributes(this->attrs);
-  RC rc = getAttributeOffsetAndIndex(attrs, aggAttr.name, aggOffset, aggIndex);
-  if (rc != 0)
-    error(__LINE__, rc);
-
-  rc = getAttributeOffsetAndIndex(this->attrs, resultAttribute.name, groupByOffset, groupByIndex);
-  if (0 != rc)
-    error(__LINE__, -1);
-
-  rc = this->doOp(input, op);
+  RC rc = this->doOp(input, op);
   if (rc != 0)
     error(__LINE__, rc);
 }
@@ -452,7 +444,6 @@ Aggregate::~Aggregate(){
 
 void Aggregate::init() {
   this->aggOffset = 0;
-  this->aggIndex = 0;
   this->isGroupBy = false;
   this->outputInt = false;
   this->result = malloc(PF_PAGE_SIZE);
@@ -462,15 +453,15 @@ RC Aggregate::doOp(Iterator *input, AggregateOp op) {
   RC rc;
   switch(op) {
   case 0:
-    if (this->attrs[aggIndex].type == TypeInt)
+    if (aggAttr.type == TypeInt)
       this->outputInt = true;
     return rc = MIN(input);
   case 1:
-  if (this->attrs[aggIndex].type == TypeInt)
+  if (aggAttr.type == TypeInt)
       this->outputInt = true;
     return rc = MAX(input);
   case 2:
-  if (this->attrs[aggIndex].type == TypeInt)
+  if (aggAttr.type == TypeInt)
       this->outputInt = true;
     return rc = SUM(input);
   case 3:
@@ -492,11 +483,15 @@ RC Aggregate::MIN(Iterator *input) {
 
   while (QE_EOF != input->getNextTuple(data))
   {
+    if (0 != getAttributeOffsetAndIndex(attrs, aggAttr.name, data, aggOffset, aggIndex))
+      return error(__LINE__, -1); 
     memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
-    switch(attrs[aggIndex].type) {
+    switch(aggAttr.type) {
     case TypeInt:
       intTmp = *((int *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);  
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
@@ -511,6 +506,8 @@ RC Aggregate::MIN(Iterator *input) {
     case TypeReal:
       floatTmp = *((float *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);         
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
@@ -538,11 +535,15 @@ RC Aggregate::MAX(Iterator *input) {
   float floatMax = FLT_MIN, floatTmp=0.0;
   while (QE_EOF != input->getNextTuple(data))
   {
+    if (0 != getAttributeOffsetAndIndex(attrs, aggAttr.name, data, aggOffset, aggIndex))
+      return error(__LINE__, -1); 
     memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
-    switch(attrs[aggIndex].type) {
+    switch(aggAttr.type) {
     case TypeInt:
       intTmp = *((int *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);         
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
@@ -557,6 +558,8 @@ RC Aggregate::MAX(Iterator *input) {
     case TypeReal:
       floatTmp = *((float *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);        
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
@@ -586,11 +589,15 @@ RC Aggregate::SUM(Iterator *input) {
   while (QE_EOF != input->getNextTuple(data))
   {
     str = "no-group-by";
+    if (0 != getAttributeOffsetAndIndex(attrs, aggAttr.name, data, aggOffset, aggIndex))
+      return error(__LINE__, -1); 
     memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
-    switch(attrs[aggIndex].type) {
+    switch(aggAttr.type) {
     case TypeInt:
       intTmp = *((int *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);         
         str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
       this->updateResultMap(str, intTmp, true);
@@ -598,6 +605,8 @@ RC Aggregate::SUM(Iterator *input) {
     case TypeReal:
       floatTmp = *((float *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);        
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
       this->updateResultMap(str, floatTmp, true);
@@ -620,11 +629,15 @@ RC Aggregate::AVG(Iterator *input) {
   while (QE_EOF != input->getNextTuple(data))
   {
     str = "no-group-by";
+    if (0 != getAttributeOffsetAndIndex(attrs, aggAttr.name, data, aggOffset, aggIndex))
+      return error(__LINE__, -1);     
     memcpy((char *)val, (char *)data+aggOffset, sizeof(int));
-    switch(attrs[aggIndex].type) {
+    switch(aggAttr.type) {
     case TypeInt:
       intTmp = *((int *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);          
         str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
       this->updateResultMap(str, intTmp, true);
@@ -633,6 +646,8 @@ RC Aggregate::AVG(Iterator *input) {
     case TypeReal:
       floatTmp = *((float *) val);
       if (isGroupBy) {
+        if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+          return error(__LINE__, -1);       
         str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
       }
       this->updateResultMap(str, floatTmp, true);
@@ -662,6 +677,8 @@ RC Aggregate::COUNT(Iterator *input) {
   {
     str = "no-group-by";
     if (isGroupBy) {
+      if (0 != getAttributeOffsetAndIndex(this->attrs, groupByAttr.name, data, groupByOffset, groupByIndex))
+        return error(__LINE__, -1);      
       str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
     }
     this->updateResultMap(str, 1, true);
@@ -681,7 +698,7 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
   // if we have a group-by attribute, add the attribute name to result
   if (this->isGroupBy) {
     length = (it->first).size();
-    switch(resultAttribute.type) {
+    switch(groupByAttr.type) {
     case TypeInt:
       intVal = atoi((it->first).c_str());
       memcpy((char *)data+offset, &intVal, sizeof(int));
@@ -775,7 +792,7 @@ Filter::Filter(Iterator* input, const Condition &condition) {
     int dataOffset = 0, index = -1;
     
     // find the desired attribute in data
-    rc = getAttributeOffsetAndIndex(this->attrs, condition.lhsAttr, dataOffset, index);
+    rc = getAttributeOffsetAndIndex(this->attrs, condition.lhsAttr, data, dataOffset, index);
     if (rc != 0)
       error(__LINE__, rc);
 
@@ -786,6 +803,20 @@ Filter::Filter(Iterator* input, const Condition &condition) {
     // copy right value to value
     int rightSize = getAttributeSize(condition.rhsValue.type, condition.rhsValue.data);
     memcpy((void *)value, (void *)condition.rhsValue.data, rightSize);
+    
+    char *slvalue, *svalue;
+    if (this->attrs[index].type == TypeVarChar) {
+      int ll = 0;
+      memcpy(&ll, (char *)data+dataOffset, sizeof(int));
+      slvalue = (char *)malloc(ll+1);
+      memcpy((char *)slvalue, (char *)data+dataOffset+sizeof(int), ll);
+      slvalue[ll] = '\0';
+      
+      memcpy(&ll, (char *)condition.rhsValue.data, sizeof(int));
+      svalue = (char *)malloc(ll+1);
+      memcpy((char *)svalue, (char *)condition.rhsValue.data+sizeof(int), ll);
+      svalue[ll] = '\0';
+    }
     
     // check if data satisfies the given condition or not
     bool satisfy = false;
@@ -800,8 +831,10 @@ Filter::Filter(Iterator* input, const Condition &condition) {
         satisfy = (*(float*)lvalue == *(float*)value); 
         break;
       case TypeVarChar:
-        if( strcmp((char *)lvalue,(char *)value ) == 0 )
+        if( strcmp(slvalue,svalue ) == 0 )
           satisfy = true;
+        free(slvalue);
+        free(svalue);
         break;
       case TypeShort:
         satisfy = (*(char*)lvalue == *(char*)value);
@@ -822,8 +855,10 @@ Filter::Filter(Iterator* input, const Condition &condition) {
         satisfy = (*(float*)lvalue < *(float*)value); 
         break;
       case TypeVarChar:
-        if( strcmp((char *)lvalue,(char *)value ) < 0 )
+        if( strcmp(slvalue,svalue ) < 0 )
           satisfy = true;
+        free(slvalue);
+        free(svalue);
         break;
       case TypeShort:
         satisfy = (*(char*)lvalue < *(char*)value);
@@ -844,8 +879,10 @@ Filter::Filter(Iterator* input, const Condition &condition) {
         satisfy = (*(float*)lvalue > *(float*)value); 
         break;
       case TypeVarChar:
-        if( strcmp((char *)lvalue,(char *)value ) > 0 )
+        if( strcmp(slvalue,svalue ) > 0 )
           satisfy = true;
+        free(slvalue);
+        free(svalue);
         break;
       case TypeShort:
         satisfy = (*(char*)lvalue > *(char*)value);
@@ -924,7 +961,7 @@ Project::Project(Iterator *input, const vector<string> &attrNames) {
       int index = -1;
 
       // find the desired attribute in data
-      rc = getAttributeOffsetAndIndex(this->attrs, attrNames[i], dataOffset, index);
+      rc = getAttributeOffsetAndIndex(this->attrs, attrNames[i], data, dataOffset, index);
       if (rc != 0)
         error(__LINE__, rc);
 
