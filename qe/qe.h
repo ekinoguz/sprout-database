@@ -120,6 +120,7 @@ class TableScan : public Iterator
         ~TableScan()
         {
             iter->close();
+	    delete iter;
         };
 };
 

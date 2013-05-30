@@ -147,6 +147,8 @@ NLJoin::NLJoin(Iterator *leftIn,
   this->num_of_block_records = floor(((double)numPages * PF_PAGE_SIZE) / this->max_left_record_size);
 
   this->readBlockLeftIn();
+
+  this->tuples_info_more = false;
 }
 
 NLJoin::~NLJoin()
@@ -154,10 +156,12 @@ NLJoin::~NLJoin()
   auto it = this->tuples_map.begin();
   while (it != this->tuples_map.end())
     {
-      for (uint i = 0; it->second.size(); i++)
+      for (uint i = 0; i < it->second.size(); i++)
 	{
 	  free(it->second[i].tuple);
 	}
+
+      it++;
     }
 
   this->tuples_map.clear();
@@ -172,10 +176,12 @@ RC NLJoin::readBlockLeftIn()
   auto it = this->tuples_map.begin();
   while (it != this->tuples_map.end())
     {
-      for (uint i = 0; it->second.size(); i++)
+      for (uint i = 0; i < it->second.size(); i++)
 	{
 	  free(it->second[i].tuple);
 	}
+
+      it++;
     }
 
   this->tuples_map.clear();
@@ -207,8 +213,6 @@ RC NLJoin::readBlockLeftIn()
       it = this->tuples_map.find(key);
       it->second.push_back(info);
 
-      free(info.tuple);
-
       tuples_read++;
     }
 
@@ -216,6 +220,7 @@ RC NLJoin::readBlockLeftIn()
   return 0;
 }
 
+// Return the key as a string of hex digits
 string NLJoin::getKey(Iterator *iter, string attribute, void *tuple)
 {
   char *key;
@@ -225,6 +230,7 @@ string NLJoin::getKey(Iterator *iter, string attribute, void *tuple)
 
   bool found = false;
   unsigned offset = 0;
+  unsigned key_size;
   for (uint i = 0; i < attrs.size(); i++)
     {
       if (attrs[i].name == attribute)
@@ -234,17 +240,21 @@ string NLJoin::getKey(Iterator *iter, string attribute, void *tuple)
 	      int attribute_size = 0;
 	      memcpy(&attribute_size, (char *)tuple + offset, sizeof(attribute_size));
 	      offset += sizeof(attribute_size);
+	      
+	      key_size = attribute_size;
 
-	      key = (char*)malloc(attribute_size + 1);
-	      memset(key, 0, attribute_size + 1);
+	      key = (char*)malloc(attribute_size);
+	      memset(key, 0, attribute_size);
 	      memcpy(key, (char *)tuple + offset, attribute_size);
 
 	      offset += attribute_size;
 	    }
 	  else
 	    {
-	      key = (char*)malloc(attrs[i].length + 1);
-	      memset(key, 0, attrs[i].length + 1);
+	      key_size = attrs[i].length;
+
+	      key = (char*)malloc(attrs[i].length);
+	      memset(key, 0, attrs[i].length);
 	      memcpy(key, (char *)tuple + offset, attrs[i].length);
 
 	      offset += attrs[i].length;
@@ -269,7 +279,27 @@ string NLJoin::getKey(Iterator *iter, string attribute, void *tuple)
 
   if (found)
     {
-      return string(key);
+      const char* const lut = "0123456789ABCDEF";
+
+      string input;
+      input.reserve(key_size);
+      for (uint i = 0; i < key_size; i++)
+	{
+	  input.push_back(key[i]);
+	}
+      
+      string strKey;
+      unsigned char c;
+      strKey.reserve(2 * key_size);
+      for (uint i = 0; i < key_size; ++i)
+	{
+	  c = input[i];
+	  strKey.push_back(lut[c >> 4]);
+	  strKey.push_back(lut[c & 15]);
+	}
+
+      free(key);
+      return strKey;
     }
   else
     {

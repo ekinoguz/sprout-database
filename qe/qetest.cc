@@ -590,7 +590,7 @@ void testCase_4()
 {
     // Functions Tested
     // 1. NLJoin -- on TypeInt Attribute
-    cout << "****In Test Case 4****" << endl;
+  cout << endl << "****In Test Case 4****" << endl;
     
     // Prepare the iterator and condition
     TableScan *leftIn = new TableScan(*rm, "left");
@@ -612,33 +612,50 @@ void testCase_4()
         int offset = 0;
  
         // Print left.A
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	int leftA = *(int *)((char *)data + offset);
+        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+	int leftB = *(int *)((char *)data + offset);
+        // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+	float leftC = *(float *)((char *)data + offset);
+        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.B
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+	int rightB = *(int *)((char *)data + offset);
+        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+	float rightC = *(float *)((char *)data + offset);
+        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+	int rightD = *(int *)((char *)data + offset);
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
+	assert(leftB == leftA + 10);
+	assert(leftC == leftA + 50);
+	assert(rightB == leftA + 10);
+	assert(rightC == leftA + 15);
+	assert(rightD == leftA - 10);
+	
         memset(data, 0, bufsize);
     }
     
     free(data);
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Test Case 4 Passed****" << endl;
+
     return;
 }
 
@@ -708,7 +725,7 @@ void testCase_6()
 {
     // Functions Tested
     // 1. NLJoin -- on TypeInt Attribute
-    cout << "****In Test Case 6****" << endl;
+  cout << endl << "****In Test Case 6****" << endl;
     
     // Prepare the iterator and condition
     TableScan *leftIn = new TableScan(*rm, "left");
@@ -730,33 +747,50 @@ void testCase_6()
         int offset = 0;
  
         // Print left.A
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	int leftA = *(int *)((char *)data + offset);
+        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+	int leftB = *(int *)((char *)data + offset);
+        // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+	float leftC = *(float *)((char *)data + offset);
+        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.B
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+	int rightB = *(int *)((char *)data + offset);
+        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+	float rightC = *(float *)((char *)data + offset);
+        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+	int rightD = *(int *)((char *)data + offset);
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
+	assert(leftB == leftA + 10);
+	assert(leftC == leftA + 50);
+	assert(rightB == leftA + 10);
+	assert(rightC == leftA + 15);
+	assert(rightD == leftA - 10);
+
         memset(data, 0, bufsize);
     }
    
     free(data);
+    delete rightIn;
+    delete leftIn;
+
+    cout << "****Test Case 6 Passed****" << endl;
+
     return;
 }
 
@@ -1562,33 +1596,33 @@ int main()
     createIndexforRightC(rightRIDs);   
    
     // Test Cases
-    testCase_1();
-    testCase_2();
-    testCase_3();
-    // testCase_4();
+    // testCase_1();
+    // testCase_2();
+    // testCase_3();
+    testCase_4(); // Passing
     // testCase_5();
-    // testCase_6();
+    testCase_6(); // Passing
     // testCase_7();
     // testCase_8();
     // testCase_9();
     // testCase_10();
 
     // // Extra Credit
-    extraTestCase_1();
-    extraTestCase_2();
-    extraTestCase_3();
-    extraTestCase_4();
+    // extraTestCase_1();
+    // extraTestCase_2();
+    // extraTestCase_3();
+    // extraTestCase_4();
 
     // Create Tables with VarChar
     // Create the left table, and populate the table
-    vector<RID> ourLeftRIDs;
-    createOurLeftTable();
-    populateOurLeftTable(ourLeftRIDs);
+    // vector<RID> ourLeftRIDs;
+    // createOurLeftTable();
+    // populateOurLeftTable(ourLeftRIDs);
     
     // Create the right table, and populate the table
-    vector<RID> ourRightRIDs;
-    createOurRightTable();
-    populateOurRightTable(ourRightRIDs);
+    // vector<RID> ourRightRIDs;
+    // createOurRightTable();
+    // populateOurRightTable(ourRightRIDs);
     
     // TODO: create index for our tables
     // Create index for attribute B and C of the left table
@@ -1599,7 +1633,7 @@ int main()
     // createIndexforRightB(rightRIDs);
     // createIndexforRightC(rightRIDs);
 
-    ourTests(); 
+    // ourTests(); 
 
     return 0;
 }
