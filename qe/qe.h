@@ -211,8 +211,6 @@ class Filter : public Iterator {
         void getAttributes(vector<Attribute> &attrs) const;
     // private API:
     private:
-        RC getAttribute(const string name, Attribute &attr);
-
         vector<Attribute> attrs;
         vector<void *> results;
         vector<unsigned> sizes;
@@ -317,17 +315,28 @@ class Aggregate : public Iterator {
             // private API:
     private:
         vector<Attribute> attrs;
+        unordered_map<string,double> results;
+        unordered_map<string,int> counters;
+        Attribute resultAttribute;
         void * result;
-        bool done;
-        int dataOffset;
-        int index;
+        bool isGroupBy;
+        int aggOffset;
+        int aggIndex;
+        bool outputInt;
+        int groupByOffset;
+        int groupByIndex;
 
         void init();
+        RC doOp(Iterator *input, AggregateOp op);
+
         RC MIN(Iterator *input);
         RC MAX(Iterator *input);
         RC SUM(Iterator *input);
         RC AVG(Iterator *input);
         RC COUNT(Iterator *input);
+
+        void updateResultMap(const string name, const double value, const bool cumulative=false);
+        void updateCounterMap(const string name);
 };
 
 #endif

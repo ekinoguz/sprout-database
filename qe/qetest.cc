@@ -17,6 +17,7 @@ const int success = 0;
 
 // Number of tuples in each relation
 const int tuplecount = 1000;
+const int ourCount = 50;
 
 // Buffer size and character buffer size
 const unsigned bufsize = 200;
@@ -81,6 +82,65 @@ void createRightTable()
     cout << "****Right Table Created!****" << endl;
 }
 
+void createOurLeftTable()
+{
+    // Functions Tested;
+    // 1. Create Table
+    cout << "****Create Our Left Table****" << endl;
+
+    vector<Attribute> attrs;
+
+    Attribute attr;
+    attr.name = "A";
+    attr.type = TypeInt;
+    attr.length = 4;
+    attrs.push_back(attr);
+
+    attr.name = "B";
+    attr.type = TypeVarChar;
+    attr.length = 50;
+    attrs.push_back(attr);
+
+    attr.name = "C";
+    attr.type = TypeReal;
+    attr.length = 4;
+    attrs.push_back(attr);
+
+    RC rc = rm->createTable("ourleft", attrs);
+    assert(rc == success);
+    cout << "****Our Left Table Created!****" << endl;
+}
+
+   
+void createOurRightTable()
+{
+    // Functions Tested;
+    // 1. Create Table
+    cout << "****Create Our Right Table****" << endl;
+
+    vector<Attribute> attrs;
+
+    Attribute attr;
+    attr.name = "B";
+    attr.type = TypeVarChar;
+    attr.length = 50;
+    attrs.push_back(attr);
+
+    attr.name = "C";
+    attr.type = TypeReal;
+    attr.length = 4;
+    attrs.push_back(attr);
+
+    attr.name = "D";
+    attr.type = TypeInt;
+    attr.length = 4;
+    attrs.push_back(attr);
+
+    RC rc = rm->createTable("ourright", attrs);
+    assert(rc == success);
+    cout << "****Our Right Table Created!****" << endl;
+}
+
 
 // Prepare the tuple to left table in the format conforming to Insert/Update/ReadTuple and readAttribute
 void prepareLeftTuple(const int a, const int b, const float c, void *buf)
@@ -97,6 +157,22 @@ void prepareLeftTuple(const int a, const int b, const float c, void *buf)
     offset += sizeof(float);
 }
 
+void prepareOurLeftTuple(const int a, const string b, const float c, void *buf)
+{    
+    int offset = 0;
+    
+    memcpy((char *)buf + offset, &a, sizeof(int));
+    offset += sizeof(int);
+    
+    int length = b.size();
+    memcpy((char *)buf + offset, &length, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char *)buf + offset, b.c_str(), length);
+    offset += length;
+
+    memcpy((char *)buf + offset, &c, sizeof(float));
+    offset += sizeof(float);
+}
 
 // Prepare the tuple to right table in the format conforming to Insert/Update/ReadTuple, readAttribute
 void prepareRightTuple(const int b, const float c, const int d, void *buf)
@@ -105,6 +181,23 @@ void prepareRightTuple(const int b, const float c, const int d, void *buf)
     
     memcpy((char *)buf + offset, &b, sizeof(int));
     offset += sizeof(int);
+    
+    memcpy((char *)buf + offset, &c, sizeof(float));
+    offset += sizeof(float);
+    
+    memcpy((char *)buf + offset, &d, sizeof(int));
+    offset += sizeof(int);
+}
+
+void prepareOurRightTuple(const string b, const float c, const int d, void *buf)
+{
+    int offset = 0;
+    
+    int length = b.size();
+    memcpy((char *)buf + offset, &length, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char *)buf + offset, b.c_str(), length);
+    offset += length;
     
     memcpy((char *)buf + offset, &c, sizeof(float));
     offset += sizeof(float);
@@ -140,6 +233,31 @@ void populateLeftTable(vector<RID> &rids)
     free(buf);
 }
 
+void populateOurLeftTable(vector<RID> &rids)
+{
+    // Functions Tested
+    // 1. InsertTuple
+    RID rid;
+    void *buf = malloc(bufsize);
+    for(int i = 0; i < ourCount; ++i)
+
+    {
+        memset(buf, 0, bufsize);
+        
+        // Prepare the tuple data for insertion
+        // a in [0,99], b in [10000, 10049], c in [50, 149.0]
+        int a = i;
+        string b = to_string(i * 10000);
+        float c = (float)(i + 50);
+        prepareOurLeftTuple(a, b, c, buf);
+        
+        RC rc = rm->insertTuple("ourleft", buf, rid);
+        assert(rc == success);
+        rids.push_back(rid);
+    }
+    
+    free(buf);
+}
 
 void populateRightTable(vector<RID> &rids)
 {
@@ -167,6 +285,31 @@ void populateRightTable(vector<RID> &rids)
     free(buf);
 }
 
+void populateOurRightTable(vector<RID> &rids)
+{
+    // Functions Tested
+    // 1. InsertTuple
+    RID rid;
+    void *buf = malloc(bufsize);
+    for(int i = 0; i < ourCount; ++i)
+
+    {
+        memset(buf, 0, bufsize);
+        
+        // Prepare the tuple data for insertion
+        // b in [10000, 10049], c in [50, 99.0], d in [0, 49]
+        string b = to_string(i * 10000);
+        float c = (float)(i + 50);
+        int d = i;
+        prepareOurRightTuple(b, c, d, buf);
+        
+        RC rc = rm->insertTuple("ourright", buf, rid);
+        assert(rc == success);
+        rids.push_back(rid);
+    }
+    
+    free(buf);
+}
 
 void createIndexforLeftB(vector<RID> &rids)
 {
@@ -194,7 +337,6 @@ void createIndexforLeftB(vector<RID> &rids)
     rc = ixManager->CloseIndex(ixHandle);
     assert(rc == success);    
 }
-
 
 void createIndexforLeftC(vector<RID> &rids)
 {
@@ -982,6 +1124,7 @@ void extraTestCase_2()
     while(agg.getNextTuple(data) != QE_EOF)
     {
         cout << "AVG(right.B) " << *(float *)data << endl;
+        assert (519.5 == *(float *)data);
         memset(data, 0, sizeof(float));
     }
     
@@ -1013,21 +1156,29 @@ void extraTestCase_3()
     Aggregate agg(input, aggAttr, gAttr, MIN);
     
     void *data = malloc(bufsize);
+    int i = 0, b;
+    float c;
     while(agg.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
-        
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        cout << "left.C " << *(float *)((char *)data + offset) << " ";
+        c = *(float *)((char *)data + offset);
         offset += sizeof(float);
 
         // Print left.B
-        cout << "MIN(left.B) " << *(float *)((char *)data + offset) << endl;
+        // TODO: it was like that
+        //cout << "MIN(left.B) " << *(float *)((char *)data + offset) << endl;
+        cout << "MIN(left.B) " << *(int *)((char *)data + offset) << endl;
+        b = *(int *)((char *)data + offset);
         offset += sizeof(int);
 
+        assert ( (c-b) == 40.0);
+
         memset(data, 0, bufsize);
+        i += 1;
     }
-    
+    assert (i == 1000);
     free(data);
     return;
 }
@@ -1056,21 +1207,25 @@ void extraTestCase_4()
     Aggregate agg(input, aggAttr, gAttr, SUM);
     
     void *data = malloc(bufsize);
+    int i = 0;
     while(agg.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
-        
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        cout << "right.C " << *(float *)((char *)data + offset) << "\t";
+        float c = *(float *)((char *)data + offset);
         offset += sizeof(float);
         
         // Print right.B
-        cout << "SUM(right.B) " << *(float *)((char *)data + offset) << endl;
+        // TODO: this was float
+        cout << "SUM(right.B) " << *(int *)((char *)data + offset) << endl;
+        int b = *(int *)((char *)data + offset);
         offset += sizeof(int);
-
         memset(data, 0, bufsize);
+        assert ( (c-b) == 5);
+        i += 1;
     }
-    
+    assert (i == 1000);
     free(data);
     return;
 }
@@ -1279,11 +1434,31 @@ int main()
 
     // // Extra Credit
     extraTestCase_1();
-    // extraTestCase_2();
-    // extraTestCase_3();
-    // extraTestCase_4();
+    extraTestCase_2();
+    extraTestCase_3();
+    extraTestCase_4();
 
-    ourTests();
+    // Create Tables with VarChar
+    // Create the left table, and populate the table
+    vector<RID> ourLeftRIDs;
+    createOurLeftTable();
+    populateOurLeftTable(ourLeftRIDs);
+    
+    // Create the right table, and populate the table
+    vector<RID> ourRightRIDs;
+    createOurRightTable();
+    populateOurRightTable(ourRightRIDs);
+    
+    // TODO: create index for our tables
+    // Create index for attribute B and C of the left table
+    // createIndexforLeftB(ourLeftRIDs);
+    // createIndexforLeftC(ourRightRIDs);
+    
+    // // Create index for attribute B and C of the right table
+    // createIndexforRightB(rightRIDs);
+    // createIndexforRightC(rightRIDs);
+
+    ourTests(); 
 
     return 0;
 }
