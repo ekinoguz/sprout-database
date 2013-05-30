@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <float.h>
 #include <math.h>
+#include <unordered_map>
 #include "pf/pf.h"
 #include "rm/rm.h"
 #include "ix/ix.h"
@@ -36,6 +37,12 @@ struct Condition {
     bool    bRhsIsAttr;     // TRUE if right-hand side is an attribute and not a value; FALSE, otherwise.
     string rhsAttr;         // right-hand side attribute if bRhsIsAttr = TRUE
     Value   rhsValue;       // right-hand side value if bRhsIsAttr = FALSE
+};
+
+struct TupleInfo
+{
+  void *tuple;
+  unsigned size;
 };
 
 
@@ -244,6 +251,25 @@ class NLJoin : public Iterator {
         RC getNextTuple(void *data);
         // For attribute in vector<Attribute>, name it as rel.attr
         void getAttributes(vector<Attribute> &attrs) const;
+
+ private:
+	RC readBlockLeftIn();
+	unsigned getTupleSize(Iterator *iter, void *tuple);
+	string getKey(Iterator *iter, string attribute, void *data);
+
+ private:
+	Iterator *leftIn;                             // Iterator of input R
+	TableScan *rightIn;                           // TableScan Iterator of input S
+	Condition condition;                   // Join condition
+	unsigned max_left_record_size;
+	unsigned max_right_record_size;
+	unsigned num_of_block_records;
+	std::unordered_map<std::string, vector<TupleInfo> > tuples_map;
+	bool left_has_more;
+	vector<TupleInfo> tuples_info;
+	unsigned tuples_info_index;
+	bool tuples_info_more;
+	void *right_tuple;
 };
 
 

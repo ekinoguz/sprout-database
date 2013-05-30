@@ -118,19 +118,244 @@ NLJoin::NLJoin(Iterator *leftIn,
                TableScan *rightIn,
                const Condition &condition,
                const unsigned numPages
-              ) {
+              )
+{
+  this->leftIn = leftIn;
+  this->rightIn = rightIn;
+  this->condition = condition;
+  this->left_has_more = true;
 
+  vector<Attribute> attrs;
+  leftIn->getAttributes(attrs);
+  this->max_left_record_size = 0;
+  for (uint i = 0; i < attrs.size(); i++)
+    {
+      this->max_left_record_size += attrs[i].length;
+    }
+
+  attrs.clear();
+  rightIn->getAttributes(attrs);
+  this->max_right_record_size = 0;
+  for (uint i = 0; i < attrs.size(); i++)
+    {
+      this->max_right_record_size += attrs[i].length;
+    }
+  this->right_tuple = malloc(this->max_right_record_size);
+
+  this->num_of_block_records = floor(((double)numPages * PF_PAGE_SIZE) / this->max_left_record_size);
+
+  this->readBlockLeftIn();
 }
 
-NLJoin::~NLJoin() {
+NLJoin::~NLJoin()
+{
+  auto it = this->tuples_map.begin();
+  while (it != this->tuples_map.end())
+    {
+      for (uint i = 0; it->second.size(); i++)
+	{
+	  free(it->second[i].tuple);
+	}
+    }
 
+  this->tuples_map.clear();
+
+  free(this->right_tuple);
 }
 
-RC NLJoin::getNextTuple(void *data) {
-  return QE_EOF;
+RC NLJoin::readBlockLeftIn()
+{
+  void *tuple = malloc(this->max_left_record_size);
+
+  auto it = this->tuples_map.begin();
+  while (it != this->tuples_map.end())
+    {
+      for (uint i = 0; it->second.size(); i++)
+	{
+	  free(it->second[i].tuple);
+	}
+    }
+
+  this->tuples_map.clear();
+  unsigned tuples_read = 0;
+  while (tuples_read <= this->num_of_block_records)
+    {
+      memset(tuple, 0, this->max_left_record_size);
+      if (this->leftIn->getNextTuple(tuple) != 0)
+	{
+	  this->left_has_more = false;
+	  break;
+	}
+
+      string key = getKey(this->leftIn, this->condition.lhsAttr, tuple);
+      unsigned tuple_size = getTupleSize(this->leftIn, tuple);
+      TupleInfo info;
+      info.tuple = malloc(tuple_size);
+      memcpy(info.tuple, tuple, tuple_size);
+      info.size = tuple_size;
+
+      it = this->tuples_map.find(key);
+      if (it == this->tuples_map.end())
+	{
+	  vector<TupleInfo> tuples_info;
+	  pair<string, vector<TupleInfo> > new_element (key, tuples_info);
+	  this->tuples_map.insert(new_element);
+	}
+
+      it = this->tuples_map.find(key);
+      it->second.push_back(info);
+
+      free(info.tuple);
+
+      tuples_read++;
+    }
+
+  free(tuple);
+  return 0;
+}
+
+string NLJoin::getKey(Iterator *iter, string attribute, void *tuple)
+{
+  char *key;
+
+  vector<Attribute> attrs;
+  iter->getAttributes(attrs);
+
+  bool found = false;
+  unsigned offset = 0;
+  for (uint i = 0; i < attrs.size(); i++)
+    {
+      if (attrs[i].name == attribute)
+	{
+	  if (attrs[i].type == TypeVarChar)
+	    {
+	      int attribute_size = 0;
+	      memcpy(&attribute_size, (char *)tuple + offset, sizeof(attribute_size));
+	      offset += sizeof(attribute_size);
+
+	      key = (char*)malloc(attribute_size + 1);
+	      memset(key, 0, attribute_size + 1);
+	      memcpy(key, (char *)tuple + offset, attribute_size);
+
+	      offset += attribute_size;
+	    }
+	  else
+	    {
+	      key = (char*)malloc(attrs[i].length + 1);
+	      memset(key, 0, attrs[i].length + 1);
+	      memcpy(key, (char *)tuple + offset, attrs[i].length);
+
+	      offset += attrs[i].length;
+	    }
+
+	  found = true;
+	}
+      else
+	{
+	  if (attrs[i].type == TypeVarChar)
+	    {
+	      int attribute_size = 0;
+	      memcpy(&attribute_size, (char *)tuple + offset, sizeof(attribute_size));
+	      offset += sizeof(attribute_size) + attribute_size;
+	    }
+	  else
+	    {
+	      offset += attrs[i].length;
+	    }	  
+	}
+    }
+
+  if (found)
+    {
+      return string(key);
+    }
+  else
+    {
+      return "";
+    }
+}
+
+unsigned NLJoin::getTupleSize(Iterator *iter, void *tuple)
+{
+  vector<Attribute> attrs;
+  iter->getAttributes(attrs);
+
+  unsigned offset = 0;
+  for (uint i = 0; i < attrs.size(); i++)
+    {
+      if (attrs[i].type == TypeVarChar)
+	{
+	  int attribute_size = 0;
+	  memcpy(&attribute_size, (char *)tuple + offset, sizeof(attribute_size));
+	  offset += sizeof(attribute_size) + attribute_size;
+	}
+      else
+	{
+	  offset += attrs[i].length;
+	}
+    }
+
+  return offset;
+}
+
+
+RC NLJoin::getNextTuple(void *data)
+{
+  if (this->tuples_info_more == true)
+    {
+      if (this->tuples_info_index < this->tuples_info.size())
+	{
+	  memcpy(data, this->tuples_info[this->tuples_info_index].tuple, this->tuples_info[this->tuples_info_index].size);
+	  memcpy((char *)data + this->tuples_info[this->tuples_info_index].size, this->right_tuple, this->max_right_record_size);
+
+	  this->tuples_info_index++;
+
+	  return 0;
+	}
+      else
+	{
+	  this->tuples_info_more == false;
+	}
+    }
+
+  memset(this->right_tuple, 0, this->max_right_record_size);
+  while (true)
+    {
+      if (this->rightIn->getNextTuple(this->right_tuple) != 0)
+	{
+	  if (this->left_has_more == false)
+	    {
+	      return QE_EOF;
+	    }
+	  else
+	    {
+	      readBlockLeftIn();
+	      this->rightIn->setIterator();
+	      return getNextTuple(data);
+	    }
+	}
+      
+      string key = getKey(this->rightIn, this->condition.rhsAttr, this->right_tuple);
+      auto it = this->tuples_map.find(key);
+      if (it != this->tuples_map.end())
+	{
+	  memcpy(data, it->second[0].tuple, it->second[0].size);
+	  memcpy((char *)data + it->second[0].size, this->right_tuple, this->max_right_record_size);
+
+	  if (it->second.size() > 1)
+	    {
+	      this->tuples_info = it->second;
+	      this->tuples_info_index = 1;
+	      this->tuples_info_more = true;
+	    }
+
+	  return 0;
+	}
+    }
 }
 // For attribute in vector<Attribute>, name it as rel.attr
-void NLJoin::getAttributes(vector<Attribute> &attrs) const{
+void NLJoin::getAttributes(vector<Attribute> &attrs) const
+{
 
 }
 
