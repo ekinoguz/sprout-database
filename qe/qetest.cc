@@ -607,48 +607,50 @@ void testCase_4()
         
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i = 0;
     while(nljoin.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
  
         // Print left.A
-	int leftA = *(int *)((char *)data + offset);
+		int leftA = *(int *)((char *)data + offset);
         // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-	int leftB = *(int *)((char *)data + offset);
+		int leftB = *(int *)((char *)data + offset);
         // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-	float leftC = *(float *)((char *)data + offset);
+		float leftC = *(float *)((char *)data + offset);
         // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.B
-	int rightB = *(int *)((char *)data + offset);
+		int rightB = *(int *)((char *)data + offset);
         // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-	float rightC = *(float *)((char *)data + offset);
+		float rightC = *(float *)((char *)data + offset);
         // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-	int rightD = *(int *)((char *)data + offset);
+		int rightD = *(int *)((char *)data + offset);
         // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
-	assert(leftB == leftA + 10);
-	assert(leftC == leftA + 50);
-	assert(rightB == leftA + 10);
-	assert(rightC == leftA + 15);
-	assert(rightD == leftA - 10);
-	
+		assert(leftB == leftA + 10);
+		assert(leftC == leftA + 50);
+		assert(rightB == leftA + 10);
+		assert(rightC == leftA + 15);
+		assert(rightD == leftA - 10);
+		i++;
         memset(data, 0, bufsize);
     }
+    assert (i == 990);
     
     free(data);
     delete leftIn;
@@ -742,49 +744,51 @@ void testCase_6()
         
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i = 0;
     while(nlJoin.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
  
         // Print left.A
-	int leftA = *(int *)((char *)data + offset);
+		int leftA = *(int *)((char *)data + offset);
         // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-	int leftB = *(int *)((char *)data + offset);
+		int leftB = *(int *)((char *)data + offset);
         // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-	float leftC = *(float *)((char *)data + offset);
+		float leftC = *(float *)((char *)data + offset);
         // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.B
-	int rightB = *(int *)((char *)data + offset);
+		int rightB = *(int *)((char *)data + offset);
         // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-	float rightC = *(float *)((char *)data + offset);
+		float rightC = *(float *)((char *)data + offset);
         // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-	int rightD = *(int *)((char *)data + offset);
+		int rightD = *(int *)((char *)data + offset);
         // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
-	assert(leftB == leftA + 10);
-	assert(leftC == leftA + 50);
-	assert(rightB == leftA + 10);
-	assert(rightC == leftA + 15);
-	assert(rightD == leftA - 10);
+		assert(leftB == leftA + 10);
+		assert(leftC == leftA + 50);
+		assert(rightB == leftA + 10);
+		assert(rightC == leftA + 15);
+		assert(rightD == leftA - 10);
 
         memset(data, 0, bufsize);
+        i++;
     }
-   
+    assert (i == 990);
     free(data);
     delete rightIn;
     delete leftIn;
@@ -1596,9 +1600,9 @@ int main()
     createIndexforRightC(rightRIDs);   
    
     // Test Cases
-    // testCase_1();
-    // testCase_2();
-    // testCase_3();
+    testCase_1();
+    testCase_2();
+    testCase_3();
     testCase_4(); // Passing
     // testCase_5();
     testCase_6(); // Passing
@@ -1608,21 +1612,21 @@ int main()
     // testCase_10();
 
     // // Extra Credit
-    // extraTestCase_1();
-    // extraTestCase_2();
-    // extraTestCase_3();
-    // extraTestCase_4();
+    extraTestCase_1();
+    extraTestCase_2();
+    extraTestCase_3();
+    extraTestCase_4();
 
     // Create Tables with VarChar
     // Create the left table, and populate the table
-    // vector<RID> ourLeftRIDs;
-    // createOurLeftTable();
-    // populateOurLeftTable(ourLeftRIDs);
+    vector<RID> ourLeftRIDs;
+    createOurLeftTable();
+    populateOurLeftTable(ourLeftRIDs);
     
     // Create the right table, and populate the table
-    // vector<RID> ourRightRIDs;
-    // createOurRightTable();
-    // populateOurRightTable(ourRightRIDs);
+    vector<RID> ourRightRIDs;
+    createOurRightTable();
+    populateOurRightTable(ourRightRIDs);
     
     // TODO: create index for our tables
     // Create index for attribute B and C of the left table
@@ -1633,7 +1637,7 @@ int main()
     // createIndexforRightB(rightRIDs);
     // createIndexforRightC(rightRIDs);
 
-    // ourTests(); 
+    ourTests(); 
 
     return 0;
 }
