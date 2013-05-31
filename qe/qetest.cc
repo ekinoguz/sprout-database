@@ -970,45 +970,68 @@ void testCase_9()
         int offset = 0;
  
         // Print left.A
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	int leftA = *(int *)((char *)data + offset);
+        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+	int leftB = *(int *)((char *)data + offset);
+        // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+	float leftC = *(float *)((char *)data + offset);
+        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.B
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+	int rightB = *(int *)((char *)data + offset);
+        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+	float rightC = *(float *)((char *)data + offset);
+        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+	int rightD = *(int *)((char *)data + offset);
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print leftSecond.A
-        cout << "leftSecond.A " << *(int *)((char *)data + offset) << endl;
+	int leftSecondA = *(int *)((char *)data + offset);
+        // cout << "leftSecond.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-        cout << "leftSecond.B " << *(int *)((char *)data + offset) << endl;
+	int leftSecondB = *(int *)((char *)data + offset);
+        // cout << "leftSecond.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print leftSecond.C
-        cout << "leftSecond.C " << *(float *)((char *)data + offset) << endl;
+	float leftSecondC = *(float *)((char *)data + offset);
+        // cout << "leftSecond.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
-        
+
+	assert(leftB == leftA + 10);
+	assert(leftC == leftA + 50);
+	assert(rightB == leftA + 45);
+	assert(rightC == leftA + 50);
+	assert(rightD == leftA + 25);
+	assert(leftSecondA == leftA);
+	assert(leftSecondB == leftA + 10);
+	assert(leftSecondC == leftA + 50);
+
         memset(data, 0, bufsize);
     }
    
     free(data);
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Test Case 9 Passed****" << endl;
+
     return;
 }
 
@@ -1617,7 +1640,7 @@ int main()
     testCase_6(); // Passing
     // testCase_7();
     testCase_8();
-    // testCase_9();
+    testCase_9();
     // testCase_10();
 
     // // Extra Credit
@@ -1646,7 +1669,7 @@ int main()
     // createIndexforRightB(rightRIDs);
     // createIndexforRightC(rightRIDs);
 
-    ourTests(); 
+    ourTests();
 
     return 0;
 }

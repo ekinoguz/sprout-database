@@ -459,6 +459,7 @@ RC NLJoin::getNextTuple(void *data)
 		  break;
 		  
 		case NO_OP:
+		  // TODO: implement this
 		  cout << "Bad operator" << endl;
 		  return QE_EOF;
 		  break;
