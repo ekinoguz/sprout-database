@@ -1,47 +1,6 @@
 #include "qe.h"
 
-int getAttributeFromData(const void *buffer, const vector<Attribute> attrs, const string target, void *data) {
-  int length=0;
-  int offset = 0;
-  int i;
-  // find the desired attribute in data
-  for (i = 0; i < attrs.size(); i++) {
-    if (attrs[i].name.compare(target) == 0)
-      break;
-    // calculate the offset to reach desired attribute
-    switch(attrs[i].type) {
-      case TypeInt:
-      case TypeReal:
-      case TypeShort:
-      case TypeBoolean:
-        offset += sizeof(int);
-        break;
-      case TypeVarChar:
-        memcpy(&length, (char *)buffer+offset, sizeof(int));
-        offset += sizeof(int) + length;
-        break;
-      default:
-        return -1;
-    }
-  }
-  switch(attrs[i].type) {
-    case TypeInt:
-    case TypeReal:
-    case TypeShort:
-    case TypeBoolean:;
-      memcpy((char *)data, (char *)buffer+offset, sizeof(int));
-      offset += sizeof(int);
-      break;
-    case TypeVarChar:
-      memcpy(&length, (char *)buffer+offset, sizeof(int));
-      memcpy((char *)data, (char *)buffer+offset, sizeof(int)+length);
-      offset += sizeof(int)+length;
-      break;
-    default:
-      return -1;
-  }
-  return offset;
-}
+
 
 RC getAttributeOffsetAndIndex(const vector<Attribute> attrs, const string targetName, const void *data, int &dataOffset, int &index) {
   index = -1;
@@ -68,6 +27,33 @@ RC getAttributeOffsetAndIndex(const vector<Attribute> attrs, const string target
     }
   }
   return (index != -1) ? 0 : error(__LINE__, -1);
+}
+
+int getAttributeFromData(const void *buffer, const vector<Attribute> attrs, const string target, void *data) {
+  int length=0;
+  int offset = 0;
+  int i;
+  // find the desired attribute in data
+  if (getAttributeOffsetAndIndex(attrs, target, buffer, offset, i) != 0)
+    return -1;
+  
+  switch(attrs[i].type) {
+    case TypeInt:
+    case TypeReal:
+    case TypeShort:
+    case TypeBoolean:;
+      memcpy((char *)data, (char *)buffer+offset, sizeof(int));
+      offset += sizeof(int);
+      break;
+    case TypeVarChar:
+      memcpy(&length, (char *)buffer+offset, sizeof(int));
+      memcpy((char *)data, (char *)buffer+offset, sizeof(int)+length);
+      offset += sizeof(int)+length;
+      break;
+    default:
+      return -1;
+  }
+  return offset;
 }
 
 int getAttributeSize(const AttrType type, const void *data) {
@@ -555,7 +541,7 @@ RC Aggregate::MIN(Iterator *input) {
 
   while (QE_EOF != input->getNextTuple(data))
   {
-    if (getAttributeFromData(data, attrs, aggAttr.name, val) != -1)
+    if (getAttributeFromData(data, attrs, aggAttr.name, val) == -1)
       return error(__LINE__, -1); 
     switch(aggAttr.type) {
     case TypeInt:
@@ -606,7 +592,7 @@ RC Aggregate::MAX(Iterator *input) {
   float floatMax = FLT_MIN, floatTmp=0.0;
   while (QE_EOF != input->getNextTuple(data))
   {
-    if (getAttributeFromData(data, attrs, aggAttr.name, val) != -1)
+    if (getAttributeFromData(data, attrs, aggAttr.name, val) == -1)
       return error(__LINE__, -1);
     switch(aggAttr.type) {
     case TypeInt:
@@ -659,7 +645,7 @@ RC Aggregate::SUM(Iterator *input) {
   while (QE_EOF != input->getNextTuple(data))
   {
     str = "no-group-by";
-    if (getAttributeFromData(data, attrs, aggAttr.name, val) != -1)
+    if (getAttributeFromData(data, attrs, aggAttr.name, val) == -1)
       return error(__LINE__, -1);
     switch(aggAttr.type) {
     case TypeInt:
@@ -698,7 +684,7 @@ RC Aggregate::AVG(Iterator *input) {
   while (QE_EOF != input->getNextTuple(data))
   {
     str = "no-group-by";
-    if (getAttributeFromData(data, attrs, aggAttr.name, val) != -1)
+    if (getAttributeFromData(data, attrs, aggAttr.name, val) == -1)
       return error(__LINE__, -1);
     switch(aggAttr.type) {
     case TypeInt:
@@ -861,7 +847,7 @@ Filter::Filter(Iterator* input, const Condition &condition) {
       error(__LINE__, rc);
 
     // copy attribute to lvalue
-    if (getAttributeFromData(data, attrs, condition.lhsAttr, lvalue) != -1)
+    if (getAttributeFromData(data, attrs, condition.lhsAttr, lvalue) == -1)
       error(__LINE__, -1); 
 
     // copy right value to value
