@@ -1,22 +1,56 @@
-DDL capabilities in a command-line interpreter:
-  create table "tablename" (col1=type1, col2=type2, ...)
-  drop table "tablename"
-  create index columnName on tableName
-  drop index
-  load tabname (textfilename)
-  print tabname
-  help
-  help cmdname
-  quit
+Commands Working so Far
+=======================
 
-QUERY and UPDATE capabilities in a command-line interpreter:
-  insert tabname (col1=val1, col2 =val2, ...)
-  delete tabname [col1 op val1]]
-  select query-expr [col1 op val1]
-  select query-expr [col1 op col2]
-  project query-expr [col1, col2, ...]
-  join (method, query-expr, query-expr, col1 op col2)
-  agg (kind, method, query-expr, groupcol1, groupcol2, ..)
-  /* note: a query-expr would be select, project, join, agg, or tabname */
+create table <tableName> (col1=type1, col2=type2, ...)
+create index <columnName> on <tableName>
+drop table <tableName>
+drop index <indexName> on <tableName>
+drop attribute <attributeName> from <tableName>
+load <tableName> <fileName>
+print <tableName>
+print attributes <tableName>
+help <commandName>
+help
+quit or exit
 
-Something along those lines (but it needs to be backed and sanity-tested against the other parts of the project)....
+
+
+Language for Query Engine
+=========================  
+[] means 0 or 1
+{} means 0 or more
+
+column-name   := "string"
+table-name    := "string"
+aggregate     := MIN | MAX | AVG | COUNT | SUM
+operation     := "<" | ">" | "<=" | ">=" | "=" | "!="
+value         := "TypeVarChar" | "TypeInt" | "TypeReal"
+method        := "SCAN" | INDEX"
+
+column-list := "*" | aggregateOp | (column-name {"," column-name}) // check this out
+aggregateOp 	:= aggregate "(" column-name ")"
+table-list    := table-name {"," table-name}
+
+expression    := column-name | value
+cond-seq      := cond { ("and" | "or") cond}
+cond          := column-name operation expression
+
+select        := "SELECT" column-list "FROM" table-list ["WHERE" cond-seq] ["GROUPBY" column-list]
+
+// these two were in Mike's email
+join          := (method, select, select, cond-seq)
+//agg (kind, method, query-expr, groupcol1, groupcol2, ..)
+
+Example Queries
+---------------
+filter: "SELECT * FROM EMP WHERE sal > 600000"
+project: "SELECT NAME FROM EMP"
+join: "SELECT * FROM EMP, PROJECT WHERE EMP.PID = PROJECT.PID"
+SELECT MAX(sal) FROM EMP
+SELECT MAX(sal) FROM emp GROUP BY city
+
+
+Later
+=====
+insert tabname (col1=val1, col2 =val2, ...)
+delete tabname [col1 op val1]]
