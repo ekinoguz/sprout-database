@@ -909,17 +909,26 @@ void testCase_8()
         int offset = 0;
  
         // Print left.A
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	int leftA = *(int *)((char *)data + offset);
+        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
                 
         // Print right.D
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+	int rightD = *(int *)((char *)data + offset);
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
+	assert (rightD == leftA + 25);
+
         memset(data, 0, bufsize);
     }
    
     free(data);
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Test Case 8 Passed****" << endl;
+
     return;
 }
 
@@ -1607,7 +1616,7 @@ int main()
     // testCase_5();
     testCase_6(); // Passing
     // testCase_7();
-    // testCase_8();
+    testCase_8();
     // testCase_9();
     // testCase_10();
 
