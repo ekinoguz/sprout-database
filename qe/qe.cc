@@ -395,29 +395,109 @@ RC NLJoin::getNextTuple(void *data)
 	      return getNextTuple(data);
 	    }
 	}
-      
-      string key = getKey(this->rightIn, this->condition.rhsAttr, this->right_tuple);
-      auto it = this->tuples_map.find(key);
-      if (it != this->tuples_map.end())
-	{
-	  memcpy(data, it->second[0].tuple, it->second[0].size);
-	  memcpy((char *)data + it->second[0].size, this->right_tuple, this->max_right_record_size);
 
-	  if (it->second.size() > 1)
+      string key = getKey(this->rightIn, this->condition.rhsAttr, this->right_tuple);
+      if (this->condition.op == EQ_OP)
+	{
+	  auto it = this->tuples_map.find(key);
+	  if (it != this->tuples_map.end())
 	    {
-	      this->tuples_info = it->second;
-	      this->tuples_info_index = 1;
-	      this->tuples_info_more = true;
+	      memcpy(data, it->second[0].tuple, it->second[0].size);
+	      memcpy((char *)data + it->second[0].size, this->right_tuple, this->max_right_record_size);
+	      
+	      if (it->second.size() > 1)
+		{
+		  this->tuples_info = it->second;
+		  this->tuples_info_index = 1;
+		  this->tuples_info_more = true;
+		}
+	      
+	      return 0;
+	    }
+	}
+      else
+	{
+	  bool found = false;
+	  auto it = this->tuples_map.begin();
+	  while (!found & it != this->tuples_map.end())
+	    {
+	      switch (this->condition.op)
+		{
+		case LT_OP:
+		  if (it->first < key)
+		    {
+		      found = true;
+		    }
+		  break;
+		  
+		case GT_OP:
+		  if (it->first > key)
+		    {
+		      found = true;
+		    }
+		  break;
+		  
+		case LE_OP:
+		  if (it->first <= key)
+		    {
+		      found = true;
+		    }
+		  break;
+		  
+		case GE_OP:
+		  if (it->first >= key)
+		    {
+		      found = true;
+		    }
+		  break;
+	      
+		case NE_OP:
+		  if (it->first != key)
+		    {
+		      found = true;
+		    }
+		  break;
+		  
+		case NO_OP:
+		  cout << "Bad operator" << endl;
+		  return QE_EOF;
+		  break;
+		}
 	    }
 
-	  return 0;
+	  if (found == true)
+	    {
+	      memcpy(data, it->second[0].tuple, it->second[0].size);
+	      memcpy((char *)data + it->second[0].size, this->right_tuple, this->max_right_record_size);
+	      
+	      if (it->second.size() > 1)
+		{
+		  this->tuples_info = it->second;
+		  this->tuples_info_index = 1;
+		  this->tuples_info_more = true;
+		}
+	      
+	      return 0;
+	    }
+	  else
+	    {
+	      it++;
+	    }
 	}
     }
 }
 // For attribute in vector<Attribute>, name it as rel.attr
 void NLJoin::getAttributes(vector<Attribute> &attrs) const
 {
-
+  attrs.clear();
+  this->leftIn->getAttributes(attrs);
+  vector<Attribute> rightAttrs;
+  rightAttrs.clear();
+  this->rightIn->getAttributes(rightAttrs);
+  for (uint i = 0; i < rightAttrs.size(); i++)
+    {
+      attrs.push_back(rightAttrs[i]);
+    }
 }
 
 ///////////////////////////////////////////////
@@ -434,7 +514,8 @@ INLJoin::INLJoin(  Iterator *leftIn,
                   IndexScan *rightIn,
                   const Condition &condition,
                   const unsigned numPages
-                ) {
+                )
+{
 
 }
 
