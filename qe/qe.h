@@ -320,10 +320,7 @@ class Aggregate : public Iterator {
         unordered_map<string,int> counters;
         Attribute groupByAttr;
         Attribute aggAttr;
-        void * result;
         bool isGroupBy;
-        int aggOffset;
-        int aggIndex;
         bool outputInt;
         int groupByOffset;
         int groupByIndex;
