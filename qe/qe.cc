@@ -178,6 +178,7 @@ NLJoin::NLJoin(Iterator *leftIn,
   this->readBlockLeftIn();
 
   this->tuples_info_more = false;
+  this->left_block_has_more = false;
 }
 
 NLJoin::~NLJoin()
@@ -379,6 +380,26 @@ RC NLJoin::getNextTuple(void *data)
 	}
     }
 
+  if (this->left_block_has_more == true && this->left_block_it != this->tuples_map.end())
+    {
+      memcpy(data, this->left_block_it->second[0].tuple, this->left_block_it->second[0].size);
+      memcpy((char *)data + this->left_block_it->second[0].size, this->right_tuple, this->max_right_record_size);
+      
+      if (this->left_block_it->second.size() > 1)
+	{
+	  this->tuples_info = this->left_block_it->second;
+	  this->tuples_info_index = 1;
+	  this->tuples_info_more = true;
+	}
+      
+      this->left_block_it++;
+    }
+  else
+    {
+      this->left_block_has_more = false;
+    }
+
+
   memset(this->right_tuple, 0, this->max_right_record_size);
   while (true)
     {
@@ -477,6 +498,10 @@ RC NLJoin::getNextTuple(void *data)
 		  this->tuples_info_index = 1;
 		  this->tuples_info_more = true;
 		}
+
+	      it++;
+	      this->left_block_it = it;
+	      this->left_block_has_more = true;
 	      
 	      return 0;
 	    }
@@ -517,10 +542,37 @@ INLJoin::INLJoin(  Iterator *leftIn,
                   const unsigned numPages
                 )
 {
+  /*  this->leftIn = leftIn;
+  this->rightIn = rightIn;
+  this->condition = condition;
+  this->left_has_more = true;
 
+  vector<Attribute> attrs;
+  leftIn->getAttributes(attrs);
+  this->max_left_record_size = 0;
+  for (uint i = 0; i < attrs.size(); i++)
+    {
+      this->max_left_record_size += attrs[i].length;
+    }
+
+  attrs.clear();
+  rightIn->getAttributes(attrs);
+  this->max_right_record_size = 0;
+  for (uint i = 0; i < attrs.size(); i++)
+    {
+      this->max_right_record_size += attrs[i].length;
+    }
+  this->right_tuple = malloc(this->max_right_record_size);
+
+  this->num_of_block_records = floor(((double)numPages * PF_PAGE_SIZE) / this->max_left_record_size);
+
+  this->readBlockLeftIn();
+
+  this->tuples_info_more = false; */
 }
 
-INLJoin::~INLJoin() {
+INLJoin::~INLJoin()
+{
 
 }
 
@@ -529,8 +581,17 @@ RC INLJoin::getNextTuple(void *data) {
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
-void INLJoin::getAttributes(vector<Attribute> &attrs) const {
-
+void INLJoin::getAttributes(vector<Attribute> &attrs) const
+{
+  attrs.clear();
+  this->leftIn->getAttributes(attrs);
+  vector<Attribute> rightAttrs;
+  rightAttrs.clear();
+  this->rightIn->getAttributes(rightAttrs);
+  for (uint i = 0; i < rightAttrs.size(); i++)
+    {
+      attrs.push_back(rightAttrs[i]);
+    }
 }
 
 ///////////////////////////////////////////////

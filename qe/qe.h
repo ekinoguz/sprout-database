@@ -271,6 +271,8 @@ class NLJoin : public Iterator {
 	unsigned tuples_info_index;
 	bool tuples_info_more;
 	void *right_tuple;
+	bool left_block_has_more;
+	std::unordered_map<std::string, vector<TupleInfo> >::const_iterator left_block_it;
 };
 
 
@@ -288,6 +290,20 @@ class INLJoin : public Iterator {
         RC getNextTuple(void *data);
         // For attribute in vector<Attribute>, name it as rel.attr
         void getAttributes(vector<Attribute> &attrs) const;
+
+ private:
+	Iterator *leftIn;                             // Iterator of input R
+	IndexScan *rightIn;                           // TableScan Iterator of input S
+	Condition condition;                   // Join condition
+	unsigned max_left_record_size;
+	unsigned max_right_record_size;
+	unsigned num_of_block_records;
+	std::unordered_map<std::string, vector<TupleInfo> > tuples_map;
+	bool left_has_more;
+	vector<TupleInfo> tuples_info;
+	unsigned tuples_info_index;
+	bool tuples_info_more;
+	void *right_tuple;
 };
 
 
