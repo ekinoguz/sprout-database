@@ -44,6 +44,7 @@ private:
   RC dropTable();
   RC dropIndex(const string tableName="", const string columnName="", bool fromCommand=true);
   RC addAttribute();
+  RC insertTuple();
   RC dropAttribute();
   RC load();
   RC printTable(const string tableName);
@@ -68,7 +69,7 @@ private:
   RC error(const string errorMessage);
   RC printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial=false);
   RC updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs);
-  RC insertTuple(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap);
+  RC insertTupleToDB(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap);
 
 
   RM * rm;

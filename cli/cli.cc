@@ -265,6 +265,13 @@ RC CLI::process(const string input)
         code = error ("I expect <tableName>");
     }
 
+    ///////////////////////////////////////////////////////////////
+    // insert into <tableName> tuple(attr1=val1, attr2=value2, ...)
+    ///////////////////////////////////////////////////////////////
+    else if (expect(tokenizer, "insert")) {
+      code = insertTuple();
+    }
+
     ////////////////////////////////////////////
     // help
     // help <commandName>
@@ -307,7 +314,7 @@ RC CLI::process(const string input)
 
 RC CLI::query()
 {
-  
+  return 0;
 }
 
 RC CLI::createTable()
@@ -653,12 +660,9 @@ RC CLI::load()
   Attribute attr;
   vector<Attribute> attributes;
   this->getAttributesFromCatalog(tableName, attributes);
-  int totalLength = 0;
-  for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
-    totalLength += it->length;
   int offset = 0, index = 0, keyIndex = 0;
   int length;
-  void *buffer = malloc(totalLength);
+  void *buffer = malloc(PF_PAGE_SIZE);
   void *key = malloc(PF_PAGE_SIZE);
   RID rid;
 
@@ -726,7 +730,7 @@ RC CLI::load()
       if (keyIndex == attributes.size())
         keyIndex = 0;
     }
-    if (this->insertTuple(tableName, attributes, buffer, indexMap) != 0) {
+    if (this->insertTupleToDB(tableName, attributes, buffer, indexMap) != 0) {
       return error("error while inserting tuple");
     }
     
@@ -746,7 +750,94 @@ RC CLI::load()
   return 0;
 }
 
-RC CLI::insertTuple(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap) {
+RC CLI::insertTuple() {
+  char * token = next();
+  if (!expect(token, "into"))
+    return error("expecting into");
+
+  string tableName = next();
+
+  token = next(); // tuple
+  if (!expect(token, "tuple"))
+    return error("expectin tuple");
+
+  // get attributes from catalog
+  Attribute attr;
+  vector<Attribute> attributes;
+  this->getAttributesFromCatalog(tableName, attributes);
+  int offset = 0, index = 0;
+  int length;
+  void *buffer = malloc(PF_PAGE_SIZE);
+  memset(buffer, 0, PF_PAGE_SIZE);
+  void *key = malloc(PF_PAGE_SIZE);
+  RID rid;
+
+  // find out if there is any index for tableName
+  unordered_map<int, void *> indexMap;
+  for (uint i = 0; i < attributes.size(); i++) {
+    if (this->checkAttribute(tableName, attributes[i].name, rid, false))
+      // add index to index-map
+      indexMap[i] = malloc(PF_PAGE_SIZE);
+  }
+
+  // tokenize input
+  token = next();
+  while (token != NULL) {
+    attr = attributes[index];
+    if (!expect(token, attributes[index].name))
+      return error("this table does not have this attribute!");
+    token = next();
+    if (attr.type == TypeVarChar) {
+      string varChar = string(token);
+      length = varChar.size();
+      memcpy((char *)buffer + offset, &length, sizeof(int));
+      offset += sizeof(int);
+      memcpy((char *)buffer + offset, varChar.c_str(), length);
+      offset += length;
+
+      auto got = indexMap.find(index);
+      if (got != indexMap.end())
+        memcpy((char *) indexMap[index], (char *)buffer-sizeof(int)-length, sizeof(int)+length);
+    } 
+    else if (attr.type == TypeInt) {
+      int num = atoi(token);
+      memcpy((char *)buffer + offset, &num, sizeof(num));
+      offset += sizeof(num);
+
+      auto got = indexMap.find(index);
+      if (got != indexMap.end())
+        memcpy((char *) indexMap[index], (char *)buffer-sizeof(int), sizeof(int));
+    }
+    else if (attr.type == TypeReal) {
+      float num = atof(token);
+      memcpy((char *)buffer + offset, &num, sizeof(num));
+      offset += sizeof(num);
+
+      auto got = indexMap.find(index);
+      if (got != indexMap.end())
+        memcpy((char *) indexMap[index], (char *)buffer-sizeof(float), sizeof(int));
+    }
+    else if (attr.type == TypeBoolean || attr.type == TypeShort) {
+      return error("I do not wanna add this type of variable"); 
+    }
+    token = next();
+    index += 1;
+  }
+  if (this->insertTupleToDB(tableName, attributes, buffer, indexMap) != 0) {
+    return error("error while inserting tuple");
+  }
+
+  // clear up indexMap
+  for (auto it=indexMap.begin(); it != indexMap.end(); ++it) {
+    free (it->second);
+  }
+
+  free(buffer);
+  free(key);
+  return 0;
+}
+
+RC CLI::insertTupleToDB(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap) {
   RID rid;
 
   // insert data to given table
@@ -892,6 +983,10 @@ RC CLI::help(const string input)
     cout << "\tload <tableName> \"fileName\"";
     cout << ": loads given filName to given table" << endl;
   }
+  else if (input.compare("insert") == 0) {
+    cout << "\tinsert into <tableName> tuple(attr1=val1, attr2=value2, ...)";
+    cout << ": inserts given tuple to given tableName" << endl;
+  }
   else if (input.compare("print") == 0) {
     cout << "\tprint <tableName>: print every record in tableName" << endl;
     cout << "\tprint attributes <tableName>: print columns of given tableName" << endl;
@@ -908,6 +1003,7 @@ RC CLI::help(const string input)
     help("drop");
     help("load");
     help("print");
+    help("insert");
     help("help");
     help("quit");
   }
@@ -1143,16 +1239,22 @@ bool CLI::checkAttribute(const string tableName, const string columnName, RID &r
 RC CLI::updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs)
 {
   int length, offset = 0, number;
+  float fNumber;
   char *str;
   string record = "";
   for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it) {
     switch(it->type) {
       case TypeInt:
-      case TypeReal:
         number = 0;
         memcpy(&number, (char *)data+offset, sizeof(int));
         offset += sizeof(int);
         buffer.push_back(to_string(number));
+        break;
+      case TypeReal:
+        fNumber = 0;
+        memcpy(&fNumber, (char *)data+offset, sizeof(float));
+        offset += sizeof(float);
+        buffer.push_back(to_string(fNumber));
         break;
       case TypeVarChar:
         length = 0;
