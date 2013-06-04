@@ -281,6 +281,14 @@ RC CLI::process(const string input)
     else if (expect(tokenizer, "history") || expect(tokenizer, "h")) {
       code = history();
     }
+
+    ////////////////////////////////////////////
+    // select...
+    ////////////////////////////////////////////
+    else if (expect(tokenizer, "select")) {
+      code = query();
+    }
+
     ////////////////////////////////////////////
     // Utopia...
     ////////////////////////////////////////////
@@ -295,6 +303,10 @@ RC CLI::process(const string input)
   return code;
 }
 
+RC CLI::query()
+{
+  
+}
 
 RC CLI::createTable()
 {
@@ -642,10 +654,19 @@ RC CLI::load()
   int totalLength = 0;
   for (std::vector<Attribute>::iterator it = attributes.begin() ; it != attributes.end(); ++it)
     totalLength += it->length;
-  int offset = 0, index = 0;
+  int offset = 0, index = 0, keyIndex = 0;
   int length;
   void *buffer = malloc(totalLength);
+  void *key = malloc(PF_PAGE_SIZE);
   RID rid;
+
+  // find out if there is any index for tableName
+  unordered_map<int, void *> indexMap;
+  for (uint i = 0; i < attributes.size(); i++) {
+    if (this->checkAttribute(tableName, attributes[i].name, rid, false))
+      // add index to index-map
+      indexMap[i] = malloc(PF_PAGE_SIZE);
+  }
 
   // read file
   ifstream ifs;
@@ -675,13 +696,21 @@ RC CLI::load()
         length = token.size();
         memcpy((char *)buffer + offset, &length, sizeof(int));
         offset += sizeof(int);
-        memcpy((char *)buffer + offset, token.c_str(), token.size());
-        offset += token.size();
+        memcpy((char *)buffer + offset, token.c_str(), length);
+        offset += length;
+
+        auto got = indexMap.find(keyIndex);
+        if (got != indexMap.end())
+          memcpy((char *) indexMap[keyIndex], (char *)buffer-sizeof(int)-length, sizeof(int)+length);
       } 
       else if (attr.type == TypeInt || attr.type == TypeReal) {
         int num = atoi(tokenizer);
         memcpy((char *)buffer + offset, &num, sizeof(num));
         offset += sizeof(num);
+
+        auto got = indexMap.find(keyIndex);
+        if (got != indexMap.end())
+          memcpy((char *) indexMap[keyIndex], (char *)buffer-sizeof(int), sizeof(int));
       }
       else if (attr.type == TypeBoolean || attr.type == TypeShort) {
         // TODO: this should be fixed, not sure about size
@@ -691,16 +720,46 @@ RC CLI::load()
         return -1; 
       }
       tokenizer = strtok(NULL, CVS_DELIMITERS);
+      keyIndex += 1;
+      if (keyIndex == attributes.size())
+        keyIndex = 0;
     }
-    rm->insertTuple(tableName, buffer, rid);
+    if (this->insertTuple(tableName, attributes, buffer, indexMap) != 0) {
+      return error("error while inserting tuple");
+    }
     
     delete [] a;
     // prepare tuple for addition
     // for (std::vector<Attribute>::iterator it = attrs.begin() ; it != attrs.end(); ++it)
     // totalLength += it->length;
   }
+  // clear up indexMap
+  for (auto it=indexMap.begin(); it != indexMap.end(); ++it) {
+    free (it->second);
+  }
+
   free(buffer);
+  free(key);
   ifs.close();
+  return 0;
+}
+
+RC CLI::insertTuple(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap) {
+  RID rid;
+
+  // insert data to given table
+  if (rm->insertTuple(tableName, data, rid) != 0)
+    return error("error CLI::insertTuple in rm->insertTuple");
+
+  // if there is any index in table, insert index as well
+  for (auto it=indexMap.begin(); it != indexMap.end(); ++it) {
+    IX_IndexHandle ixHandle;
+    if (ixManager->OpenIndex(tableName, attributes[it->first].name, ixHandle) != 0)
+      return error("error in opening index in insertTuple");
+
+    if (ixHandle.InsertEntry(it->second, rid) != 0)
+      return error("error in inserting entry to insert");
+  }
   return 0;
 }
 

@@ -18,6 +18,12 @@ using namespace std;
 // Return code
 typedef int RC;
 
+struct Table {
+  string tableName;
+  vector<Attribute> columns;
+
+};
+
 // Record Manager
 class CLI
 {
@@ -45,6 +51,9 @@ private:
   RC help(const string input);
   RC history();
 
+  // query parsers
+  RC query();
+
   // cli catalog functions
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
   RC addAttributeToCatalog(const Attribute &attr, const string tableName, const int position);
@@ -58,6 +67,8 @@ private:
   RC error(const string errorMessage);
   RC printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial=false);
   RC updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs);
+  RC insertTuple(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap);
+
 
   RM * rm;
   IX_Manager * ixManager;
