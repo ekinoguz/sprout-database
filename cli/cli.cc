@@ -883,7 +883,7 @@ RC CLI::printAttributes()
     outputBuffer.push_back(to_string(it->length));
   }
 
-  return this->printOutputBuffer(outputBuffer, 3, true);
+  return this->printOutputBuffer(outputBuffer, 3);
 }
 
 RC CLI::printIndex() {
@@ -916,7 +916,7 @@ RC CLI::printIndex() {
     outputBuffer.push_back(to_string(rid.slotNum));
   }
 
-  return this->printOutputBuffer(outputBuffer, 2, true);
+  return this->printOutputBuffer(outputBuffer, 2);
 }
 
 // print every tuples in given tableName
@@ -962,7 +962,7 @@ RC CLI::printTable(const string tableName)
   rmsi.close();
   free(data_returned);
 
-  return this->printOutputBuffer(outputBuffer, attributes.size(), true);
+  return this->printOutputBuffer(outputBuffer, attributes.size());
 }
 
 RC CLI::help(const string input)
@@ -1286,7 +1286,7 @@ RC CLI::updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute>
 }
 
 // 2-pass output function
-RC CLI::printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial)
+RC CLI::printOutputBuffer(vector<string> &buffer, uint mod)
 {
   // find max for each column
   uint *maxLengths = new uint[mod];
@@ -1302,18 +1302,16 @@ RC CLI::printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial)
   uint startIndex = 0;
   int totalLength = 0;
 
-  if (firstSpecial) {
-    for(uint i=0; i < mod; i++) {
-      cout << setw(maxLengths[i]) << left << buffer[i] << DIVISOR;
-      totalLength += maxLengths[i] + DIVISOR_LENGTH;
-    }
-    cout << endl;
-
-    // totalLength - 2 because I do not want to count for extra spaces after last column
-    for (int i=0; i < totalLength-2; i++)
-      cout << "=";
-    startIndex = mod;
+  for(uint i=0; i < mod; i++) {
+    cout << setw(maxLengths[i]) << left << buffer[i] << DIVISOR;
+    totalLength += maxLengths[i] + DIVISOR_LENGTH;
   }
+  cout << endl;
+
+  // totalLength - 2 because I do not want to count for extra spaces after last column
+  for (int i=0; i < totalLength-2; i++)
+    cout << "=";
+  startIndex = mod;
 
   // output columns
   for (uint i=startIndex; i < buffer.size(); i++) {

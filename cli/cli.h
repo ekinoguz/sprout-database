@@ -67,7 +67,7 @@ private:
   bool expect(char * tokenizer, const string expected);
   bool checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns=true);
   RC error(const string errorMessage);
-  RC printOutputBuffer(vector<string> &buffer, uint mod, bool firstSpecial=false);
+  RC printOutputBuffer(vector<string> &buffer, uint mod);
   RC updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs);
   RC insertTupleToDB(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap);
 
