@@ -48,6 +48,7 @@ private:
   RC load();
   RC printTable(const string tableName);
   RC printAttributes();
+  RC printIndex();
   RC help(const string input);
   RC history();
 

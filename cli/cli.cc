@@ -257,6 +257,8 @@ RC CLI::process(const string input)
       tokenizer = next();
       if (expect(tokenizer, "body") || expect(tokenizer, "attributes"))
         code = printAttributes();
+      else if (expect(tokenizer, "index"))
+        code = printIndex();
       else if (tokenizer != NULL)
         code = printTable(string(tokenizer));
       else
@@ -791,6 +793,39 @@ RC CLI::printAttributes()
   }
 
   return this->printOutputBuffer(outputBuffer, 3, true);
+}
+
+RC CLI::printIndex() {
+  char * tokenizer = next();
+  string columnName = string(tokenizer);
+
+  tokenizer = next();
+  if (!expect(tokenizer, "on")) {
+    return error ("syntax error: expecting \"on\"");
+  }
+
+  tokenizer = next();
+  string tableName = string(tokenizer);
+
+  IX_IndexHandle ixHandle;
+  if (ixManager->OpenIndex(tableName, columnName, ixHandle) != 0)
+    return error ("error in OpenIndex::printIndex");
+
+  IX_IndexScan ixScan;
+  if (ixScan.OpenScan(ixHandle, NULL, NULL, false, false) != 0)
+    return error("error in OpenScan::printIndex");
+
+  vector<string> outputBuffer;
+  RID rid;
+
+  outputBuffer.push_back("PageNum");
+  outputBuffer.push_back("SlotNum");
+  while (ixScan.GetNextEntry(rid) == 0) {
+    outputBuffer.push_back(to_string(rid.pageNum));
+    outputBuffer.push_back(to_string(rid.slotNum));
+  }
+
+  return this->printOutputBuffer(outputBuffer, 2, true);
 }
 
 // print every tuples in given tableName
