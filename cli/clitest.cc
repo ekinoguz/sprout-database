@@ -9,7 +9,7 @@
 using namespace std;
 
 #define SUCCESS 0
-#define MODE 3  // 0 = TEST MODE
+#define MODE 0  // 0 = TEST MODE
                 // 1 = INTERACTIVE MODE
                 // 3 = TEST + INTERACTIVE MODE
 
@@ -463,7 +463,7 @@ void Test08()
 
 void Test09()
 {
-  cout << "*********** CLI Test08 begins ******************" << endl;
+  cout << "*********** CLI Test09 begins ******************" << endl;
 
   string command;
 
@@ -500,6 +500,174 @@ void Test09()
   assert (cli->process(command) == SUCCESS);
 }
 
+// check insert tuple
+void Test10()
+{
+  cout << "*********** CLI 10 begins ******************" << endl;
+
+  string command;
+
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table tbl_employee2 EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "insert inato tbl_employee tuple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
+
+  command = "insert into tbl_employee tauple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
+
+  command = "insert inato tbl_employee (EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
+
+  command = "insert tbl_employee tuple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) != SUCCESS);
+
+  command = "insert into tbl_employee tuple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "insert into tbl_employee2 tuple(EmpName=sky, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "insert into tbl_employee2 tuple(EmpName=cesar, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "insert into tbl_employee2 tuple(EmpName=naveen, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee2";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+}
+
+// check print index
+void Test11()
+{
+  cout << "*********** CLI 11 begins ******************" << endl;
+
+  string command;
+
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index EmpName on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print index EmpName on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "insert into tbl_employee tuple(EmpName=sky, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "insert into tbl_employee tuple(EmpName=cesar, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "insert into tbl_employee tuple(EmpName=naveen, Age=22, Height=6.1, Salary=13291)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print index EmpName on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+}
+
+// Verify that load table adds entries to the index
+void Test12()
+{
+  cout << "*********** CLI 12 begins ******************" << endl;
+
+  string command;
+
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index EmpName on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+}
+
+// first query test
+void Test13()
+{
+  cout << "*********** CLI 10 begins ******************" << endl;
+
+  string command;
+
+  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_50";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "select * from tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+}
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -516,6 +684,9 @@ int main()
     Test07();
     Test08();
     Test09();
+    Test10();
+    Test11();
+    Test12();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
