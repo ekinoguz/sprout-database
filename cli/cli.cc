@@ -707,16 +707,25 @@ RC CLI::load()
 
         auto got = indexMap.find(keyIndex);
         if (got != indexMap.end())
-          memcpy((char *) indexMap[keyIndex], (char *)buffer-sizeof(int)-length, sizeof(int)+length);
+          memcpy((char *) indexMap[keyIndex], (char *)buffer+offset-sizeof(int)-length, sizeof(int)+length);
       } 
-      else if (attr.type == TypeInt || attr.type == TypeReal) {
+      else if (attr.type == TypeInt) {
         int num = atoi(tokenizer);
         memcpy((char *)buffer + offset, &num, sizeof(num));
         offset += sizeof(num);
 
         auto got = indexMap.find(keyIndex);
         if (got != indexMap.end())
-          memcpy((char *) indexMap[keyIndex], (char *)buffer-sizeof(int), sizeof(int));
+          memcpy((char *) indexMap[keyIndex], (char *)buffer+offset-sizeof(int), sizeof(int));
+      }
+      else if (attr.type == TypeReal) {
+        float num = atof(tokenizer);
+        memcpy((char *)buffer + offset, &num, sizeof(num));
+        offset += sizeof(num);
+
+        auto got = indexMap.find(keyIndex);
+        if (got != indexMap.end())
+          memcpy((char *) indexMap[keyIndex], (char *)buffer+offset-sizeof(float), sizeof(int));
       }
       else if (attr.type == TypeBoolean || attr.type == TypeShort) {
         // TODO: this should be fixed, not sure about size
@@ -796,8 +805,9 @@ RC CLI::insertTuple() {
       offset += length;
 
       auto got = indexMap.find(index);
-      if (got != indexMap.end())
-        memcpy((char *) indexMap[index], (char *)buffer-sizeof(int)-length, sizeof(int)+length);
+      if (got != indexMap.end()) {
+        memcpy((char *) indexMap[index], (char *)buffer+offset-sizeof(int)-length, sizeof(int)+length);
+      }
     } 
     else if (attr.type == TypeInt) {
       int num = atoi(token);
@@ -806,7 +816,7 @@ RC CLI::insertTuple() {
 
       auto got = indexMap.find(index);
       if (got != indexMap.end())
-        memcpy((char *) indexMap[index], (char *)buffer-sizeof(int), sizeof(int));
+        memcpy((char *) indexMap[index], (char *)buffer+offset-sizeof(int), sizeof(int));
     }
     else if (attr.type == TypeReal) {
       float num = atof(token);
@@ -815,7 +825,7 @@ RC CLI::insertTuple() {
 
       auto got = indexMap.find(index);
       if (got != indexMap.end())
-        memcpy((char *) indexMap[index], (char *)buffer-sizeof(float), sizeof(int));
+        memcpy((char *) indexMap[index], (char *)buffer+offset-sizeof(float), sizeof(int));
     }
     else if (attr.type == TypeBoolean || attr.type == TypeShort) {
       return error("I do not wanna add this type of variable"); 
