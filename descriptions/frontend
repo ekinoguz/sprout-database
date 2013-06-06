@@ -45,10 +45,22 @@ Example Queries
 ---------------
 filter: "SELECT * FROM EMP WHERE sal > 600000"
 project: "SELECT NAME FROM EMP"
-join: "SELECT * FROM EMP, PROJECT WHERE EMP.PID = PROJECT.PID"
+join: "SELECT * FROM EMP, JOB WHERE EMP.JID = JOB.JID"
 SELECT MAX(sal) FROM EMP
-SELECT MAX(sal) FROM emp GROUP BY city
+SELECT city, MAX(sal) FROM emp GROUP BY city
 
+query =
+      FILTER <attr> <op> <value> FROM <query>
+      PROJECT <attrs> FROM <query>
+      JOIN <lattr> <op> <rattr> FROM {"INL" <query1>, <query2-Index> | "NL" <query1>, <query2>}
+      AGG <OP>(query) OF <attr> [GROUPBY <attr>]
+      tableName | indexName
+
+QUERY FILTER sal > 600000 FROM EMP
+QUERY PROJECT name FROM EMP
+QUERY JOIN jid = jid FROM "NL" EMP, JOB
+QUERY AGG MAX(PROJECT sal FROM EMP)
+QUERY AGG MAX(PROJECT city, sal FROM EMP) OF sal GROUPBY city
 
 Later
 =====
