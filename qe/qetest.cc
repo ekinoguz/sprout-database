@@ -891,6 +891,7 @@ void testCase_7()
         // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
+	assert(rightB == 50);
 	assert(leftB == leftA + 10);
 	assert(leftC == leftA + 50);
 	assert(rightB == leftA + 10);
@@ -1118,7 +1119,7 @@ void testCase_10()
     cond_j.bRhsIsAttr = true;
     cond_j.rhsAttr = "right.C";
     
-    INLJoin inljoin(project, rightIn, cond_j, 8); 
+    INLJoin inljoin(project, rightIn, cond_j, 5); 
     
     // Go over the data through iterator
     void *data = malloc(bufsize);
@@ -1669,6 +1670,9 @@ int main()
     createIndexforRightB(rightRIDs);
     createIndexforRightC(rightRIDs);   
    
+    testCase_10();
+    return 0;
+
     // Test Cases
     testCase_1();
     testCase_2();

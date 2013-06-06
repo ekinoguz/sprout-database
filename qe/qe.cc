@@ -687,7 +687,7 @@ RC INLJoin::getNextTuple(void *data)
 		      left_offset += left_attrs[i].length;
 		    }
 		  
-left_found = true;
+		  left_found = true;
 		}
 	      else
 		{
