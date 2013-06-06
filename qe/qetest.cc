@@ -613,41 +613,41 @@ void testCase_4()
         int offset = 0;
  
         // Print left.A
-		int leftA = *(int *)((char *)data + offset);
+	int leftA = *(int *)((char *)data + offset);
         // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-		int leftB = *(int *)((char *)data + offset);
+	int leftB = *(int *)((char *)data + offset);
         // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-		float leftC = *(float *)((char *)data + offset);
+	float leftC = *(float *)((char *)data + offset);
         // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.B
-		int rightB = *(int *)((char *)data + offset);
+	int rightB = *(int *)((char *)data + offset);
         // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-		float rightC = *(float *)((char *)data + offset);
+	float rightC = *(float *)((char *)data + offset);
         // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-		int rightD = *(int *)((char *)data + offset);
+	int rightD = *(int *)((char *)data + offset);
         // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
-		assert(leftB == leftA + 10);
-		assert(leftC == leftA + 50);
-		assert(rightB == leftA + 10);
-		assert(rightC == leftA + 15);
-		assert(rightD == leftA - 10);
-		i++;
+	assert(leftB == leftA + 10);
+	assert(leftC == leftA + 50);
+	assert(rightB == leftA + 10);
+	assert(rightC == leftA + 15);
+	assert(rightD == leftA - 10);
+	i++;
         memset(data, 0, bufsize);
     }
     assert (i == 990);
@@ -666,7 +666,7 @@ void testCase_5()
 {
     // Functions Tested
     // 1. INLJoin -- on TypeReal Attribute
-    cout << "****In Test Case 5****" << endl;
+  cout << endl << "****In Test Case 5****" << endl;
     
     // Prepare the iterator and condition
     TableScan *leftIn = new TableScan(*rm, "left");
@@ -686,39 +686,58 @@ void testCase_5()
         
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i = 0;
     while(inljoin.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
  
         // Print left.A
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	int leftA = *(int *)((char *)data + offset);
+        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+	int leftB = *(int *)((char *)data + offset);
+        // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+	float leftC = *(float *)((char *)data + offset);
+        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
 
         // Print right.B
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+	int rightB = *(int *)((char *)data + offset);
+        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+	float rightC = *(float *)((char *)data + offset);
+        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+	int rightD = *(int *)((char *)data + offset);
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
-        
+
+	assert(leftB == leftA + 10);
+	assert(leftC == leftA + 50);
+	assert(rightB == leftA + 45);
+	assert(rightC == leftA + 50);
+	assert(rightD == leftA + 25);
+	i++;
         memset(data, 0, bufsize);
     }
+    assert (i == 975);
    
     ixManager->CloseIndex(ixRightHandle); 
     free(data);
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Test Case 5 Passed****" << endl;
+
     return;
 }
 
@@ -1636,7 +1655,7 @@ int main()
     testCase_2();
     testCase_3();
     testCase_4(); // Passing
-    // testCase_5();
+    testCase_5(); // Passing
     testCase_6(); // Passing
     // testCase_7();
     testCase_8();
