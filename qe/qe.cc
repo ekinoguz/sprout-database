@@ -1339,155 +1339,153 @@ void Aggregate::updateCounterMap(const string name) {
 
 Filter::Filter(Iterator* input, const Condition &condition) {
   input->getAttributes(this->attrs);
-  this->nextIndex = 0;
+  this->input = input;
+  this->condition = condition;
+}
+
+Filter::~Filter() {
+}
+
+RC Filter::getNextTuple(void *filteredData) {
   RC rc;
   void *data = malloc(PF_PAGE_SIZE);
   void *lvalue = malloc(PF_PAGE_SIZE);
   void *value = malloc(PF_PAGE_SIZE);
   int filteredDataOffset;
 
-  while (QE_EOF != input->getNextTuple(data))
-  {
-    // get the left hand side attribute
-    int dataOffset = 0, index = -1;
-    
-    // find the desired attribute in data
-    rc = getAttributeOffsetAndIndex(this->attrs, condition.lhsAttr, data, dataOffset, index);
-    if (rc != 0)
-      error(__LINE__, rc);
+  bool satisfy = false; 
+  while(!satisfy)
+    {
+      if(input->getNextTuple(data) == QE_EOF){
+	free(value);
+	free(lvalue);
+	free(data);
+	return QE_EOF;
+      }
 
-    // copy attribute to lvalue
-    if (getAttributeFromData(data, attrs, condition.lhsAttr, lvalue) == -1)
-      error(__LINE__, -1); 
-
-    // copy right value to value
-    int rightSize = getAttributeSize(condition.rhsValue.type, condition.rhsValue.data);
-    memcpy((void *)value, (void *)condition.rhsValue.data, rightSize);
+      // get the left hand side attribute
+      int dataOffset = 0, index = -1;
     
-    char *slvalue, *svalue;
-    if (this->attrs[index].type == TypeVarChar) {
-      int ll = 0;
-      memcpy(&ll, (char *)data+dataOffset, sizeof(int));
-      slvalue = (char *)malloc(ll+1);
-      memcpy((char *)slvalue, (char *)data+dataOffset+sizeof(int), ll);
-      slvalue[ll] = '\0';
+      // find the desired attribute in data
+      rc = getAttributeOffsetAndIndex(this->attrs, condition.lhsAttr, data, dataOffset, index);
+      if (rc != 0)
+	error(__LINE__, rc);
+
+      // copy attribute to lvalue
+      if (getAttributeFromData(data, attrs, condition.lhsAttr, lvalue) == -1)
+	error(__LINE__, -1); 
+
+      // copy right value to value
+      int rightSize = getAttributeSize(condition.rhsValue.type, condition.rhsValue.data);
+      memcpy((void *)value, (void *)condition.rhsValue.data, rightSize);
+    
+      char *slvalue, *svalue;
+      if (this->attrs[index].type == TypeVarChar) {
+	int ll = 0;
+	memcpy(&ll, (char *)data+dataOffset, sizeof(int));
+	slvalue = (char *)malloc(ll+1);
+	memcpy((char *)slvalue, (char *)data+dataOffset+sizeof(int), ll);
+	slvalue[ll] = '\0';
       
-      memcpy(&ll, (char *)condition.rhsValue.data, sizeof(int));
-      svalue = (char *)malloc(ll+1);
-      memcpy((char *)svalue, (char *)condition.rhsValue.data+sizeof(int), ll);
-      svalue[ll] = '\0';
-    }
+	memcpy(&ll, (char *)condition.rhsValue.data, sizeof(int));
+	svalue = (char *)malloc(ll+1);
+	memcpy((char *)svalue, (char *)condition.rhsValue.data+sizeof(int), ll);
+	svalue[ll] = '\0';
+      }
     
-    // check if data satisfies the given condition or not
-    bool satisfy = false;
-    switch(condition.op){
-    case EQ_OP:
-    case NE_OP:
-      switch(this->attrs[index].type){
-      case TypeInt:
-        satisfy = ( *(int*)lvalue == *(int*)value );
-        break;
-      case TypeReal:
-        satisfy = (*(float*)lvalue == *(float*)value); 
-        break;
-      case TypeVarChar:
-        if( strcmp(slvalue,svalue ) == 0 )
-          satisfy = true;
-        free(slvalue);
-        free(svalue);
-        break;
-      case TypeShort:
-        satisfy = (*(char*)lvalue == *(char*)value);
-        break;  
-      case TypeBoolean:
-        satisfy = (*(bool*)lvalue == *(bool*)value);
-        break;  
-      }    
-      satisfy = satisfy ^ (condition.op == NE_OP);
-      break;
-    case LT_OP:
-    case GE_OP:
-      switch(this->attrs[index].type){
-      case TypeInt:
-        satisfy = ( *(int*)lvalue < *(int*)value );
-        break;
-      case TypeReal:
-        satisfy = (*(float*)lvalue < *(float*)value); 
-        break;
-      case TypeVarChar:
-        if( strcmp(slvalue,svalue ) < 0 )
-          satisfy = true;
-        free(slvalue);
-        free(svalue);
-        break;
-      case TypeShort:
-        satisfy = (*(char*)lvalue < *(char*)value);
-        break;  
-      case TypeBoolean:
-        satisfy = (*(bool*)lvalue != *(bool*)value);
-        break;  
-      }    
-      satisfy = satisfy ^ (condition.op == GE_OP);
-      break;
-    case GT_OP:
-    case LE_OP:
-      switch(this->attrs[index].type){
-      case TypeInt:
-        satisfy = ( *(int*)lvalue > *(int*)value );
-        break;
-      case TypeReal:
-        satisfy = (*(float*)lvalue > *(float*)value); 
-        break;
-      case TypeVarChar:
-        if( strcmp(slvalue,svalue ) > 0 )
-          satisfy = true;
-        free(slvalue);
-        free(svalue);
-        break;
-      case TypeShort:
-        satisfy = (*(char*)lvalue > *(char*)value);
-        break;  
-      case TypeBoolean:
-        satisfy = (*(bool*)lvalue != *(bool*)value);
-        break;  
-      }    
-      satisfy = satisfy ^ (condition.op == LE_OP);
-      break;
-    case NO_OP: // We should never actually reach here
-      satisfy = true;
-      break;
-    default:
-      cout << "Operation not supported" << endl;
-      error(__LINE__, -3);
+      // check if data satisfies the given condition or not
+      switch(condition.op){
+      case EQ_OP:
+      case NE_OP:
+	switch(this->attrs[index].type){
+	case TypeInt:
+	  satisfy = ( *(int*)lvalue == *(int*)value );
+	  break;
+	case TypeReal:
+	  satisfy = (*(float*)lvalue == *(float*)value); 
+	  break;
+	case TypeVarChar:
+	  if( strcmp(slvalue,svalue ) == 0 )
+	    satisfy = true;
+	  free(slvalue);
+	  free(svalue);
+	  break;
+	case TypeShort:
+	  satisfy = (*(char*)lvalue == *(char*)value);
+	  break;  
+	case TypeBoolean:
+	  satisfy = (*(bool*)lvalue == *(bool*)value);
+	  break;  
+	}    
+	satisfy = satisfy ^ (condition.op == NE_OP);
+	break;
+      case LT_OP:
+      case GE_OP:
+	switch(this->attrs[index].type){
+	case TypeInt:
+	  satisfy = ( *(int*)lvalue < *(int*)value );
+	  break;
+	case TypeReal:
+	  satisfy = (*(float*)lvalue < *(float*)value); 
+	  break;
+	case TypeVarChar:
+	  if( strcmp(slvalue,svalue ) < 0 )
+	    satisfy = true;
+	  free(slvalue);
+	  free(svalue);
+	  break;
+	case TypeShort:
+	  satisfy = (*(char*)lvalue < *(char*)value);
+	  break;  
+	case TypeBoolean:
+	  satisfy = (*(bool*)lvalue != *(bool*)value);
+	  break;  
+	}    
+	satisfy = satisfy ^ (condition.op == GE_OP);
+	break;
+      case GT_OP:
+      case LE_OP:
+	switch(this->attrs[index].type){
+	case TypeInt:
+	  satisfy = ( *(int*)lvalue > *(int*)value );
+	  break;
+	case TypeReal:
+	  satisfy = (*(float*)lvalue > *(float*)value); 
+	  break;
+	case TypeVarChar:
+	  if( strcmp(slvalue,svalue ) > 0 )
+	    satisfy = true;
+	  free(slvalue);
+	  free(svalue);
+	  break;
+	case TypeShort:
+	  satisfy = (*(char*)lvalue > *(char*)value);
+	  break;  
+	case TypeBoolean:
+	  satisfy = (*(bool*)lvalue != *(bool*)value);
+	  break;  
+	}    
+	satisfy = satisfy ^ (condition.op == LE_OP);
+	break;
+      case NO_OP: // We should never actually reach here
+	satisfy = true;
+	break;
+      default:
+	cout << "Operation not supported" << endl;
+	error(__LINE__, -3);
+      }
+      if (satisfy) {
+	filteredDataOffset = getDataSize(this->attrs, data);
+	memcpy(filteredData, data, filteredDataOffset);
+      }
     }
-    if (satisfy) {
-      void *filteredData = malloc(PF_PAGE_SIZE);
-      filteredDataOffset = getDataSize(this->attrs, data);
-      memcpy(filteredData, data, filteredDataOffset);
-      results.push_back(filteredData);
-      sizes.push_back(filteredDataOffset);
-    }
-    // break;
-  }
+
+
   free(value);
   free(lvalue);
   free(data);
-}
 
-Filter::~Filter() {
-  // free everything in results vector
-  for (auto it=results.begin(); it != results.end(); ++it) {
-    free(*it);
-  }
-}
-
-RC Filter::getNextTuple(void *data) {
-  if (nextIndex < results.size()) {
-    memcpy(data, results[nextIndex], sizes[nextIndex]);
-    nextIndex += 1;
-    return 0;
-  }
-  return QE_EOF;
+  return 0;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
@@ -1504,67 +1502,65 @@ void Filter::getAttributes(vector<Attribute> &attrs) const {
 // input: Iterator of input R
 // vector containing attribute names
 Project::Project(Iterator *input, const vector<string> &attrNames) {
-  input->getAttributes(this->attrs);
-  this->nextIndex = 0;
-  RC rc;
-  void *data = malloc(PF_PAGE_SIZE);
-  int projectedDataOffset;
-
-  while (QE_EOF != input->getNextTuple(data))
-  {
-  	void *projectedData = malloc(PF_PAGE_SIZE);
-    projectedDataOffset = 0;
-    
-    // project data to desired attributes
-    for (unsigned i=0; i < attrNames.size(); i++) {
-      int dataOffset = 0;
-      int index = -1;
-
-      // find the desired attribute in data
-      rc = getAttributeOffsetAndIndex(this->attrs, attrNames[i], data, dataOffset, index);
-      if (rc != 0)
-        error(__LINE__, rc);
-
-      // copy desired attribute to projectedData
-      int length;
-      switch(this->attrs[index].type){
-        case TypeInt:
-        case TypeReal:
-        case TypeShort:
-        case TypeBoolean:
-          memcpy((char *)projectedData+projectedDataOffset, (char *) data+dataOffset, this->attrs[index].length);
-          projectedDataOffset += this->attrs[index].length;
-          break;
-        case TypeVarChar:
-          memcpy(&length, (char *)data+dataOffset, sizeof(int));
-          memcpy((char *)projectedData+projectedDataOffset, (char *)data+dataOffset, sizeof(int)+length);
-          projectedDataOffset += sizeof(int)+length;
-          break;
-      }
-    }
-    results.push_back(projectedData);
-    sizes.push_back(projectedDataOffset);
-  }
-  free(data);
+  this->input = input;
+  input->getAttributes(this->input_attrs);
+  this->output_attrs = attrNames;
 }
 
 Project::~Project() {
-  // free everything in results vector
-  for (auto it=results.begin(); it != results.end(); ++it) {
-    free(*it);
-  }
 }
 
-RC Project::getNextTuple(void *data) {
-  if (nextIndex < results.size()) {
-  	memcpy(data, results[nextIndex], sizes[nextIndex]);
-    nextIndex += 1;
-    return 0;
+RC Project::getNextTuple(void *projectedData) {
+
+  RC rc;
+  int projectedDataOffset;
+
+  void *data = malloc(PF_PAGE_SIZE);
+  if(input->getNextTuple(data) == QE_EOF)
+    return QE_EOF;
+  
+  projectedDataOffset = 0;
+    
+  // project data to desired attributes
+  for (unsigned i=0; i < output_attrs.size(); i++) {
+    int dataOffset = 0;
+    int index = -1;
+
+    // find the desired attribute in data
+    rc = getAttributeOffsetAndIndex(this->input_attrs, output_attrs[i], data, dataOffset, index);
+    if (rc != 0)
+      error(__LINE__, rc);
+
+    // copy desired attribute to projectedData
+    int length;
+    switch(this->input_attrs[index].type){
+    case TypeInt:
+    case TypeReal:
+    case TypeShort:
+    case TypeBoolean:
+      memcpy((char *)projectedData+projectedDataOffset, (char *) data+dataOffset, this->input_attrs[index].length);
+      projectedDataOffset += this->input_attrs[index].length;
+      break;
+    case TypeVarChar:
+      memcpy(&length, (char *)data+dataOffset, sizeof(int));
+      memcpy((char *)projectedData+projectedDataOffset, (char *)data+dataOffset, sizeof(int)+length);
+      projectedDataOffset += sizeof(int)+length;
+      break;
+    }
   }
-  return QE_EOF;
+
+  free(data);
+
+  return 0;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
 void Project::getAttributes(vector<Attribute> &attrs) const {
-  attrs = this->attrs;
+  attrs.clear();
+  
+  Attribute at;
+  for( uint i = 0; i < output_attrs.size(); i++ ){
+    getAttribute( output_attrs[i], input_attrs, at);
+    attrs.push_back( at );
+  }
 }

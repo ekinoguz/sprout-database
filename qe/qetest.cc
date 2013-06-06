@@ -508,7 +508,6 @@ void testCase_2()
     // Go over the data through iterator
     void *data = malloc(bufsize);
     int i = 75;
-    int counter = 0;
     while(filter.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
@@ -533,7 +532,7 @@ void testCase_2()
         offset += sizeof(int);
         
         memset(data, 0, bufsize);
-        i += (counter++) % 2;
+        i += 1;
     }
 
     ixManager->CloseIndex(ixHandle);
@@ -863,32 +862,32 @@ void testCase_7()
  
         // Print left.A
 	int leftA = *(int *)((char *)data + offset);
-        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
 	int leftB = *(int *)((char *)data + offset);
-        // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
 	float leftC = *(float *)((char *)data + offset);
-        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
     
         // Print right.B
 	int rightB = *(int *)((char *)data + offset);
-        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
 	float rightC = *(float *)((char *)data + offset);
-        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
          
         // Print right.D
 	int rightD = *(int *)((char *)data + offset);
-        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
 	assert(rightB == 50);
@@ -1088,7 +1087,7 @@ void testCase_10()
     IX_IndexHandle ixLeftHandle;
     ixManager->OpenIndex("left", "B", ixLeftHandle);
     IndexScan *leftIn = new IndexScan(*rm, ixLeftHandle, "left");
-
+    
     Condition cond_f;
     cond_f.lhsAttr = "left.B";
     cond_f.op = LT_OP;
@@ -1107,7 +1106,7 @@ void testCase_10()
     attrNames.push_back("left.A");
     attrNames.push_back("left.C");
     Project *project = new Project(filter, attrNames);
-    
+
     // Create INLJoin
     IX_IndexHandle ixRightHandle;
     ixManager->OpenIndex("right", "C", ixRightHandle);
@@ -1123,37 +1122,55 @@ void testCase_10()
     
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i = 0;
     while(inljoin.getNextTuple(data) != QE_EOF)
     {
+      // cout << "*************************" << endl;
         int offset = 0;
  
         // Print left.A
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	int leftA = *(int *)((char *)data + offset);
+        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+	float leftC = *(float *)((char *)data + offset);
+        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.B
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+	int rightB = *(int *)((char *)data + offset);
+        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+	float rightC = *(float *)((char *)data + offset);
+        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
         
         // Print right.D
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+	int rightD = *(int *)((char *)data + offset);
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
+	assert(leftC == leftA + 50);
+	assert(rightB == leftA + 45);
+	assert(rightC == leftA + 50);
+	assert(rightD == leftA + 25);
+	i++;
         memset(data, 0, bufsize);
     }
+    assert(i == 65);
 
     ixManager->CloseIndex(ixLeftHandle);
     ixManager->CloseIndex(ixRightHandle);
     free(value.data);
     free(data);
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Test Case 10 Passed****" << endl;
+
     return;
 }
 
@@ -1670,9 +1687,6 @@ int main()
     createIndexforRightB(rightRIDs);
     createIndexforRightC(rightRIDs);   
    
-    // testCase_10();
-    // return 0;
-
     // Test Cases
     testCase_1();
     testCase_2();
@@ -1683,7 +1697,7 @@ int main()
     testCase_7(); // Passing
     testCase_8();
     testCase_9();
-    // testCase_10();
+    testCase_10(); // Passing
 
     // // Extra Credit
     extraTestCase_1();

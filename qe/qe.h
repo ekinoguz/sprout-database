@@ -213,9 +213,8 @@ class Filter : public Iterator {
     // private API:
     private:
         vector<Attribute> attrs;
-        vector<void *> results;
-        vector<unsigned> sizes;
-        unsigned nextIndex;
+	Iterator * input;
+	Condition condition;
 };
 
 
@@ -232,10 +231,9 @@ class Project : public Iterator {
 
     // private API:
     private:
-        vector<Attribute> attrs;
-        vector<void *> results;
-        vector<unsigned> sizes;
-        unsigned nextIndex;
+        vector<Attribute> input_attrs;
+        vector<string> output_attrs;
+	Iterator * input;
 };
 
 

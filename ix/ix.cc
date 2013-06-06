@@ -208,14 +208,14 @@ RC IX_Manager::CreateIndex(const string tableName, const string attributeName)
     
 
   // Build the index
-  IX_IndexHandle ixh;
-  if(OpenIndex(tableName,attributeName, ixh)!=0)
-    return -3;
+  // IX_IndexHandle ixh;
+  // if(OpenIndex(tableName,attributeName, ixh)!=0)
+  //   return -3;
 
-  if(buildIndex(tableName, attributeName, ixh)!=0)
-    return -3;
+  // if(buildIndex(tableName, attributeName, ixh)!=0)
+  //   return -3;
 
-  CloseIndex(ixh);
+  // CloseIndex(ixh);
 
   return 0;
 }
