@@ -823,7 +823,7 @@ void testCase_7()
     // Functions Tested
     // 1. INLJoin -- on TypeInt Attribute
     // 2. Filter -- on TypeInt Attribute
-    cout << "****In Test Case 7****" << endl;
+    cout << endl << "****In Test Case 7****" << endl;
     
     // Prepare the iterator and condition
     TableScan *leftIn = new TableScan(*rm, "left");
@@ -856,40 +856,59 @@ void testCase_7()
             
     // Go over the data through iterator
     void *data = malloc(bufsize);
+    int i =0;
     while(filter.getNextTuple(data) != QE_EOF)
     {
         int offset = 0;
  
         // Print left.A
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	int leftA = *(int *)((char *)data + offset);
+        // cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+	int leftB = *(int *)((char *)data + offset);
+        // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+	float leftC = *(float *)((char *)data + offset);
+        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
     
         // Print right.B
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+	int rightB = *(int *)((char *)data + offset);
+        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+	float rightC = *(float *)((char *)data + offset);
+        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
          
         // Print right.D
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+	int rightD = *(int *)((char *)data + offset);
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
+	assert(leftB == leftA + 10);
+	assert(leftC == leftA + 50);
+	assert(rightB == leftA + 10);
+	assert(rightC == leftA + 15);
+	assert(rightD == leftA - 10);
+	i++;
         memset(data, 0, bufsize);
     }
-   
+    assert(i == 1);
+    
     ixManager->CloseIndex(ixHandle); 
     free(value.data); 
     free(data);
+    delete rightIn;
+    delete leftIn;
+
+    cout << "****Test Case 7 Passed****" << endl;
+
     return;
 }
 
@@ -1657,7 +1676,7 @@ int main()
     testCase_4(); // Passing
     testCase_5(); // Passing
     testCase_6(); // Passing
-    // testCase_7();
+    testCase_7(); // Passing
     testCase_8();
     testCase_9();
     // testCase_10();
