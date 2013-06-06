@@ -476,6 +476,7 @@ void testCase_1()
     }
     assert (i == 16);
     free(value.data); 
+    delete ts;
     free(data);
     return;
 }
@@ -538,6 +539,7 @@ void testCase_2()
     ixManager->CloseIndex(ixHandle);
     free(value.data);
     free(data);
+    delete is;
    
     return;
 }
@@ -582,6 +584,7 @@ void testCase_3()
     }
     assert (i == 1000);
     free(data);
+    delete ts;
     return;
 }
 
@@ -862,32 +865,32 @@ void testCase_7()
  
         // Print left.A
 	int leftA = *(int *)((char *)data + offset);
-	cout << "left.A " << *(int *)((char *)data + offset) << endl;
+	// cout << "left.A " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
         // Print left.B
 	int leftB = *(int *)((char *)data + offset);
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        // cout << "left.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print left.C
 	float leftC = *(float *)((char *)data + offset);
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        // cout << "left.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
     
         // Print right.B
 	int rightB = *(int *)((char *)data + offset);
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        // cout << "right.B " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
  
         // Print right.C
 	float rightC = *(float *)((char *)data + offset);
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        // cout << "right.C " << *(float *)((char *)data + offset) << endl;
         offset += sizeof(float);
          
         // Print right.D
 	int rightD = *(int *)((char *)data + offset);
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        // cout << "right.D " << *(int *)((char *)data + offset) << endl;
         offset += sizeof(int);
         
 	assert(rightB == 50);
@@ -906,6 +909,7 @@ void testCase_7()
     free(data);
     delete rightIn;
     delete leftIn;
+    delete inljoin;
 
     cout << "****Test Case 7 Passed****" << endl;
 
@@ -964,6 +968,7 @@ void testCase_8()
     free(data);
     delete leftIn;
     delete rightIn;
+    delete nlJoin;
 
     cout << "****Test Case 8 Passed****" << endl;
 
@@ -1067,6 +1072,8 @@ void testCase_9()
     free(data);
     delete leftIn;
     delete rightIn;
+    delete nljoin;
+    delete thirdIn;
 
     cout << "****Test Case 9 Passed****" << endl;
 
@@ -1168,6 +1175,8 @@ void testCase_10()
     free(data);
     delete leftIn;
     delete rightIn;
+    delete project;
+    delete filter;
 
     cout << "****Test Case 10 Passed****" << endl;
 
@@ -1225,6 +1234,8 @@ void extraTestCase_1()
     }
     
     free(data);
+    delete input1;
+    delete input2;
     return;
 }
 
@@ -1255,6 +1266,7 @@ void extraTestCase_2()
     }
     
     free(data);
+    delete input;
     return;
 }
 
@@ -1306,6 +1318,7 @@ void extraTestCase_3()
     }
     assert (i == 1000);
     free(data);
+    delete input;
     return;
 }
 
@@ -1353,6 +1366,7 @@ void extraTestCase_4()
     }
     assert (i == 1000);
     free(data);
+    delete input;
     return;
 }
 
@@ -1399,6 +1413,8 @@ void ourExtraTest_01()
     
     free(data);
     cout << "****Our Extra Test Case 1 passed! ****" << endl << endl;
+    delete input1;
+    delete input2;
     return;
 }
 
@@ -1427,6 +1443,7 @@ void ourExtraTest_02()
     
     free(data);
     cout << "****Our Extra Test Case 2 passed! ****" << endl << endl;
+    delete input1;
     return;
 }
 
@@ -1459,7 +1476,8 @@ void ourExtraTest_03()
     aggAttr.type = TypeReal;
     aggAttr.length = 4;   
     Aggregate agg2(input2, aggAttr, SUM);
-    
+ 
+    free(data);
     data = malloc(bufsize);
     while(agg2.getNextTuple(data) != QE_EOF)
     {
@@ -1469,6 +1487,8 @@ void ourExtraTest_03()
     }
     free(data);
     cout << "****Our Extra Test Case 3 passed! ****" << endl << endl;
+    delete input1;
+    delete input2;
     return;
 }
 
@@ -1502,6 +1522,7 @@ void ourExtraTest_04()
     aggAttr.length = 4;   
     Aggregate agg2(input2, aggAttr, AVG);
     
+    free(data);
     data = malloc(bufsize);
     while(agg2.getNextTuple(data) != QE_EOF)
     {
@@ -1511,6 +1532,8 @@ void ourExtraTest_04()
     }
     free(data);
     cout << "****Our Extra Test Case 4 passed! ****" << endl << endl;
+    delete input1;
+    delete input2;
     return;
 }
 
@@ -1576,6 +1599,8 @@ void ourTestCase_01()
     assert (i == 50);
     free(value.data); 
     free(data);
+    delete ts;
+
     cout << "****In Our Test Case 1 Passed****" << endl << endl;
     return;
 }
@@ -1595,7 +1620,6 @@ void ourTestCase_02()
     cond.bRhsIsAttr = false;
     Value value;
     value.type = TypeVarChar;
-    value.data = malloc(bufsize);
 
     string in = "10023";
     value.data = malloc(in.size()+sizeof(int)+1);
@@ -1647,6 +1671,8 @@ void ourTestCase_02()
     assert (i == 23);
     free(value.data); 
     free(data);
+    delete ts;
+
     cout << "****In Our Test Case 2 Passed****" << endl << endl;
     return;
 }

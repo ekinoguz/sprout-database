@@ -640,7 +640,7 @@ unsigned INLJoin::getTupleSize(Iterator *iter, void *tuple)
 
 RC INLJoin::getNextTuple(void *data)
 {
-  void *key;
+  void *key = malloc(PF_PAGE_SIZE);
 
   if (this->right_has_more == true)
     {
@@ -776,6 +776,7 @@ RC INLJoin::getNextTuple(void *data)
 			  memcpy(data, left_tuple_info.tuple, left_tuple_info.size);
 			  memcpy((char *)data + left_tuple_info.size, right_tuple, right_tuple_size);
 			  free(right_tuple);
+			  free(key);
 			  return 0;
 			}
 		    }
@@ -787,6 +788,7 @@ RC INLJoin::getNextTuple(void *data)
 		  if (this->left_has_more == true)
 		    {
 		      this->right_has_more = false;
+		      free(key);
 		      return this->getNextTuple(data);
 		    }
 		}
@@ -803,6 +805,7 @@ RC INLJoin::getNextTuple(void *data)
 	      memcpy(data, tuple_info.tuple, tuple_info.size);
 	      memcpy((char *)data + tuple_info.size, right_tuple, right_tuple_size);
 	      free(right_tuple);
+	      free(key);
 	      return 0;
 	    }
 	  else
@@ -811,6 +814,7 @@ RC INLJoin::getNextTuple(void *data)
 	      
 	      if (this->left_has_more == true)
 		{
+		  free(key);
 		  this->right_has_more = false;
 		  return this->getNextTuple(data);
 		}
@@ -829,11 +833,13 @@ RC INLJoin::getNextTuple(void *data)
 	{
 	  if (this->left_has_more == true)
 	    {
+	      free(key);
 	      this->readBlockLeftIn();
 	      return this->getNextTuple(data);
 	    }
 	  else
 	    {
+	      free(key);
 	      return QE_EOF;
 	    }
 	}
@@ -858,7 +864,7 @@ RC INLJoin::getNextTuple(void *data)
 		  
 		  key_size = attribute_size;
 		  
-		  key = malloc(attribute_size);
+		  // key = malloc(attribute_size);
 		  memset(key, 0, attribute_size);
 		  memcpy(key, (char *)tuple_info.tuple + offset, attribute_size);
 		  
@@ -868,7 +874,7 @@ RC INLJoin::getNextTuple(void *data)
 		{
 		  key_size = attrs[i].length;
 		  
-		  key = malloc(attrs[i].length);
+		  // key = malloc(attrs[i].length);
 		  memset(key, 0, attrs[i].length);
 		  memcpy(key, (char *)tuple_info.tuple + offset, attrs[i].length);
 		  
@@ -1516,8 +1522,10 @@ RC Project::getNextTuple(void *projectedData) {
   int projectedDataOffset;
 
   void *data = malloc(PF_PAGE_SIZE);
-  if(input->getNextTuple(data) == QE_EOF)
+  if(input->getNextTuple(data) == QE_EOF){
+    free(data);
     return QE_EOF;
+  }
   
   projectedDataOffset = 0;
     

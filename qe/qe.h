@@ -194,7 +194,10 @@ class IndexScan : public Iterator
 
         ~IndexScan()
         {
+	  if( iter != NULL) {
             iter->CloseScan();
+	    delete iter;
+	  }
         };
 };
 
