@@ -1062,7 +1062,7 @@ RC Aggregate::MIN(Iterator *input) {
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
-          results.emplace(str, intTmp);
+          results[str] = intTmp;
         else
           results[str] = fmin(got->second, intTmp);
       } else {
@@ -1078,7 +1078,7 @@ RC Aggregate::MIN(Iterator *input) {
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
-          results.emplace(str, floatTmp);
+          results[str] = floatTmp;
         else
           results[str] = fmin(got->second, floatTmp);
       } else {
@@ -1113,7 +1113,7 @@ RC Aggregate::MAX(Iterator *input) {
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
-          results.emplace(str, intTmp);
+          results[str] = intTmp;
         else
           results[str] = fmax(got->second, intTmp);
       } else {
@@ -1129,7 +1129,7 @@ RC Aggregate::MAX(Iterator *input) {
         string str = getAttributeName(data, this->attrs, groupByOffset, groupByIndex);
         auto got = results.find(str);
         if (got == results.end())
-          results.emplace(str, floatTmp);
+          results[str] = floatTmp;
         else
           results[str] = fmax(got->second, floatTmp);
       } else {

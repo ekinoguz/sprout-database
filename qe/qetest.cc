@@ -1670,8 +1670,8 @@ int main()
     createIndexforRightB(rightRIDs);
     createIndexforRightC(rightRIDs);   
    
-    testCase_10();
-    return 0;
+    // testCase_10();
+    // return 0;
 
     // Test Cases
     testCase_1();
