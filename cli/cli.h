@@ -11,9 +11,11 @@
 #include "../pf/pf.h"
 #include "../rm/rm.h"
 #include "../ix/ix.h"
+#include "../qe/qe.h"
 
 using namespace std;
 
+typedef enum{ FILTER = 0, PROJECT, NL, INL, AGG } QUERY_OP;
 
 // Return code
 typedef int RC;
@@ -54,23 +56,43 @@ private:
   RC history();
 
   // query parsers
-  RC query();
+  // code [0,4]: operation number
+  // code -1: operation not found
+  // code -2: don't call isIterator
+  Iterator * query(Iterator *previous, int code=-1);
+  Iterator * tableScan(const string tableName);
+  Iterator * projection(Iterator *input);
+  Iterator * filter(Iterator *input);
+  Iterator * nestedloopjoin(Iterator *input);
+
+  RC run(Iterator *);
+  
+  RC createProjectAttributes(const string tableName, vector<Attribute> &attrs);
+  RC createCondition(const string tableName, Condition &condition, const bool join=false, const string joinTable="");
+  RC createAttribute(Attribute &attr);
+  RC createAggregateOp(AggregateOp &op);
+  
+  void addTableNameToAttrs(const string tableName, vector<string> &attrs);
+  bool isIterator(const string token, int &code);
+  string getTableName(Iterator *it);
 
   // cli catalog functions
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
+  RC getAttribute(const string tableName, const string attrName, Attribute &attr);
   RC addAttributeToCatalog(const Attribute &attr, const string tableName, const int position);
   RC addTableToCatalog(const string tableName, const string file_url, const string type);
   RC addIndexToCatalog(const string tableName, const string indexName);
 
   // helper functions
-  char *  next();
-  bool expect(char * tokenizer, const string expected);
+  char * next();
+  bool expect(char * token, const string expected);
   bool checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns=true);
   RC error(const string errorMessage);
+  RC error(uint errorCode);
   RC printOutputBuffer(vector<string> &buffer, uint mod);
   RC updateOutputBuffer(vector<string> &buffer, void *data, vector<Attribute> &attrs);
   RC insertTupleToDB(const string tableName, const vector<Attribute> attributes, const void *data, unordered_map<int, void *> indexMap);
-
+  RC getAttribute(const string name, const vector<Attribute> pool, Attribute &attr);
 
   RM * rm;
   IX_Manager * ixManager;

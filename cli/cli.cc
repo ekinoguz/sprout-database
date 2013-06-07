@@ -5,7 +5,7 @@
 
 // Command parsing delimiters
 // TODO: update delimiters later
-#define DELIMITERS " =,()\""
+#define DELIMITERS " ,()\""
 
 // CVS file read delimiters
 #define CVS_DELIMITERS ","
@@ -294,8 +294,10 @@ RC CLI::process(const string input)
     ////////////////////////////////////////////
     // select...
     ////////////////////////////////////////////
-    else if (expect(tokenizer, "select")) {
-      code = query();
+    else if (expect(tokenizer, "QUERY")) {
+      Iterator *it = NULL;
+      code = run(query(it));
+      cout << endl;
     }
 
     ////////////////////////////////////////////
@@ -312,10 +314,311 @@ RC CLI::process(const string input)
   return code;
 }
 
-RC CLI::query()
+// query =
+// FILTER FROM <query> WHERE <attr> <op> <value>
+// PROJECT FROM <query> GET <attrs>
+// JOIN <lattr> <op> <rattr> FROM {"INL" <query1>, <query2-Index> | "NL" <query1>, <query2>}
+// AGG <OP>(query) OF <attr> [GROUPBY <attr>]
+// TABLE tableName
+// INDEX indexName
+
+// QUERY = 
+// TABLE <query>
+
+// HEREHERE
+Iterator * CLI::query(Iterator *previous, int code)
 {
+  Iterator *it = NULL;
+  if (code >= 0 || (code != -2 && isIterator(string(next()), code)) ) {
+    switch(code) {
+      case FILTER:
+        it = filter(previous);
+        break;
+
+      case PROJECT:
+        it = projection(previous);
+        break;
+
+      case AGG:
+        break;
+
+      case NL:
+        it = nestedloopjoin(previous);
+      case -1:
+        error("dude, be carefuly with what you are writing as a query");
+        break;
+    }
+  }
+  return it;
+}
+
+// Create NLJoin
+Iterator * CLI::nestedloopjoin(Iterator *input) {
+  char *token = next();
+  int code = -2;
+  if (isIterator(string(token), code)){
+    input = query(input, code);
+  }
+
+  if (input == NULL) {
+    input = tableScan(string(token));
+  }
+
+  // get right table
+  token = next();
+  string rightTableName = string(token);
+  TableScan *right = new TableScan(*rm, rightTableName);
+
+
+  token = next(); // eat WHERE
+
+  // parse the join condition
+  Condition cond;
+  if (createCondition(getTableName(input), cond, true, rightTableName) != 0)
+    error(__LINE__);
+
+  token = next(); // eat PAGES
+  token = next(); // get page number
+
+  // Create Join 
+  NLJoin *join = new NLJoin(input, right, cond, (unsigned) atoi(string(token).c_str()));
+
+  return join;
+}
+
+// Create Filter
+Iterator * CLI::filter(Iterator *input) {
+  char *token = next();
+  int code = -2;
+  if (isIterator(string(token), code)){
+    input = query(input, code);
+  }
+
+  if (input == NULL) {
+    input = tableScan(string(token));
+  }
+
+  token = next(); // eat WHERE
+
+  // parse the filter condition
+  Condition cond;
+  if (createCondition(getTableName(input), cond) != 0)
+    error(__LINE__);
+
+  // Create Filter 
+  Filter *filter = new Filter(input, cond);
+
+  return filter;
+}
+
+// Create Projector
+Iterator * CLI::projection(Iterator *input) {
+  char *token = next();
+  int code = -2;
+  if (isIterator(string(token), code)){
+    input = query(input, code);
+  }
+  
+  if (input == NULL) {
+    input = tableScan(string(token));
+  }
+
+  token = next(); // eat GET
+  token = next(); // eat [
+
+  // parse the projection attributes
+  vector<string> attrNames;
+  while (true) {
+    token = next();
+    if (string(token) == "]")
+      break;
+    attrNames.push_back(token);
+  }
+
+  // if we have "*", convert it to all attributes
+  if (attrNames[0].compare("*") == 0) {
+    vector<Attribute> attrs;
+    input->getAttributes(attrs);
+    attrNames.clear();
+    for (uint i=0; i < attrs.size(); i++) {
+      attrNames.push_back(attrs[i].name);
+    }
+  }
+  else {
+    string tableName = getTableName(input);
+    addTableNameToAttrs(tableName, attrNames);
+  }
+
+  Project *project = new Project(input, attrNames);
+  return project;
+}
+
+
+// Create TableScan
+Iterator * CLI::tableScan(const string tableName) {
+  TableScan *output = new TableScan(*rm, tableName);
+  return output;
+}
+
+
+
+// Create INLJoin
+
+// Create Aggregate
+
+bool CLI::isIterator(const string token, int &code) {
+  if (token == "FILTER") {
+    code = FILTER;
+    return true;
+  }
+  else if (token == "PROJECT") {
+    code = PROJECT;
+    return true; 
+  }
+  else if (token == "NLJOIN") {
+    code = NL;
+    return true;
+  }
+  else if (token == "INLJOIN") {
+    code = INL;
+    return true;
+  }
+  else if (token == "AGG") {
+    code = AGG;
+    return true;
+  }
+  return false;
+}
+
+RC CLI::run(Iterator *it) {
+  void *data = malloc(PF_PAGE_SIZE);
+  vector<Attribute> attrs;
+  vector<string> outputBuffer;
+  it->getAttributes(attrs);
+
+  for (uint i=0; i < attrs.size(); i++)
+    outputBuffer.push_back(attrs[i].name);
+
+  while (it->getNextTuple(data) != QE_EOF) {
+    if ( updateOutputBuffer(outputBuffer, data, attrs) != 0)
+      return error(__LINE__);
+  }
+
+  if (printOutputBuffer(outputBuffer, attrs.size()) != 0)
+    return error(__LINE__);
   return 0;
 }
+
+RC CLI::createProjectAttributes(const string tableName, vector<Attribute> &attrs) {
+  char *token = next();
+  Attribute attr;
+  vector<Attribute> inputAttrs;
+  getAttributesFromCatalog(tableName, inputAttrs);
+  while (expect(token, "FROM")) {
+    // get the attribute
+    if (getAttribute(string(token), inputAttrs, attr) != 0)
+      return error("given " + string(token) + " is not found in attributes");
+    attrs.push_back(attr);
+    token = next();
+  }
+  return 0;
+}
+
+RC CLI::createCondition(const string tableName, Condition &condition, const bool join, const string joinTable) {
+  // get left attribute
+  char *token = next();
+
+  string attribute = string(token);
+  // concatenate left attribute with tableName
+  condition.lhsAttr = tableName + "." + attribute;
+
+  // get operation
+  token = next();
+  if (string(token) == "=")
+    condition.op = EQ_OP;
+  else if (string(token) == "<")
+    condition.op = LT_OP;
+  else if (string(token) == ">")
+    condition.op = GT_OP;
+  else if (string(token) == "<=")
+    condition.op = LE_OP;
+  else if (string(token) == ">=")
+    condition.op = GE_OP;
+  else if (string(token) == "!=")
+    condition.op = NE_OP;
+
+  if (join) {
+    condition.bRhsIsAttr = true;
+    token = next();
+    condition.rhsAttr = joinTable + "." + string(token);
+    return 0;
+  }
+
+  condition.bRhsIsAttr = false;
+
+  // get attribute from catalog
+  Attribute attr;
+  if (this->getAttribute(tableName, attribute, attr) != 0)
+    return error(__LINE__);
+  
+  Value value;
+  value.type = attr.type;
+  value.data = malloc(PF_PAGE_SIZE);
+  token = next();
+  attribute = string(token);
+
+  int num;
+  float floatNum;
+  switch(attr.type){
+    case TypeVarChar:
+      num = attribute.size();
+      memcpy((char *)value.data, &num, sizeof(int));
+      memcpy((char *)value.data+sizeof(int), attribute.c_str(), num);
+      break;
+    case TypeInt:
+      num = atoi(string(token).c_str());
+      memcpy((char *)value.data, &num, sizeof(int));
+      break;
+    case TypeReal:
+      floatNum = atof(string(token).c_str());
+      memcpy((char *)value.data, &floatNum, sizeof(float));
+      break;
+    default:
+      return error("cli: " + __LINE__);
+  }
+  condition.rhsValue = value;
+  return 0;
+}
+
+RC CLI::createAttribute(Attribute &attr) {
+  return 0;
+}
+
+RC CLI::createAggregateOp(AggregateOp &op) {
+  return 0;
+}
+
+string CLI::getTableName(Iterator *it) {
+  vector<Attribute> attrs;
+  it->getAttributes(attrs);
+  unsigned loc = attrs[0].name.find(".", 0);
+  return attrs[0].name.substr(0, loc);
+}
+
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+// END OF QUERY ENGINE ////////////
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+///////////////////////////////////
+//===============================//
 
 RC CLI::createTable()
 {
@@ -336,6 +639,8 @@ RC CLI::createTable()
       break;
     }
     attr.name = string(tokenizer);
+
+    tokenizer = next(); // eat =
 
     // get type
     tokenizer = next();
@@ -660,8 +965,8 @@ RC CLI::load()
   Attribute attr;
   vector<Attribute> attributes;
   this->getAttributesFromCatalog(tableName, attributes);
-  int offset = 0, index = 0, keyIndex = 0;
-  int length;
+  uint offset = 0, index = 0, keyIndex = 0;
+  uint length;
   void *buffer = malloc(PF_PAGE_SIZE);
   void *key = malloc(PF_PAGE_SIZE);
   RID rid;
@@ -1177,28 +1482,6 @@ RC CLI::history()
   return 0;
 }
 
-// advance tokenizer to next token
-char * CLI::next()
-{
-  return strtok (NULL, DELIMITERS);
-}
-
-// return 0 if tokenizer is equal to expected string
-bool CLI::expect(char * tokenizer, const string expected)
-{
-  if (tokenizer == NULL) {
-    error ("tokenizer is null, expecting: " + expected);
-    return -1;
-  }
-  return expected.compare(string(tokenizer)) == 0;
-}
-
-RC CLI::error(const string errorMessage)
-{
-  cout << errorMessage << endl;
-  return -2;
-}
-
 // checks whether given tableName-columnName exists or not in cli_columns or cli_indexes
 bool CLI::checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns)
 {
@@ -1332,4 +1615,54 @@ RC CLI::printOutputBuffer(vector<string> &buffer, uint mod)
   cout << endl;
   delete[] maxLengths;
   return 0;
+}
+
+// advance tokenizer to next token
+char * CLI::next()
+{
+  return strtok (NULL, DELIMITERS);
+}
+
+// return 0 if tokenizer is equal to expected string
+bool CLI::expect(char * token, const string expected)
+{
+  if (token == NULL) {
+    error ("tokenizer is null, expecting: " + expected);
+    return -1;
+  }
+  return expected.compare(string(token)) == 0;
+}
+
+RC CLI::error(const string errorMessage)
+{
+  cout << errorMessage << endl;
+  return -2;
+}
+
+RC CLI::error(uint errorCode)
+{
+  cout << errorCode << endl;
+  return -3;
+}
+
+RC CLI::getAttribute(const string name, const vector<Attribute> pool, Attribute &attr) {
+  for (uint i=0; i < pool.size(); i++) {
+    if (0 == pool[i].name.compare(name)) {
+      attr = pool[i];
+      return 0;
+    }
+  }
+  return error("attribute cannot be found");
+}
+
+RC CLI::getAttribute(const string tableName, const string attrName, Attribute &attr) {
+  vector<Attribute> attrs;
+  if (this->getAttributesFromCatalog(tableName, attrs) != 0)
+    return error(__LINE__);
+  return getAttribute(attrName, attrs, attr);
+}
+
+void CLI::addTableNameToAttrs(const string tableName, vector<string> &attrs) {
+  for (uint i=0; i < attrs.size(); i++)
+    attrs[i] = tableName + "." + attrs[i];
 }

@@ -639,18 +639,18 @@ void Test12()
 
 }
 
-// first query test
+// Projection Test
 void Test13()
 {
-  cout << "*********** CLI 10 begins ******************" << endl;
+  cout << "*********** CLI 13 begins ******************" << endl;
 
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "load tbl_employee employee_50";
+  command = "load tbl_employee employee_5";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -658,7 +658,23 @@ void Test13()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "select * from tbl_employee";
+  command = "QUERY PROJECT tbl_employee GET [ * ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (PROJECT tbl_employee GET [ * ]) GET [ EmpName ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (PROJECT tbl_employee GET [ EmpName, Age ]) GET [ Age ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (PROJECT (PROJECT tbl_employee GET [ * ]) GET [ EmpName, Age ]) GET [ Age ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT tbl_employee GET [ EmpName, Age ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -668,6 +684,184 @@ void Test13()
 
 }
 
+// Filter Test
+void Test14()
+{
+  cout << "*********** CLI 14 begins ******************" << endl;
+
+  string command;
+
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Age = 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Age < 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Age > 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Age <= 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Age >= 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Age != 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Height < 6.3";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE EmpName < L";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER (FILTER tbl_employee WHERE  Age < 67) WHERE EmpName < L";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER (FILTER tbl_employee WHERE  Age <= 67) WHERE Height >= 6.4";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER (FILTER (FILTER tbl_employee WHERE EmpName > Ap) WHERE  Age <= 67) WHERE Height >= 6.4";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+}
+
+// Projection + Filter Test
+void Test15()
+{
+  cout << "*********** CLI 15 begins ******************" << endl;
+
+  string command;
+
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load tbl_employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER tbl_employee WHERE Age != 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ Age ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ EmpName, Age ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ EmpName, Height ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ * ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age != 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age >= 45";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY PROJECT (FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age >= 45) GET [ EmpName ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table tbl_employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+}
+
+
+// Nested Loop Join
+void Test16()
+{
+  cout << "*********** CLI 16 begins ******************" << endl;
+
+  string command;
+
+  command = "create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table ages Age = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table salary Salary = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load ages ages_90";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load salary salary_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY NLJOIN employee, ages WHERE Age = Age PAGES(10)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY NLJOIN (NLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table ages");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table salary");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+}
+
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -675,18 +869,22 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    Test01();
-    Test02();
-    Test03();
-    Test04();
-    Test05();
-    Test06();
-    Test07();
-    Test08();
-    Test09();
-    Test10();
-    Test11();
-    Test12();
+    // Test01();
+    // Test02();
+    // Test03();
+    // Test04();
+    // Test05();
+    // Test06();
+    // Test07();
+    // Test08();
+    // Test09();
+    // Test10();
+    // Test11();
+    // Test12();
+    Test13(); // Projection
+    Test14(); // Filter
+    Test15(); // Projection + Filter
+    Test16(); // NLJoin
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
