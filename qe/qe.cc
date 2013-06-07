@@ -1262,7 +1262,10 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
 // output attrname = "MAX(rel.attr)"
 void Aggregate::getAttributes(vector<Attribute> &attrs) const {
   attrs.clear();
-  attrs = this->attrs;
+  if (isGroupBy) {
+    attrs.push_back(groupByAttr);
+  }
+  attrs.push_back(aggAttr);
 }
 
 // if cumulative = true, add the result to previous result
