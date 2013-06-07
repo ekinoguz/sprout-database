@@ -1309,6 +1309,7 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
 // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
 // output attrname = "MAX(rel.attr)"
 void Aggregate::getAttributes(vector<Attribute> &attrs) const {
+  attrs.clear();
   attrs = this->attrs;
 }
 
@@ -1360,142 +1361,138 @@ RC Filter::getNextTuple(void *filteredData) {
   int filteredDataOffset;
 
   bool satisfy = false; 
-  while(!satisfy)
-    {
-      if(input->getNextTuple(data) == QE_EOF){
-	free(value);
-	free(lvalue);
-	free(data);
-	return QE_EOF;
-      }
-
-      // get the left hand side attribute
-      int dataOffset = 0, index = -1;
-    
-      // find the desired attribute in data
-      rc = getAttributeOffsetAndIndex(this->attrs, condition.lhsAttr, data, dataOffset, index);
-      if (rc != 0)
-	error(__LINE__, rc);
-
-      // copy attribute to lvalue
-      if (getAttributeFromData(data, attrs, condition.lhsAttr, lvalue) == -1)
-	error(__LINE__, -1); 
-
-      // copy right value to value
-      int rightSize = getAttributeSize(condition.rhsValue.type, condition.rhsValue.data);
-      memcpy((void *)value, (void *)condition.rhsValue.data, rightSize);
-    
-      char *slvalue, *svalue;
-      if (this->attrs[index].type == TypeVarChar) {
-	int ll = 0;
-	memcpy(&ll, (char *)data+dataOffset, sizeof(int));
-	slvalue = (char *)malloc(ll+1);
-	memcpy((char *)slvalue, (char *)data+dataOffset+sizeof(int), ll);
-	slvalue[ll] = '\0';
-      
-	memcpy(&ll, (char *)condition.rhsValue.data, sizeof(int));
-	svalue = (char *)malloc(ll+1);
-	memcpy((char *)svalue, (char *)condition.rhsValue.data+sizeof(int), ll);
-	svalue[ll] = '\0';
-      }
-    
-      // check if data satisfies the given condition or not
-      switch(condition.op){
-      case EQ_OP:
-      case NE_OP:
-	switch(this->attrs[index].type){
-	case TypeInt:
-	  satisfy = ( *(int*)lvalue == *(int*)value );
-	  break;
-	case TypeReal:
-	  satisfy = (*(float*)lvalue == *(float*)value); 
-	  break;
-	case TypeVarChar:
-	  if( strcmp(slvalue,svalue ) == 0 )
-	    satisfy = true;
-	  free(slvalue);
-	  free(svalue);
-	  break;
-	case TypeShort:
-	  satisfy = (*(char*)lvalue == *(char*)value);
-	  break;  
-	case TypeBoolean:
-	  satisfy = (*(bool*)lvalue == *(bool*)value);
-	  break;  
-	}    
-	satisfy = satisfy ^ (condition.op == NE_OP);
-	break;
-      case LT_OP:
-      case GE_OP:
-	switch(this->attrs[index].type){
-	case TypeInt:
-	  satisfy = ( *(int*)lvalue < *(int*)value );
-	  break;
-	case TypeReal:
-	  satisfy = (*(float*)lvalue < *(float*)value); 
-	  break;
-	case TypeVarChar:
-	  if( strcmp(slvalue,svalue ) < 0 )
-	    satisfy = true;
-	  free(slvalue);
-	  free(svalue);
-	  break;
-	case TypeShort:
-	  satisfy = (*(char*)lvalue < *(char*)value);
-	  break;  
-	case TypeBoolean:
-	  satisfy = (*(bool*)lvalue != *(bool*)value);
-	  break;  
-	}    
-	satisfy = satisfy ^ (condition.op == GE_OP);
-	break;
-      case GT_OP:
-      case LE_OP:
-	switch(this->attrs[index].type){
-	case TypeInt:
-	  satisfy = ( *(int*)lvalue > *(int*)value );
-	  break;
-	case TypeReal:
-	  satisfy = (*(float*)lvalue > *(float*)value); 
-	  break;
-	case TypeVarChar:
-	  if( strcmp(slvalue,svalue ) > 0 )
-	    satisfy = true;
-	  free(slvalue);
-	  free(svalue);
-	  break;
-	case TypeShort:
-	  satisfy = (*(char*)lvalue > *(char*)value);
-	  break;  
-	case TypeBoolean:
-	  satisfy = (*(bool*)lvalue != *(bool*)value);
-	  break;  
-	}    
-	satisfy = satisfy ^ (condition.op == LE_OP);
-	break;
-      case NO_OP: // We should never actually reach here
-	satisfy = true;
-	break;
-      default:
-	cout << "Operation not supported" << endl;
-	error(__LINE__, -3);
-      }
-      if (satisfy) {
-	filteredDataOffset = getDataSize(this->attrs, data);
-	memcpy(filteredData, data, filteredDataOffset);
-      }
+  while(!satisfy) {
+    if(input->getNextTuple(data) == QE_EOF){
+      free(value);
+      free(lvalue);
+      free(data);
+      return QE_EOF;
     }
 
+    // get the left hand side attribute
+    int dataOffset = 0, index = -1;
+  
+    // find the desired attribute in data
+    if (getAttributeOffsetAndIndex(this->attrs, condition.lhsAttr, data, dataOffset, index) != 0)
+      return error(__LINE__, -1);
 
+    // copy attribute to lvalue
+    if (getAttributeFromData(data, attrs, condition.lhsAttr, lvalue) == -1)
+      return error(__LINE__, -1); 
+
+    // copy right value to value
+    int rightSize = getAttributeSize(condition.rhsValue.type, condition.rhsValue.data);
+    memcpy((void *)value, (void *)condition.rhsValue.data, rightSize);
+  
+    char *slvalue, *svalue;
+    if (this->attrs[index].type == TypeVarChar) {
+      int ll = 0;
+      memcpy(&ll, (char *)data+dataOffset, sizeof(int));
+      slvalue = (char *)malloc(ll+1);
+      memcpy((char *)slvalue, (char *)data+dataOffset+sizeof(int), ll);
+      slvalue[ll] = '\0';
+          
+      memcpy(&ll, (char *)condition.rhsValue.data, sizeof(int));
+      svalue = (char *)malloc(ll+1);
+      memcpy((char *)svalue, (char *)condition.rhsValue.data+sizeof(int), ll);
+      svalue[ll] = '\0';
+    }
+  
+    // check if data satisfies the given condition or not
+    switch(condition.op){
+    case EQ_OP:
+    case NE_OP:
+      switch(this->attrs[index].type){
+      case TypeInt:
+        satisfy = ( *(int*)lvalue == *(int*)value );
+        break;
+      case TypeReal:
+        satisfy = (*(float*)lvalue == *(float*)value); 
+        break;
+      case TypeVarChar:
+        if( strcmp(slvalue,svalue ) == 0 )
+          satisfy = true;
+        free(slvalue);
+        free(svalue);
+        break;
+      case TypeShort:
+        satisfy = (*(char*)lvalue == *(char*)value);
+        break;  
+      case TypeBoolean:
+        satisfy = (*(bool*)lvalue == *(bool*)value);
+        break;  
+      }    
+      satisfy = satisfy ^ (condition.op == NE_OP);
+      break;
+    case LT_OP:
+    case GE_OP:
+      switch(this->attrs[index].type){
+      case TypeInt:
+        satisfy = ( *(int*)lvalue < *(int*)value );
+        break;
+      case TypeReal:
+        satisfy = (*(float*)lvalue < *(float*)value); 
+        break;
+      case TypeVarChar:
+        if( strcmp(slvalue,svalue ) < 0 )
+          satisfy = true;
+        free(slvalue);
+        free(svalue);
+        break;
+      case TypeShort:
+        satisfy = (*(char*)lvalue < *(char*)value);
+        break;  
+      case TypeBoolean:
+        satisfy = (*(bool*)lvalue != *(bool*)value);
+        break;  
+      }    
+      satisfy = satisfy ^ (condition.op == GE_OP);
+      break;
+    case GT_OP:
+    case LE_OP:
+      switch(this->attrs[index].type){
+      case TypeInt:
+        satisfy = ( *(int*)lvalue > *(int*)value );
+        break;
+      case TypeReal:
+        satisfy = (*(float*)lvalue > *(float*)value); 
+        break;
+      case TypeVarChar:
+        if( strcmp(slvalue,svalue ) > 0 )
+          satisfy = true;
+        free(slvalue);
+        free(svalue);
+        break;
+      case TypeShort:
+        satisfy = (*(char*)lvalue > *(char*)value);
+        break;  
+      case TypeBoolean:
+        satisfy = (*(bool*)lvalue != *(bool*)value);
+        break;  
+      }    
+      satisfy = satisfy ^ (condition.op == LE_OP);
+      break;
+    case NO_OP: // We should never actually reach here
+      satisfy = true;
+      break;
+    default:
+      cout << "Operation not supported" << endl;
+      return error(__LINE__, -3);
+    }
+    if (satisfy) {
+      filteredDataOffset = getDataSize(this->attrs, data);
+      memcpy(filteredData, data, filteredDataOffset);
+    }
+  }
   free(value);
   free(lvalue);
   free(data);
-
   return 0;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
 void Filter::getAttributes(vector<Attribute> &attrs) const {
+  attrs.clear();
   attrs = this->attrs;
 }
 
@@ -1517,17 +1514,13 @@ Project::~Project() {
 }
 
 RC Project::getNextTuple(void *projectedData) {
-
-  RC rc;
-  int projectedDataOffset;
+  int projectedDataOffset = 0;
 
   void *data = malloc(PF_PAGE_SIZE);
   if(input->getNextTuple(data) == QE_EOF){
     free(data);
     return QE_EOF;
   }
-  
-  projectedDataOffset = 0;
     
   // project data to desired attributes
   for (unsigned i=0; i < output_attrs.size(); i++) {
@@ -1535,9 +1528,8 @@ RC Project::getNextTuple(void *projectedData) {
     int index = -1;
 
     // find the desired attribute in data
-    rc = getAttributeOffsetAndIndex(this->input_attrs, output_attrs[i], data, dataOffset, index);
-    if (rc != 0)
-      error(__LINE__, rc);
+    if (getAttributeOffsetAndIndex(this->input_attrs, output_attrs[i], data, dataOffset, index) != 0)
+      return error(__LINE__, -1);
 
     // copy desired attribute to projectedData
     int length;
@@ -1556,16 +1548,13 @@ RC Project::getNextTuple(void *projectedData) {
       break;
     }
   }
-
   free(data);
-
   return 0;
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
 void Project::getAttributes(vector<Attribute> &attrs) const {
   attrs.clear();
-  
   Attribute at;
   for( uint i = 0; i < output_attrs.size(); i++ ){
     getAttribute( output_attrs[i], input_attrs, at);
