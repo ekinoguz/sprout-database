@@ -592,7 +592,7 @@ void testCase_4()
 {
     // Functions Tested
     // 1. NLJoin -- on TypeInt Attribute
-  cout << endl << "****In Test Case 4****" << endl;
+    cout << endl << "****In Test Case 4****" << endl;
     
     // Prepare the iterator and condition
     TableScan *leftIn = new TableScan(*rm, "left");
@@ -1677,11 +1677,574 @@ void ourTestCase_02()
     return;
 }
 
+// Test LT_OP
+void ourTestCase_03()
+{
+    // Functions Tested
+    // 1. NLJoin -- on TypeInt Attribute
+    cout << endl << "****Our Test Case 3****" << endl;
+    
+    // Prepare the iterator and condition
+    TableScan *leftIn = new TableScan(*rm, "left");
+    TableScan *rightIn = new TableScan(*rm, "right");
+    
+    Condition cond;
+    cond.lhsAttr = "left.B";
+    cond.op= LT_OP;
+    cond.bRhsIsAttr = true;
+    cond.rhsAttr = "right.B";
+    
+    // Create NLJoin
+    NLJoin nljoin(leftIn, rightIn, cond, 10);
+
+    // Create INLJoin
+    TableScan *IleftIn = new TableScan(*rm, "left");
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex("right", "B", ixHandle);
+    IndexScan *IrightIn = new IndexScan(*rm, ixHandle, "right");
+
+    INLJoin inljoin(IleftIn, IrightIn, cond, 10);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    void *data1 = malloc(bufsize);
+    memset(data, 0, bufsize);
+    memset(data1, 0, bufsize);
+    
+    int i = 0;
+    while(nljoin.getNextTuple(data) != QE_EOF)
+    {
+      assert( inljoin.getNextTuple(data1) != QE_EOF );
+      
+      int offset = 0;
+      // cout << "left.A " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+        
+      int leftB = *(int *)((char *)data + offset);
+      int IleftB = *(int *)((char *)data1 + offset);
+      // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+ 
+      // cout << "left.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
+        
+      int rightB = *(int *)((char *)data + offset);
+      int IrightB = *(int *)((char *)data1 + offset);
+      // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+ 
+      // cout << "right.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
+        
+      // cout << "right.D " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+        
+      assert(leftB < rightB);
+      assert(IleftB < IrightB);
+
+      i++;
+      memset(data, 0, bufsize);
+      memset(data1,0,bufsize);
+    }
+    cout << i << endl;
+    assert (i == 509455);
+    
+    free(data);
+    free(data1);
+    delete IleftIn;
+    delete IrightIn;
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Our Test Case 3 Passed****" << endl;
+
+    return;
+
+}
+
+//TODO: Copy from test case 03 and then update condition
+// Test LE_OP
+void ourTestCase_04()
+{
+    // Functions Tested
+    // 1. NLJoin -- on TypeInt Attribute
+    cout << endl << "****Our Test Case 4****" << endl;
+
+        // Prepare the iterator and condition
+    TableScan *leftIn = new TableScan(*rm, "left");
+    TableScan *rightIn = new TableScan(*rm, "right");
+    
+    Condition cond;
+    cond.lhsAttr = "left.B";
+    cond.op= LT_OP;
+    cond.bRhsIsAttr = true;
+    cond.rhsAttr = "right.B";
+    
+    // Create NLJoin
+    NLJoin nljoin(leftIn, rightIn, cond, 10);
+
+    // Create INLJoin
+    TableScan *IleftIn = new TableScan(*rm, "left");
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex("right", "B", ixHandle);
+    IndexScan *IrightIn = new IndexScan(*rm, ixHandle, "right");
+
+    INLJoin inljoin(IleftIn, IrightIn, cond, 10);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    void *data1 = malloc(bufsize);
+    memset(data, 0, bufsize);
+    memset(data1, 0, bufsize);
+    
+    int i = 0;
+    while(nljoin.getNextTuple(data) != QE_EOF)
+    {
+      assert( inljoin.getNextTuple(data1) != QE_EOF );
+      
+      
+        int offset = 0;
+ 
+        // Print left.A
+	int leftA = *(int *)((char *)data + offset);
+        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+        // Print left.B
+	int leftB = *(int *)((char *)data + offset);
+        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print left.C
+	float leftC = *(float *)((char *)data + offset);
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.B
+	int rightB = *(int *)((char *)data + offset);
+        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print right.C
+	float rightC = *(float *)((char *)data + offset);
+        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.D
+	int rightD = *(int *)((char *)data + offset);
+        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+	// assert(leftB == leftA + 10);
+	// assert(leftC == leftA + 50);
+	// assert(rightB == leftA + 10);
+	// assert(rightC == leftA + 15);
+	// assert(rightD == leftA - 10);
+	i++;
+        memset(data, 0, bufsize);
+	memset(data1,0,bufsize);
+    }
+    assert (i == 990);
+    
+    free(data);
+    free(data1);
+    delete IleftIn;
+    delete IrightIn;
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Our Test Case 4 Passed****" << endl;
+
+    return;
+}
+
+// Test GT_OP
+void ourTestCase_05()
+{
+    // Functions Tested
+    // 1. NLJoin -- on TypeInt Attribute
+    cout << endl << "****Our Test Case 5****" << endl;
+
+        // Prepare the iterator and condition
+    TableScan *leftIn = new TableScan(*rm, "left");
+    TableScan *rightIn = new TableScan(*rm, "right");
+    
+    Condition cond;
+    cond.lhsAttr = "left.B";
+    cond.op= LT_OP;
+    cond.bRhsIsAttr = true;
+    cond.rhsAttr = "right.B";
+    
+    // Create NLJoin
+    NLJoin nljoin(leftIn, rightIn, cond, 10);
+
+    // Create INLJoin
+    TableScan *IleftIn = new TableScan(*rm, "left");
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex("right", "B", ixHandle);
+    IndexScan *IrightIn = new IndexScan(*rm, ixHandle, "right");
+
+    INLJoin inljoin(IleftIn, IrightIn, cond, 10);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    void *data1 = malloc(bufsize);
+    memset(data, 0, bufsize);
+    memset(data1, 0, bufsize);
+    
+    int i = 0;
+    while(nljoin.getNextTuple(data) != QE_EOF)
+    {
+      inljoin.getNextTuple(data1);
+      assert(memcmp(data,data1,bufsize)==0);
+      
+        int offset = 0;
+ 
+        // Print left.A
+	int leftA = *(int *)((char *)data + offset);
+        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+        // Print left.B
+	int leftB = *(int *)((char *)data + offset);
+        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print left.C
+	float leftC = *(float *)((char *)data + offset);
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.B
+	int rightB = *(int *)((char *)data + offset);
+        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print right.C
+	float rightC = *(float *)((char *)data + offset);
+        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.D
+	int rightD = *(int *)((char *)data + offset);
+        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+	// assert(leftB == leftA + 10);
+	// assert(leftC == leftA + 50);
+	// assert(rightB == leftA + 10);
+	// assert(rightC == leftA + 15);
+	// assert(rightD == leftA - 10);
+	i++;
+        memset(data, 0, bufsize);
+	memset(data1,0,bufsize);
+    }
+    assert (i == 990);
+    
+    free(data);
+    free(data1);
+    delete IleftIn;
+    delete IrightIn;
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Our Test Case 5 Passed****" << endl;
+
+    return;
+}
+
+// Test GE_OP
+void ourTestCase_06()
+{
+    // Functions Tested
+    // 1. NLJoin -- on TypeInt Attribute
+    cout << endl << "****Our Test Case 6****" << endl;
+
+        // Prepare the iterator and condition
+    TableScan *leftIn = new TableScan(*rm, "left");
+    TableScan *rightIn = new TableScan(*rm, "right");
+    
+    Condition cond;
+    cond.lhsAttr = "left.B";
+    cond.op= LT_OP;
+    cond.bRhsIsAttr = true;
+    cond.rhsAttr = "right.B";
+    
+    // Create NLJoin
+    NLJoin nljoin(leftIn, rightIn, cond, 10);
+
+    // Create INLJoin
+    TableScan *IleftIn = new TableScan(*rm, "left");
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex("right", "B", ixHandle);
+    IndexScan *IrightIn = new IndexScan(*rm, ixHandle, "right");
+
+    INLJoin inljoin(IleftIn, IrightIn, cond, 10);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    void *data1 = malloc(bufsize);
+    memset(data, 0, bufsize);
+    memset(data1, 0, bufsize);
+    
+    int i = 0;
+    while(nljoin.getNextTuple(data) != QE_EOF)
+    {
+      inljoin.getNextTuple(data1);
+      assert(memcmp(data,data1,bufsize)==0);
+      
+        int offset = 0;
+ 
+        // Print left.A
+	int leftA = *(int *)((char *)data + offset);
+        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+        // Print left.B
+	int leftB = *(int *)((char *)data + offset);
+        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print left.C
+	float leftC = *(float *)((char *)data + offset);
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.B
+	int rightB = *(int *)((char *)data + offset);
+        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print right.C
+	float rightC = *(float *)((char *)data + offset);
+        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.D
+	int rightD = *(int *)((char *)data + offset);
+        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+	// assert(leftB == leftA + 10);
+	// assert(leftC == leftA + 50);
+	// assert(rightB == leftA + 10);
+	// assert(rightC == leftA + 15);
+	// assert(rightD == leftA - 10);
+	i++;
+        memset(data, 0, bufsize);
+	memset(data1,0,bufsize);
+    }
+    assert (i == 990);
+    
+    free(data);
+    free(data1);
+    delete IleftIn;
+    delete IrightIn;
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Our Test Case 6 Passed****" << endl;
+
+    return;
+}
+
+// Test NE_OP
+void ourTestCase_07()
+{
+    // Functions Tested
+    // 1. NLJoin -- on TypeInt Attribute
+    cout << endl << "****Our Test Case 7****" << endl;
+
+        // Prepare the iterator and condition
+    TableScan *leftIn = new TableScan(*rm, "left");
+    TableScan *rightIn = new TableScan(*rm, "right");
+    
+    Condition cond;
+    cond.lhsAttr = "left.B";
+    cond.op= LT_OP;
+    cond.bRhsIsAttr = true;
+    cond.rhsAttr = "right.B";
+    
+    // Create NLJoin
+    NLJoin nljoin(leftIn, rightIn, cond, 10);
+
+    // Create INLJoin
+    TableScan *IleftIn = new TableScan(*rm, "left");
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex("right", "B", ixHandle);
+    IndexScan *IrightIn = new IndexScan(*rm, ixHandle, "right");
+
+    INLJoin inljoin(IleftIn, IrightIn, cond, 10);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    void *data1 = malloc(bufsize);
+    memset(data, 0, bufsize);
+    memset(data1, 0, bufsize);
+    
+    int i = 0;
+    while(nljoin.getNextTuple(data) != QE_EOF)
+    {
+      inljoin.getNextTuple(data1);
+      assert(memcmp(data,data1,bufsize)==0);
+      
+        int offset = 0;
+ 
+        // Print left.A
+	int leftA = *(int *)((char *)data + offset);
+        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+        // Print left.B
+	int leftB = *(int *)((char *)data + offset);
+        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print left.C
+	float leftC = *(float *)((char *)data + offset);
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.B
+	int rightB = *(int *)((char *)data + offset);
+        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print right.C
+	float rightC = *(float *)((char *)data + offset);
+        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.D
+	int rightD = *(int *)((char *)data + offset);
+        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+	// assert(leftB == leftA + 10);
+	// assert(leftC == leftA + 50);
+	// assert(rightB == leftA + 10);
+	// assert(rightC == leftA + 15);
+	// assert(rightD == leftA - 10);
+	i++;
+        memset(data, 0, bufsize);
+	memset(data1,0,bufsize);
+    }
+    assert (i == 990);
+    
+    free(data);
+    free(data1);
+    delete IleftIn;
+    delete IrightIn;
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Our Test Case 7 Passed****" << endl;
+
+    return;
+}
+
+// Test NO_OP
+void ourTestCase_08()
+{
+    // Functions Tested
+    // 1. NLJoin -- on TypeInt Attribute
+    cout << endl << "****Our Test Case 8****" << endl;
+
+        // Prepare the iterator and condition
+    TableScan *leftIn = new TableScan(*rm, "left");
+    TableScan *rightIn = new TableScan(*rm, "right");
+    
+    Condition cond;
+    cond.lhsAttr = "left.B";
+    cond.op= LT_OP;
+    cond.bRhsIsAttr = true;
+    cond.rhsAttr = "right.B";
+    
+    // Create NLJoin
+    NLJoin nljoin(leftIn, rightIn, cond, 10);
+
+    // Create INLJoin
+    TableScan *IleftIn = new TableScan(*rm, "left");
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex("right", "B", ixHandle);
+    IndexScan *IrightIn = new IndexScan(*rm, ixHandle, "right");
+
+    INLJoin inljoin(IleftIn, IrightIn, cond, 10);
+    
+    // Go over the data through iterator
+    void *data = malloc(bufsize);
+    void *data1 = malloc(bufsize);
+    memset(data, 0, bufsize);
+    memset(data1, 0, bufsize);
+    
+    int i = 0;
+    while(nljoin.getNextTuple(data) != QE_EOF)
+    {
+      inljoin.getNextTuple(data1);
+      assert(memcmp(data,data1,bufsize)==0);
+      
+        int offset = 0;
+ 
+        // Print left.A
+	int leftA = *(int *)((char *)data + offset);
+        cout << "left.A " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+        // Print left.B
+	int leftB = *(int *)((char *)data + offset);
+        cout << "left.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print left.C
+	float leftC = *(float *)((char *)data + offset);
+        cout << "left.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.B
+	int rightB = *(int *)((char *)data + offset);
+        cout << "right.B " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+ 
+        // Print right.C
+	float rightC = *(float *)((char *)data + offset);
+        cout << "right.C " << *(float *)((char *)data + offset) << endl;
+        offset += sizeof(float);
+        
+        // Print right.D
+	int rightD = *(int *)((char *)data + offset);
+        cout << "right.D " << *(int *)((char *)data + offset) << endl;
+        offset += sizeof(int);
+        
+	// assert(leftB == leftA + 10);
+	// assert(leftC == leftA + 50);
+	// assert(rightB == leftA + 10);
+	// assert(rightC == leftA + 15);
+	// assert(rightD == leftA - 10);
+	i++;
+        memset(data, 0, bufsize);
+	memset(data1,0,bufsize);
+    }
+    assert (i == 990);
+    
+    free(data);
+    free(data1);
+    delete IleftIn;
+    delete IrightIn;
+    delete leftIn;
+    delete rightIn;
+
+    cout << "****Our Test Case 8 Passed****" << endl;
+
+    return;
+}
+
+
 void ourTests()
 {
 
     ourTestCase_01(); // Filter Real
     ourTestCase_02(); // Filter VarChar
+    ourTestCase_03(); // Test various join operators
     // Project VarChar
     ourExtraTest_01();
     ourExtraTest_02();
@@ -1714,6 +2277,8 @@ int main()
     createIndexforRightC(rightRIDs);   
    
     // Test Cases
+    ourTestCase_03();
+    return 0;
     testCase_1();
     testCase_2();
     testCase_3();

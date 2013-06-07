@@ -17,5 +17,14 @@ inline int error(int err, int rc){
   std::cout << "Line: " << err << std::endl;
   return rc;
 }
+inline int is_big_endian(void)
+{
+  union {
+    uint32_t i;
+    char c[4];
+  } bint = {0x01020304};
+
+  return bint.c[0] == 1; 
+}
 
 #endif

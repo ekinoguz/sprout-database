@@ -265,10 +265,16 @@ string NLJoin::getKey(Iterator *iter, string attribute, void *tuple)
 
       string input;
       input.reserve(key_size);
-      for (uint i = 0; i < key_size; i++)
-	{
-	  input.push_back(key[i]);
-	}
+      if(!is_big_endian())
+	for (int i = key_size - 1; i >= 0; i--)
+	  {
+	    input.push_back(key[i]);
+	  }
+      else
+	for (uint i = 0; i < key_size; i++)
+	  {
+	    input.push_back(key[i]);
+	  }
       
       string strKey;
       unsigned char c;
@@ -332,43 +338,38 @@ RC NLJoin::getNextTuple(void *data)
 	}
     }
 
+  bool skip_right_read = false;
   if (this->left_block_has_more == true && this->left_block_it != this->tuples_map.end())
     {
-      memcpy(data, this->left_block_it->second[0].tuple, this->left_block_it->second[0].size);
-      memcpy((char *)data + this->left_block_it->second[0].size, this->right_tuple, this->max_right_record_size);
-      
-      if (this->left_block_it->second.size() > 1)
-	{
-	  this->tuples_info = this->left_block_it->second;
-	  this->tuples_info_index = 1;
-	  this->tuples_info_more = true;
-	}
-      
-      this->left_block_it++;
+      skip_right_read = true;
     }
   else
     {
+      this->left_block_it = tuples_map.begin();
       this->left_block_has_more = false;
     }
 
-
-  memset(this->right_tuple, 0, this->max_right_record_size);
   while (true)
     {
-      if (this->rightIn->getNextTuple(this->right_tuple) != 0)
-	{
-	  if (this->left_has_more == false)
-	    {
-	      return QE_EOF;
-	    }
-	  else
-	    {
-	      readBlockLeftIn();
-	      this->rightIn->setIterator();
-	      return getNextTuple(data);
-	    }
-	}
-
+      if(skip_right_read)
+	skip_right_read = false;
+      else {
+	memset(this->right_tuple, 0, this->max_right_record_size);
+	if (this->rightIn->getNextTuple(this->right_tuple) != 0)
+	  {
+	    if (this->left_has_more == false)
+	      {
+		return QE_EOF;
+	      }
+	    else
+	      {
+		readBlockLeftIn();
+		this->rightIn->setIterator();
+		return getNextTuple(data);
+	      }
+	  }
+      }
+	
       string key = getKey(this->rightIn, this->condition.rhsAttr, this->right_tuple);
       if (this->condition.op == EQ_OP)
 	{
@@ -391,77 +392,88 @@ RC NLJoin::getNextTuple(void *data)
       else
 	{
 	  bool found = false;
-	  auto it = this->tuples_map.begin();
-	  while ((!found) && (it != this->tuples_map.end()))
-	    {
-	      switch (this->condition.op)
-		{
-		case LT_OP:
-		  if (it->first < key)
-		    {
-		      found = true;
-		    }
-		  break;
+	  auto it = left_block_it;
+	  while ((!found) && (it != this->tuples_map.end())) {
+	    	// 		int x, y;   
+		// std::stringstream ss, sd;
+		// ss << std::hex << it->first;
+		// ss >> x;
+		// cout << x << ":";
+		
+		
+		// sd << std::hex <<  key;
+		// sd >> y;		  
+		// cout << y << endl;
+		// cout << y << ":" << key << endl;
+	    switch (this->condition.op){
+	    case LT_OP:
+	      if (it->first < key){
+		// cout << "    MATCHED: ";
+		// int x, y;   
+		// std::stringstream ss, sd;
+		// ss << std::hex << it->first;
+		// ss >> x;
+		// cout << x << ":";
+		
+		
+		// sd << std::hex <<  key;
+		// sd >> y;		  
+		// cout << y << endl;
+		found = true;
+	      }
+	      break;
+	    case GT_OP:
+	      if (it->first > key)
+		  found = true;
+	      break;
 		  
-		case GT_OP:
-		  if (it->first > key)
-		    {
-		      found = true;
-		    }
-		  break;
+	    case LE_OP:
+	      if (it->first <= key)
+		  found = true;
+	      break;
 		  
-		case LE_OP:
-		  if (it->first <= key)
-		    {
-		      found = true;
-		    }
-		  break;
-		  
-		case GE_OP:
-		  if (it->first >= key)
-		    {
-		      found = true;
-		    }
-		  break;
+	    case GE_OP:
+	      if (it->first >= key)
+		  found = true;
+	      break;
 	      
-		case NE_OP:
-		  if (it->first != key)
-		    {
-		      found = true;
-		    }
-		  break;
+	    case NE_OP:
+	      if (it->first != key)
+		  found = true;
+	      break;
 		  
-		case NO_OP:
-		  // TODO: implement this
-		  cout << "Bad operator" << endl;
-		  return QE_EOF;
-		  break;
-		}
-	    }
+	    case NO_OP:
+	      // TODO: implement this
+	      cout << "Bad operator" << endl;
+	      return QE_EOF;
+	      break;
+	    } // end switch
+	    
 
-	  if (found == true)
-	    {
-	      memcpy(data, it->second[0].tuple, it->second[0].size);
-	      memcpy((char *)data + it->second[0].size, this->right_tuple, this->max_right_record_size);
+	    if (found == true)
+	      {
+		memcpy(data, it->second[0].tuple, it->second[0].size);
+		memcpy((char *)data + it->second[0].size, this->right_tuple, this->max_right_record_size);
 	      
-	      if (it->second.size() > 1)
-		{
-		  this->tuples_info = it->second;
-		  this->tuples_info_index = 1;
-		  this->tuples_info_more = true;
-		}
+		if (it->second.size() > 1)
+		  {
+		    this->tuples_info = it->second;
+		    this->tuples_info_index = 1;
+		    this->tuples_info_more = true;
+		  }
 
-	      it++;
-	      this->left_block_it = it;
-	      this->left_block_has_more = true;
+		it++;
+		this->left_block_it = it;
+		this->left_block_has_more = true;
 	      
-	      return 0;
-	    }
-	  else
-	    {
-	      it++;
-	    }
-	}
+		return 0;
+	      }
+	    else
+	      {
+		it++;
+	      }
+	  }
+	} // END WHILE
     }
 }
 // For attribute in vector<Attribute>, name it as rel.attr
@@ -862,22 +874,27 @@ RC INLJoin::getNextTuple(void *data)
 	  this->rightIn->setIterator(NULL, key, false, false);
 	  this->right_has_more = true;
 	  
+	  break;
 	case GT_OP:
 	  this->rightIn->setIterator(key, NULL, false, false);
 	  this->right_has_more = true;
 
+	  break;
 	case LE_OP:
 	  this->rightIn->setIterator(NULL, key, false, true);
 	  this->right_has_more = true;
 
+	  break;
 	case GE_OP:
 	  this->rightIn->setIterator(key, NULL, true, false);
 	  this->right_has_more = true;
 
+	  break;
 	case NE_OP:
 	  this->rightIn->setIterator(NULL, NULL, false, false);
 	  this->right_has_more = true;
 	  
+	  break;
 	case NO_OP:
 	  // TODO: implement this
 	  cout << "Bad operator" << endl;
