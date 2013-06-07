@@ -56,54 +56,6 @@ int getAttributeFromData(const void *buffer, const vector<Attribute> attrs, cons
   return offset;
 }
 
-int getAttributeSize(const AttrType type, const void *data) {
-  int size=0;
-  switch(type){
-    case TypeInt:
-    case TypeReal:
-    case TypeShort:
-    case TypeBoolean:
-      return sizeof(int);
-    case TypeVarChar:
-      memcpy(&size, (char *)data, sizeof(int));
-      return size + sizeof(int);
-    default:
-      return error(__LINE__, -1);
-    }
-}
-
-int getDataSize(const vector<Attribute> attr, const void *data) {
-  int size=0, length=0;
-  for (unsigned i=0; i < attr.size(); i++) {
-    switch(attr[i].type){
-      case TypeInt:
-      case TypeReal:
-      case TypeShort:
-      case TypeBoolean:
-        size += sizeof(int);
-        break;
-      case TypeVarChar:
-        memcpy(&length, (char *)data+size, sizeof(int));
-        size += length + sizeof(int);
-        break;
-      default:
-        error(__LINE__, -1);
-        break;
-      }
-  }
-  return size;
-}
-
-RC getAttribute(const string name, const vector<Attribute> pool, Attribute &attr) {
-  for (unsigned i=0; i < pool.size(); i++) {
-    if (0 == pool[i].name.compare(name)) {
-      attr = pool[i];
-      return 0;
-    }
-  }
-  return error(__LINE__, -1);
-}
-
 string getAttributeName(const void *data, const vector<Attribute> attrs, const int dataOffset, const int index) {
   int intVal;
   float floatVal;
@@ -1496,6 +1448,44 @@ void Filter::getAttributes(vector<Attribute> &attrs) const {
   attrs = this->attrs;
 }
 
+int Filter::getAttributeSize(const AttrType type, const void *data) {
+  int size=0;
+  switch(type){
+    case TypeInt:
+    case TypeReal:
+    case TypeShort:
+    case TypeBoolean:
+      return sizeof(int);
+    case TypeVarChar:
+      memcpy(&size, (char *)data, sizeof(int));
+      return size + sizeof(int);
+    default:
+      return error(__LINE__, -1);
+    }
+}
+
+int Filter::getDataSize(const vector<Attribute> attr, const void *data) {
+  int size=0, length=0;
+  for (unsigned i=0; i < attr.size(); i++) {
+    switch(attr[i].type){
+      case TypeInt:
+      case TypeReal:
+      case TypeShort:
+      case TypeBoolean:
+        size += sizeof(int);
+        break;
+      case TypeVarChar:
+        memcpy(&length, (char *)data+size, sizeof(int));
+        size += length + sizeof(int);
+        break;
+      default:
+        error(__LINE__, -1);
+        break;
+      }
+  }
+  return size;
+}
+
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
 // Project Interface //
@@ -1555,9 +1545,12 @@ RC Project::getNextTuple(void *projectedData) {
 // For attribute in vector<Attribute>, name it as rel.attr
 void Project::getAttributes(vector<Attribute> &attrs) const {
   attrs.clear();
-  Attribute at;
   for( uint i = 0; i < output_attrs.size(); i++ ){
-    getAttribute( output_attrs[i], input_attrs, at);
-    attrs.push_back( at );
+    for (uint search=0; search < input_attrs.size(); search++) {
+      if (0 == input_attrs[search].name.compare(output_attrs[i])) {
+        attrs.push_back(input_attrs[search]);
+        break;
+      }
+    }
   }
 }

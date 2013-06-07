@@ -216,8 +216,10 @@ class Filter : public Iterator {
     // private API:
     private:
         vector<Attribute> attrs;
-	Iterator * input;
-	Condition condition;
+    	Iterator * input;
+    	Condition condition;
+        int getAttributeSize(const AttrType type, const void *data);
+        int getDataSize(const vector<Attribute> attr, const void *data);
 };
 
 
@@ -236,7 +238,7 @@ class Project : public Iterator {
     private:
         vector<Attribute> input_attrs;
         vector<string> output_attrs;
-	Iterator * input;
+        Iterator * input;
 };
 
 
