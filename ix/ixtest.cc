@@ -1669,6 +1669,8 @@ void testCase_O2()
   IX_IndexHandle ixHandle;
   rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
   assert(rc == success);
+  
+  ixManager->buildIndex(tablename, attrname, ixHandle);
 
   // Test that we can correctly retrieve a record
   IX_IndexScan ixs;
@@ -1862,6 +1864,8 @@ void testCase_O5(){
   rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
   assert(rc == success);
 
+  ixManager->buildIndex(tablename, attrname, ixHandle);
+
   IX_IndexScan ixs;
   RID rid;
   void * key;
@@ -1974,6 +1978,8 @@ void testCase_O6()
   IX_IndexHandle ixHandle;
   rc = ixManager->OpenIndex(tablename, attrname, ixHandle);
   assert(rc == success);
+
+  ixManager->buildIndex(tablename, attrname, ixHandle);
 
   RID rid;
   for (uint key = 5000; key <= 10000; key++)
@@ -2374,7 +2380,7 @@ int main()
     
   RM *rm = RM::Instance();
   createTable(rm, "tbl_employee");
-    
+
   testCase_1("tbl_employee", "Age");
   testCase_2("tbl_employee", "Age"); 
   testCase_3("tbl_employee", "Age");
