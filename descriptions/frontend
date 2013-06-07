@@ -62,7 +62,11 @@ QUERY JOIN jid = jid FROM "NL" EMP, JOB
 QUERY AGG MAX(PROJECT sal FROM EMP)
 QUERY AGG MAX(PROJECT city, sal FROM EMP) OF sal GROUPBY city
 
-Later
-=====
-insert tabname (col1=val1, col2 =val2, ...)
-delete tabname [col1 op val1]]
+query = 
+      FILTER { "(" <query> ")" } WHERE <attr> <op> <value> 
+      PROJECT { "(" <query> ")" } GET "[" <attrs> "]"
+      JOIN <lattr> <op> <rattr> FROM {"INL" <query1>, <query2-Index> | "NL" <query1>, <query2>}
+      AGG <OP>(query) OF <attr> [GROUPBY <attr>]
+      tableName | indexName
+
+
