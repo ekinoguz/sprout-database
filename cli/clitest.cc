@@ -848,6 +848,10 @@ void Test16()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
+  command = "QUERY NLJOIN (NLJOIN (NLJOIN employee, employee WHERE EmpName = EmpName PAGES(10)), salary) WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
   command = ("drop table employee");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
@@ -861,6 +865,58 @@ void Test16()
   assert (cli->process(command) == SUCCESS);
 }
 
+
+// Aggregate
+void Test20()
+{
+  cout << "*********** CLI 20 begins ******************" << endl;
+
+  string command;
+
+  command = "create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG employee GET MAX(Height)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG employee GET MIN(Salary)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG (PROJECT employee GET [ * ]) GET MAX(Salary)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG (PROJECT employee GET [ Salary ]) GET SUM(Salary)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG (PROJECT employee GET [ Salary ]) GET COUNT(Salary)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG (PROJECT employee GET [ Salary ]) GET AVG(Salary)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  // command = "QUERY NLJOIN employee, ages WHERE Age = Age PAGES(10)";
+  // cout << ">>> " << command << endl;
+  // assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+}
 
 int main()
 {
@@ -885,6 +941,10 @@ int main()
     Test14(); // Filter
     Test15(); // Projection + Filter
     Test16(); // NLJoin
+    // TODO Test17(); // NLJoin + Filter
+    // TODO Test18(); // NLJoin + Projection
+    // TODO Test19(); // NLJoin + Filter + Projection
+    Test20(); // Aggregate
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

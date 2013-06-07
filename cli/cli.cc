@@ -340,16 +340,49 @@ Iterator * CLI::query(Iterator *previous, int code)
         break;
 
       case AGG:
+        it = aggregate(previous);
         break;
 
       case NL:
         it = nestedloopjoin(previous);
+        break;
       case -1:
         error("dude, be carefuly with what you are writing as a query");
         break;
     }
   }
   return it;
+}
+
+// Create Aggregate
+Iterator * CLI::aggregate(Iterator *input) {
+  char *token = next();
+  int code = -2;
+  if (isIterator(string(token), code)){
+    input = query(input, code);
+  }
+
+  if (input == NULL) {
+    input = tableScan(string(token));
+  }
+
+  token = next(); // eat GET
+
+  string operation = string(next());
+
+  AggregateOp op;
+  if (createAggregateOp(operation, op) != 0)
+    error (__LINE__);
+  Attribute aggAttr;
+  if (createAttribute(getTableName(input), aggAttr) != 0)
+    error(__LINE__);
+
+  // check GROUPBY
+
+  Aggregate *agg;
+
+  agg = new Aggregate(input, aggAttr, op);
+  return agg;
 }
 
 // Create NLJoin
@@ -368,7 +401,6 @@ Iterator * CLI::nestedloopjoin(Iterator *input) {
   token = next();
   string rightTableName = string(token);
   TableScan *right = new TableScan(*rm, rightTableName);
-
 
   token = next(); // eat WHERE
 
@@ -463,8 +495,6 @@ Iterator * CLI::tableScan(const string tableName) {
 
 
 // Create INLJoin
-
-// Create Aggregate
 
 bool CLI::isIterator(const string token, int &code) {
   if (token == "FILTER") {
@@ -590,11 +620,29 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
   return 0;
 }
 
-RC CLI::createAttribute(Attribute &attr) {
+RC CLI::createAttribute(const string tableName, Attribute &attr) {
+  string attribute = string(next());
+  // get attribute from catalog
+  if (this->getAttribute(tableName, attribute, attr) != 0)
+    return error(__LINE__);
+  attr.name = tableName + "." + attr.name;
   return 0;
 }
 
-RC CLI::createAggregateOp(AggregateOp &op) {
+RC CLI::createAggregateOp(const string operation, AggregateOp &op) {
+  if (operation == "MAX")
+    op = MAX;
+  else if (operation == "MIN")
+    op = MIN;
+  else if (operation == "SUM")
+    op = SUM;
+  else if (operation == "AVG")
+    op = AVG;
+  else if (operation == "COUNT")
+    op = COUNT;
+  else {
+    return error("create aggregate op: " + __LINE__);
+  }
   return 0;
 }
 

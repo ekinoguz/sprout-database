@@ -64,13 +64,14 @@ private:
   Iterator * projection(Iterator *input);
   Iterator * filter(Iterator *input);
   Iterator * nestedloopjoin(Iterator *input);
+  Iterator * aggregate(Iterator *input);
 
   RC run(Iterator *);
   
   RC createProjectAttributes(const string tableName, vector<Attribute> &attrs);
   RC createCondition(const string tableName, Condition &condition, const bool join=false, const string joinTable="");
-  RC createAttribute(Attribute &attr);
-  RC createAggregateOp(AggregateOp &op);
+  RC createAttribute(const string tableName, Attribute &attr);
+  RC createAggregateOp(const string operation, AggregateOp &op);
   
   void addTableNameToAttrs(const string tableName, vector<string> &attrs);
   bool isIterator(const string token, int &code);
