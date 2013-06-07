@@ -355,7 +355,8 @@ RC NLJoin::getNextTuple(void *data)
 	skip_right_read = false;
       else {
 	memset(this->right_tuple, 0, this->max_right_record_size);
-	if (this->rightIn->getNextTuple(this->right_tuple) != 0)
+	int rc;
+	if ((rc = this->rightIn->getNextTuple(this->right_tuple)) != 0)
 	  {
 	    if (this->left_has_more == false)
 	      {
@@ -368,6 +369,8 @@ RC NLJoin::getNextTuple(void *data)
 		return getNextTuple(data);
 	      }
 	  }
+
+	left_block_it = tuples_map.begin();
       }
 	
       string key = getKey(this->rightIn, this->condition.rhsAttr, this->right_tuple);
@@ -394,17 +397,6 @@ RC NLJoin::getNextTuple(void *data)
 	  bool found = false;
 	  auto it = left_block_it;
 	  while ((!found) && (it != this->tuples_map.end())) {
-	    	// 		int x, y;   
-		// std::stringstream ss, sd;
-		// ss << std::hex << it->first;
-		// ss >> x;
-		// cout << x << ":";
-		
-		
-		// sd << std::hex <<  key;
-		// sd >> y;		  
-		// cout << y << endl;
-		// cout << y << ":" << key << endl;
 	    switch (this->condition.op){
 	    case LT_OP:
 	      if (it->first < key){
@@ -473,8 +465,8 @@ RC NLJoin::getNextTuple(void *data)
 		it++;
 	      }
 	  }
-	} // END WHILE
-    }
+	} // END WHILE (it not end)
+    } // end while (progress right tuple)
 }
 // For attribute in vector<Attribute>, name it as rel.attr
 void NLJoin::getAttributes(vector<Attribute> &attrs) const
@@ -605,6 +597,10 @@ unsigned INLJoin::getTupleSize(Iterator *iter, void *tuple)
 RC INLJoin::getNextTuple(void *data)
 {
   void *key = malloc(PF_PAGE_SIZE);
+
+  if (!left_has_more && tuples_vector_index >= (int)tuples_vector.size()){
+    return QE_EOF;
+  }
 
   if (this->right_has_more == true)
     {
@@ -774,6 +770,7 @@ RC INLJoin::getNextTuple(void *data)
 	    }
 	  else
 	    {
+	      this->tuples_vector_index++;
 	      free(right_tuple);
 	      
 	      if (this->left_has_more == true)
@@ -782,6 +779,10 @@ RC INLJoin::getNextTuple(void *data)
 		  this->right_has_more = false;
 		  return this->getNextTuple(data);
 		}
+	      // else
+	      // 	{
+	      // 	  cout << "We probably shouldn't be seeing this" << endl;
+	      // 	}
 	    }
 	}
     }
@@ -868,24 +869,26 @@ RC INLJoin::getNextTuple(void *data)
 	{
 	case EQ_OP:
 	  this->rightIn->setIterator(key, key, true, true);
+	  this->right_has_more = true;
 	  break;
 	  
-	case LT_OP:
+	case GT_OP:
 	  this->rightIn->setIterator(NULL, key, false, false);
 	  this->right_has_more = true;
 	  
 	  break;
-	case GT_OP:
+	case LT_OP:
+	  // Find everyything larger than key (those are the things that match)
 	  this->rightIn->setIterator(key, NULL, false, false);
 	  this->right_has_more = true;
 
 	  break;
-	case LE_OP:
+	case GE_OP:
 	  this->rightIn->setIterator(NULL, key, false, true);
 	  this->right_has_more = true;
 
 	  break;
-	case GE_OP:
+	case LE_OP:
 	  this->rightIn->setIterator(key, NULL, true, false);
 	  this->right_has_more = true;
 
@@ -909,12 +912,16 @@ RC INLJoin::getNextTuple(void *data)
 	  memcpy(data, tuple_info.tuple, tuple_info.size);
 	  memcpy((char *)data + tuple_info.size, right_tuple, right_tuple_size);
 	  free(right_tuple);
+	 
 	  break;
 	}
       else
 	{
-	  this->tuples_vector_index++;
+	  //	  this->tuples_vector_index++;
 	  free(right_tuple);
+	  free(key);
+
+	  return getNextTuple(data);
 	}
     }
 

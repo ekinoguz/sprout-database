@@ -306,7 +306,7 @@ class INLJoin : public Iterator {
 	unsigned max_right_record_size;
 	unsigned num_of_block_records;
 	vector<TupleInfo> tuples_vector;
-	unsigned tuples_vector_index;
+	int tuples_vector_index;
 	bool right_has_more;
 	bool left_has_more;
 };

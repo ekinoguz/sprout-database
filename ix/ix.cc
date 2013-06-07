@@ -988,11 +988,16 @@ IX_IndexScan::IX_IndexScan()
   more = false;
   highKeyInclusive = false;
   offset = 0;
+
+  highKey = malloc(PF_PAGE_SIZE);
+  memset(highKey, 0, PF_PAGE_SIZE);
 }
 
 IX_IndexScan::~IX_IndexScan()
 {
   free(page);
+  if(highKey == NULL)
+    free(highKey);
 }
 
 RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
@@ -1004,10 +1009,20 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
   if(!indexHandle.is_open)
     return -5;
   
-  this->highKey = highKey;
   this->highKeyInclusive = highKeyInclusive;
   this->indexHandle = const_cast<IX_IndexHandle*>(&indexHandle);
   this->offset = 0;
+
+  // Copy the high key (it may be freed before we are done with it
+  if(highKey != NULL) {
+    if(this->highKey == NULL)
+      this->highKey = malloc(PF_PAGE_SIZE);
+    int size = this->indexHandle->getKeySize(highKey);
+    memcpy(this->highKey, highKey, size);
+  } else{
+    free(highKey);
+    this->highKey = NULL;
+  }
   
   // Make sure that if either lowKey or highKey is null we search for infiitiy
   // TODO: Add test for this
@@ -1044,6 +1059,19 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
       offset = 0;
     }
   } // Otherwise we use the first record
+
+  // Check that the first record matches
+  if(highKey != NULL)
+    {
+      // Read the current key
+      void *key_on_page = (void *)((char *)page + offset);
+
+      int cmp = this->indexHandle->keycmp(highKey, key_on_page);;
+      if(cmp < 0 || (cmp == 0 && !highKeyInclusive) ) {
+	more = false;
+	return 0;
+      }
+    }
   
   more = true;
   return 0;

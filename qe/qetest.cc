@@ -1714,7 +1714,10 @@ void ourTestCase_03()
     int i = 0;
     while(nljoin.getNextTuple(data) != QE_EOF)
     {
-      assert( inljoin.getNextTuple(data1) != QE_EOF );
+      if( inljoin.getNextTuple(data1) == QE_EOF ){
+	cout << i << endl;
+	assert(false); 	       
+      }
       
       int offset = 0;
       // cout << "left.A " << *(int *)((char *)data + offset) << endl;
@@ -1723,6 +1726,7 @@ void ourTestCase_03()
       int leftB = *(int *)((char *)data + offset);
       int IleftB = *(int *)((char *)data1 + offset);
       // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Ileft.B " << *(int *)((char *)data1 + offset) << endl;
       offset += sizeof(int);
  
       // cout << "left.C " << *(float *)((char *)data + offset) << endl;
@@ -1731,6 +1735,7 @@ void ourTestCase_03()
       int rightB = *(int *)((char *)data + offset);
       int IrightB = *(int *)((char *)data1 + offset);
       // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Iright.B " << *(int *)((char *)data1 + offset) << endl;
       offset += sizeof(int);
  
       // cout << "right.C " << *(float *)((char *)data + offset) << endl;
@@ -1746,7 +1751,7 @@ void ourTestCase_03()
       memset(data, 0, bufsize);
       memset(data1,0,bufsize);
     }
-    cout << i << endl;
+    assert( inljoin.getNextTuple(data1) == QE_EOF );
     assert (i == 509455);
     
     free(data);
@@ -1762,7 +1767,6 @@ void ourTestCase_03()
 
 }
 
-//TODO: Copy from test case 03 and then update condition
 // Test LE_OP
 void ourTestCase_04()
 {
@@ -1776,7 +1780,7 @@ void ourTestCase_04()
     
     Condition cond;
     cond.lhsAttr = "left.B";
-    cond.op= LT_OP;
+    cond.op= LE_OP;
     cond.bRhsIsAttr = true;
     cond.rhsAttr = "right.B";
     
@@ -1800,51 +1804,45 @@ void ourTestCase_04()
     int i = 0;
     while(nljoin.getNextTuple(data) != QE_EOF)
     {
-      assert( inljoin.getNextTuple(data1) != QE_EOF );
+      if( inljoin.getNextTuple(data1) == QE_EOF ){
+	cout << i << endl;
+	assert(false); 	       
+      }
       
-      
-        int offset = 0;
+      int offset = 0;
+      // cout << "left.A " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+        
+      int leftB = *(int *)((char *)data + offset);
+      int IleftB = *(int *)((char *)data1 + offset);
+      // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Ileft.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.A
-	int leftA = *(int *)((char *)data + offset);
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      // cout << "left.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print left.B
-	int leftB = *(int *)((char *)data + offset);
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      int rightB = *(int *)((char *)data + offset);
+      int IrightB = *(int *)((char *)data1 + offset);
+      // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Iright.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.C
-	float leftC = *(float *)((char *)data + offset);
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print right.B
-	int rightB = *(int *)((char *)data + offset);
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
- 
-        // Print right.C
-	float rightC = *(float *)((char *)data + offset);
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.D " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
         
-        // Print right.D
-	int rightD = *(int *)((char *)data + offset);
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
-        
-	// assert(leftB == leftA + 10);
-	// assert(leftC == leftA + 50);
-	// assert(rightB == leftA + 10);
-	// assert(rightC == leftA + 15);
-	// assert(rightD == leftA - 10);
-	i++;
-        memset(data, 0, bufsize);
-	memset(data1,0,bufsize);
+      assert(leftB <= rightB);
+      assert(IleftB <= IrightB);
+
+      i++;
+      memset(data, 0, bufsize);
+      memset(data1,0,bufsize);
     }
-    assert (i == 990);
+    assert( inljoin.getNextTuple(data1) == QE_EOF );
+    assert (i == 510445);
     
     free(data);
     free(data1);
@@ -1871,7 +1869,7 @@ void ourTestCase_05()
     
     Condition cond;
     cond.lhsAttr = "left.B";
-    cond.op= LT_OP;
+    cond.op= GT_OP;
     cond.bRhsIsAttr = true;
     cond.rhsAttr = "right.B";
     
@@ -1895,51 +1893,45 @@ void ourTestCase_05()
     int i = 0;
     while(nljoin.getNextTuple(data) != QE_EOF)
     {
-      inljoin.getNextTuple(data1);
-      assert(memcmp(data,data1,bufsize)==0);
+      if( inljoin.getNextTuple(data1) == QE_EOF ){
+	cout << i << endl;
+	assert(false); 	       
+      }
       
-        int offset = 0;
+      int offset = 0;
+      // cout << "left.A " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+        
+      int leftB = *(int *)((char *)data + offset);
+      int IleftB = *(int *)((char *)data1 + offset);
+      // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Ileft.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.A
-	int leftA = *(int *)((char *)data + offset);
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      // cout << "left.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print left.B
-	int leftB = *(int *)((char *)data + offset);
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      int rightB = *(int *)((char *)data + offset);
+      int IrightB = *(int *)((char *)data1 + offset);
+      // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Iright.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.C
-	float leftC = *(float *)((char *)data + offset);
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print right.B
-	int rightB = *(int *)((char *)data + offset);
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
- 
-        // Print right.C
-	float rightC = *(float *)((char *)data + offset);
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.D " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
         
-        // Print right.D
-	int rightD = *(int *)((char *)data + offset);
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
-        
-	// assert(leftB == leftA + 10);
-	// assert(leftC == leftA + 50);
-	// assert(rightB == leftA + 10);
-	// assert(rightC == leftA + 15);
-	// assert(rightD == leftA - 10);
-	i++;
-        memset(data, 0, bufsize);
-	memset(data1,0,bufsize);
+      assert(leftB > rightB);
+      assert(IleftB > IrightB);
+
+      i++;
+      memset(data, 0, bufsize);
+      memset(data1,0,bufsize);
     }
-    assert (i == 990);
+    assert( inljoin.getNextTuple(data1) == QE_EOF );
+    assert (i == 489555);
     
     free(data);
     free(data1);
@@ -1966,7 +1958,7 @@ void ourTestCase_06()
     
     Condition cond;
     cond.lhsAttr = "left.B";
-    cond.op= LT_OP;
+    cond.op= GE_OP;
     cond.bRhsIsAttr = true;
     cond.rhsAttr = "right.B";
     
@@ -1990,51 +1982,45 @@ void ourTestCase_06()
     int i = 0;
     while(nljoin.getNextTuple(data) != QE_EOF)
     {
-      inljoin.getNextTuple(data1);
-      assert(memcmp(data,data1,bufsize)==0);
+      if( inljoin.getNextTuple(data1) == QE_EOF ){
+	cout << i << endl;
+	assert(false); 	       
+      }
       
-        int offset = 0;
+      int offset = 0;
+      // cout << "left.A " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+        
+      int leftB = *(int *)((char *)data + offset);
+      int IleftB = *(int *)((char *)data1 + offset);
+      // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Ileft.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.A
-	int leftA = *(int *)((char *)data + offset);
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      // cout << "left.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print left.B
-	int leftB = *(int *)((char *)data + offset);
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      int rightB = *(int *)((char *)data + offset);
+      int IrightB = *(int *)((char *)data1 + offset);
+      // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Iright.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.C
-	float leftC = *(float *)((char *)data + offset);
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print right.B
-	int rightB = *(int *)((char *)data + offset);
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
- 
-        // Print right.C
-	float rightC = *(float *)((char *)data + offset);
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.D " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
         
-        // Print right.D
-	int rightD = *(int *)((char *)data + offset);
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
-        
-	// assert(leftB == leftA + 10);
-	// assert(leftC == leftA + 50);
-	// assert(rightB == leftA + 10);
-	// assert(rightC == leftA + 15);
-	// assert(rightD == leftA - 10);
-	i++;
-        memset(data, 0, bufsize);
-	memset(data1,0,bufsize);
+      assert(leftB >= rightB);
+      assert(IleftB >= IrightB);
+
+      i++;
+      memset(data, 0, bufsize);
+      memset(data1,0,bufsize);
     }
-    assert (i == 990);
+    assert( inljoin.getNextTuple(data1) == QE_EOF );
+    assert (i == 490545);
     
     free(data);
     free(data1);
@@ -2061,7 +2047,7 @@ void ourTestCase_07()
     
     Condition cond;
     cond.lhsAttr = "left.B";
-    cond.op= LT_OP;
+    cond.op= NE_OP;
     cond.bRhsIsAttr = true;
     cond.rhsAttr = "right.B";
     
@@ -2085,51 +2071,45 @@ void ourTestCase_07()
     int i = 0;
     while(nljoin.getNextTuple(data) != QE_EOF)
     {
-      inljoin.getNextTuple(data1);
-      assert(memcmp(data,data1,bufsize)==0);
+      if( inljoin.getNextTuple(data1) == QE_EOF ){
+	cout << i << endl;
+	assert(false); 	       
+      }
       
-        int offset = 0;
+      int offset = 0;
+      // cout << "left.A " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+        
+      int leftB = *(int *)((char *)data + offset);
+      int IleftB = *(int *)((char *)data1 + offset);
+      // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Ileft.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.A
-	int leftA = *(int *)((char *)data + offset);
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      // cout << "left.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print left.B
-	int leftB = *(int *)((char *)data + offset);
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      int rightB = *(int *)((char *)data + offset);
+      int IrightB = *(int *)((char *)data1 + offset);
+      // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Iright.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.C
-	float leftC = *(float *)((char *)data + offset);
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print right.B
-	int rightB = *(int *)((char *)data + offset);
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
- 
-        // Print right.C
-	float rightC = *(float *)((char *)data + offset);
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.D " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
         
-        // Print right.D
-	int rightD = *(int *)((char *)data + offset);
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
-        
-	// assert(leftB == leftA + 10);
-	// assert(leftC == leftA + 50);
-	// assert(rightB == leftA + 10);
-	// assert(rightC == leftA + 15);
-	// assert(rightD == leftA - 10);
-	i++;
-        memset(data, 0, bufsize);
-	memset(data1,0,bufsize);
+      assert(leftB != rightB);
+      assert(IleftB != IrightB);
+
+      i++;
+      memset(data, 0, bufsize);
+      memset(data1,0,bufsize);
     }
-    assert (i == 990);
+    assert( inljoin.getNextTuple(data1) == QE_EOF );
+    assert (i == 999010);
     
     free(data);
     free(data1);
@@ -2180,51 +2160,45 @@ void ourTestCase_08()
     int i = 0;
     while(nljoin.getNextTuple(data) != QE_EOF)
     {
-      inljoin.getNextTuple(data1);
-      assert(memcmp(data,data1,bufsize)==0);
+      if( inljoin.getNextTuple(data1) == QE_EOF ){
+	cout << i << endl;
+	assert(false); 	       
+      }
       
-        int offset = 0;
+      int offset = 0;
+      // cout << "left.A " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
+        
+      int leftB = *(int *)((char *)data + offset);
+      int IleftB = *(int *)((char *)data1 + offset);
+      // cout << "left.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Ileft.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.A
-	int leftA = *(int *)((char *)data + offset);
-        cout << "left.A " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      // cout << "left.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print left.B
-	int leftB = *(int *)((char *)data + offset);
-        cout << "left.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
+      int rightB = *(int *)((char *)data + offset);
+      int IrightB = *(int *)((char *)data1 + offset);
+      // cout << "right.B " << *(int *)((char *)data + offset) << endl;
+      // cout << "Iright.B " << *(int *)((char *)data1 + offset) << endl;
+      offset += sizeof(int);
  
-        // Print left.C
-	float leftC = *(float *)((char *)data + offset);
-        cout << "left.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.C " << *(float *)((char *)data + offset) << endl;
+      offset += sizeof(float);
         
-        // Print right.B
-	int rightB = *(int *)((char *)data + offset);
-        cout << "right.B " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
- 
-        // Print right.C
-	float rightC = *(float *)((char *)data + offset);
-        cout << "right.C " << *(float *)((char *)data + offset) << endl;
-        offset += sizeof(float);
+      // cout << "right.D " << *(int *)((char *)data + offset) << endl;
+      offset += sizeof(int);
         
-        // Print right.D
-	int rightD = *(int *)((char *)data + offset);
-        cout << "right.D " << *(int *)((char *)data + offset) << endl;
-        offset += sizeof(int);
-        
-	// assert(leftB == leftA + 10);
-	// assert(leftC == leftA + 50);
-	// assert(rightB == leftA + 10);
-	// assert(rightC == leftA + 15);
-	// assert(rightD == leftA - 10);
-	i++;
-        memset(data, 0, bufsize);
-	memset(data1,0,bufsize);
+      assert(leftB < rightB);
+      assert(IleftB < IrightB);
+
+      i++;
+      memset(data, 0, bufsize);
+      memset(data1,0,bufsize);
     }
-    assert (i == 990);
+    assert( inljoin.getNextTuple(data1) == QE_EOF );
+    assert (i == 1000000);
     
     free(data);
     free(data1);
@@ -2245,6 +2219,11 @@ void ourTests()
     ourTestCase_01(); // Filter Real
     ourTestCase_02(); // Filter VarChar
     ourTestCase_03(); // Test various join operators
+    ourTestCase_04(); // Test various join operators
+    ourTestCase_05(); // Test various join operators
+    ourTestCase_06(); // Test various join operators
+    ourTestCase_07(); // Test various join operators
+    ourTestCase_08(); // Test various join operators
     // Project VarChar
     ourExtraTest_01();
     ourExtraTest_02();
@@ -2277,8 +2256,6 @@ int main()
     createIndexforRightC(rightRIDs);   
    
     // Test Cases
-    ourTestCase_03();
-    return 0;
     testCase_1();
     testCase_2();
     testCase_3();
