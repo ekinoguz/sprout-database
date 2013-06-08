@@ -1203,7 +1203,9 @@ RC Aggregate::AVG(Iterator *input) {
     sum = sum / it->second;
     this->updateResultMap(it->first, sum, false);
   }
-  
+
+  // AVG always returns real
+  aggAttr.type = TypeReal;
   free(data);
   free(val);
   return 0;
@@ -1222,6 +1224,9 @@ RC Aggregate::COUNT(Iterator *input) {
     }
     this->updateResultMap(str, 1, true);
   }
+
+  // COUNT always returns int
+  aggAttr.type = TypeInt;
   free(data);
   return 0;
 }
@@ -1231,7 +1236,6 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
   if (it == results.end()) {
     return QE_EOF;
   }
-
   int offset = 0, length = 0, intVal;
   float floatVal;
   // if we have a group-by attribute, add the attribute name to result
@@ -1266,6 +1270,7 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
     offset += sizeof(int);
   } else {
     floatVal = it->second;
+    cout << floatVal << endl;
     memcpy((char *)data+offset, &(floatVal), sizeof(float));
     offset += sizeof(int);
   }
