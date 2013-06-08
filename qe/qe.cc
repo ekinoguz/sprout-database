@@ -1270,7 +1270,6 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
     offset += sizeof(int);
   } else {
     floatVal = it->second;
-    cout << floatVal << endl;
     memcpy((char *)data+offset, &(floatVal), sizeof(float));
     offset += sizeof(int);
   }
