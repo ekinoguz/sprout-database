@@ -366,7 +366,18 @@ Iterator * CLI::aggregate(Iterator *input) {
     input = tableScan(string(token));
   }
 
-  token = next(); // eat GET
+  token = next();
+
+  // check GROUPBY
+  bool groupby = false;
+  Attribute gAttr;
+  if (string(token) == "GROUPBY") {
+    groupby = true;
+    if (createAttribute(getTableName(input), gAttr) != 0)
+      error(__LINE__);
+
+    token = next(); // eat GET
+  }
 
   string operation = string(next());
 
@@ -377,11 +388,12 @@ Iterator * CLI::aggregate(Iterator *input) {
   if (createAttribute(getTableName(input), aggAttr) != 0)
     error(__LINE__);
 
-  // check GROUPBY
-
   Aggregate *agg;
-
-  agg = new Aggregate(input, aggAttr, op);
+  if (groupby) {
+    agg = new Aggregate(input, aggAttr, gAttr, op);
+  } else {
+    agg = new Aggregate(input, aggAttr, op);
+  }
   return agg;
 }
 

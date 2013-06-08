@@ -909,11 +909,71 @@ void Test20()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  // command = "QUERY NLJOIN employee, ages WHERE Age = Age PAGES(10)";
-  // cout << ">>> " << command << endl;
-  // assert (cli->process(command) == SUCCESS);
+  command = "QUERY AGG (PROJECT employee GET [ * ]) GET COUNT(Height)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
 
   command = ("drop table employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+}
+
+// Aggregate with Groupby
+void Test21()
+{
+  cout << "*********** CLI 21 begins ******************" << endl;
+
+  string command;
+
+  command = "create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table ages Age = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table salary Salary = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load ages ages_90";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load salary salary_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG ages GROUPBY(Explanation) GET AVG(Age)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG ages GROUPBY(Explanation) GET MIN(Age)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG (PROJECT ages GET [ Age, Explanation ]) GROUPBY(Explanation) GET MIN(Age)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "QUERY AGG (FILTER ages WHERE Age > 14) GROUPBY(Explanation) GET MIN(Age)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table salary");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table ages");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
 }
@@ -945,6 +1005,7 @@ int main()
     // TODO Test18(); // NLJoin + Projection
     // TODO Test19(); // NLJoin + Filter + Projection
     Test20(); // Aggregate
+    Test21(); // Aggregate groupby
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
