@@ -800,7 +800,10 @@ RC CLI::addAttribute()
   if (tokenizer == NULL)
     return error ("I expect type for attribute");
 
+  tokenizer = next(); // eat =
+
   tokenizer = next(); // type
+
   if (expect(tokenizer, "int")) {
     attr.type = TypeInt;
     attr.length = 4;
@@ -1127,13 +1130,13 @@ RC CLI::load()
 RC CLI::insertTuple() {
   char * token = next();
   if (!expect(token, "into"))
-    return error("expecting into");
+    return error("expecting into" + __LINE__);
 
   string tableName = next();
 
   token = next(); // tuple
   if (!expect(token, "tuple"))
-    return error("expectin tuple");
+    return error("expectin tuple" + __LINE__);
 
   // get attributes from catalog
   Attribute attr;
@@ -1160,6 +1163,7 @@ RC CLI::insertTuple() {
     attr = attributes[index];
     if (!expect(token, attributes[index].name))
       return error("this table does not have this attribute!");
+    token = next(); // eat =
     token = next();
     if (attr.type == TypeVarChar) {
       string varChar = string(token);

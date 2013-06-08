@@ -23,8 +23,8 @@ void Test01()
   // test drop table
   string command;
 
-  command = "create table ekin name=varchar(40), age=int";
-  cout << ">>> create table ekin name=varchar(40), age=int" << endl;
+  command = "create table ekin name = varchar(40), age = int";
+  cout << command << endl;
   assert (cli->process(command) == SUCCESS);
 
   command = "print columns cli_columns";
@@ -60,7 +60,7 @@ void Test02()
 
   // test create table
   // test load table
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -89,11 +89,11 @@ void Test03()
 {
   string command;
   
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "create table tbl_employeeReal EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employeeReal EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
   
@@ -151,7 +151,7 @@ void Test04()
   string command;
   
   // test add attribute
-  command = "create table tbl_employee EmpName=varchar(100), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(100), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -168,11 +168,11 @@ void Test04()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "add attribute Major=varchar(100) to tbl_employee";
+  command = "add attribute Major = varchar(100) to tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "add attribute Year=int to tbl_employee";
+  command = "add attribute Year = int to tbl_employee";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -211,7 +211,7 @@ void Test05()
 {
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -237,7 +237,7 @@ void Test06()
   string command;
 
   // test forward pointer
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -278,11 +278,11 @@ void Test07()
 
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "create table tbl_employee2 EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee2 EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -388,11 +388,11 @@ void Test08()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "create table tbl_employee2 EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee2 EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -467,11 +467,11 @@ void Test09()
 
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "create table tbl_employee2 EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee2 EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -507,43 +507,43 @@ void Test10()
 
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "create table tbl_employee2 EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee2 EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "insert inato tbl_employee tuple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  command = "insert inato tbl_employee tuple(EmpName = ekin, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) != SUCCESS);
 
-  command = "insert into tbl_employee tauple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee tauple(EmpName = ekin, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) != SUCCESS);
 
-  command = "insert inato tbl_employee (EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  command = "insert inato tbl_employee (EmpName = ekin, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) != SUCCESS);
 
-  command = "insert tbl_employee tuple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  command = "insert tbl_employee tuple(EmpName = ekin, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) != SUCCESS);
 
-  command = "insert into tbl_employee tuple(EmpName=ekin, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee tuple(EmpName = ekin, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "insert into tbl_employee2 tuple(EmpName=sky, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee2 tuple(EmpName = sky, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "insert into tbl_employee2 tuple(EmpName=cesar, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee2 tuple(EmpName = cesar, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "insert into tbl_employee2 tuple(EmpName=naveen, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee2 tuple(EmpName = naveen, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -568,7 +568,7 @@ void Test11()
 
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -588,15 +588,15 @@ void Test11()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "insert into tbl_employee tuple(EmpName=sky, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee tuple(EmpName = sky, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "insert into tbl_employee tuple(EmpName=cesar, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee tuple(EmpName = cesar, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "insert into tbl_employee tuple(EmpName=naveen, Age=22, Height=6.1, Salary=13291)";
+  command = "insert into tbl_employee tuple(EmpName = naveen, Age = 22, Height = 6.1, Salary = 13291)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -617,7 +617,7 @@ void Test12()
 
   string command;
 
-  command = "create table tbl_employee EmpName=varchar(30), Age=int, Height=real, Salary=int";
+  command = "create table tbl_employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -985,18 +985,18 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    // Test01();
-    // Test02();
-    // Test03();
-    // Test04();
-    // Test05();
-    // Test06();
-    // Test07();
-    // Test08();
-    // Test09();
-    // Test10();
-    // Test11();
-    // Test12();
+    Test01();
+    Test02();
+    Test03();
+    Test04();
+    Test05();
+    Test06();
+    Test07();
+    Test08();
+    Test09();
+    Test10();
+    Test11();
+    Test12();
     Test13(); // Projection
     Test14(); // Filter
     Test15(); // Projection + Filter
