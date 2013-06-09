@@ -601,187 +601,82 @@ RC INLJoin::getNextTuple(void *data)
   }
 
   if (this->right_has_more == true)
-    {
-      void *left_key;
-      void *right_key;
-
-      if (this->condition.op == NE_OP)
+    {      
+      void *right_tuple = malloc(this->max_right_record_size);
+      memset(right_tuple, 0, this->max_right_record_size);
+      if (this->rightIn->getNextTuple(right_tuple) == 0)
 	{
-	  // Get the key of the left tuple
-	  vector<Attribute> left_attrs;
-	  this->leftIn->getAttributes(left_attrs);
-	  string attribute = this->condition.lhsAttr;
-	  
-	  bool left_found = false;
-	  unsigned left_offset = 0;
-	  unsigned left_key_size;
-	  TupleInfo left_tuple_info = this->tuples_vector[this->tuples_vector_index];
-	  for (uint i = 0; i < left_attrs.size(); i++)
-	    {
-	      if (left_attrs[i].name == attribute)
-		{
-		  if (left_attrs[i].type == TypeVarChar)
-		    {
-		      int attribute_size = 0;
-		      memcpy(&attribute_size, (char *)left_tuple_info.tuple + left_offset, sizeof(attribute_size));
-		      left_offset += sizeof(attribute_size);
-		      
-		      left_key_size = attribute_size;
-		      
-		      left_key = malloc(attribute_size);
-		      memset(left_key, 0, attribute_size);
-		      memcpy(left_key, (char *)left_tuple_info.tuple + left_offset, attribute_size);
-		      
-		      left_offset += attribute_size;
-		    }
-		  else
-		    {
-		      left_key_size = left_attrs[i].length;
-		      
-		      left_key = malloc(left_attrs[i].length);
-		      memset(left_key, 0, left_attrs[i].length);
-		      memcpy(left_key, (char *)left_tuple_info.tuple + left_offset, left_attrs[i].length);
-		      
-		      left_offset += left_attrs[i].length;
-		    }
-		  
-		  left_found = true;
-		}
-	      else
-		{
-		  if (left_attrs[i].type == TypeVarChar)
-		    {
-		      int attribute_size = 0;
-		      memcpy(&attribute_size, (char *)left_tuple_info.tuple + left_offset, sizeof(attribute_size));
-		      left_offset += sizeof(attribute_size) + attribute_size;
-		    }
-		  else
-		    {
-		      left_offset += left_attrs[i].length;
-		    }	  
-		}
-	    }
-	  
-	  void *right_tuple = malloc(this->max_right_record_size);
-	  memset(right_tuple, 0, this->max_right_record_size);
-	  while(true)
-	    {
-	      if (this->rightIn->getNextTuple(right_tuple) == 0)
-		{
-		  unsigned right_tuple_size = this->getTupleSize(this->rightIn, right_tuple);
+	  unsigned right_tuple_size = this->getTupleSize(this->rightIn, right_tuple);
+	  TupleInfo tuple_info = this->tuples_vector[this->tuples_vector_index];
+	  memcpy(data, tuple_info.tuple, tuple_info.size);
+	  memcpy((char *)data + tuple_info.size, right_tuple, right_tuple_size);
 
-		  // Get the key of the right tuple
-		  vector<Attribute> right_attrs;
-		  this->rightIn->getAttributes(right_attrs);
-		  string attribute = this->condition.rhsAttr;
-		  
-		  bool right_found = false;
-		  unsigned right_offset = 0;
-		  unsigned right_key_size;
-		  TupleInfo right_tuple_info;
-		  right_tuple_info.tuple = right_tuple;
-		  right_tuple_info.size = right_tuple_size;
-		  for (uint i = 0; i < right_attrs.size(); i++)
-		    {
-		      if (right_attrs[i].name == attribute)
-			{
-			  if (right_attrs[i].type == TypeVarChar)
-			    {
-			      int attribute_size = 0;
-			      memcpy(&attribute_size, (char *)right_tuple_info.tuple + right_offset, sizeof(attribute_size));
-			      right_offset += sizeof(attribute_size);
-			      
-			      right_key_size = attribute_size;
-			      
-			      right_key = malloc(attribute_size);
-			      memset(right_key, 0, attribute_size);
-			      memcpy(right_key, (char *)right_tuple_info.tuple + right_offset, attribute_size);
-			      
-			      right_offset += attribute_size;
-			    }
-			  else
-			    {
-			      right_key_size = right_attrs[i].length;
-			      
-			      right_key = malloc(right_attrs[i].length);
-			      memset(right_key, 0, right_attrs[i].length);
-			      memcpy(right_key, (char *)right_tuple_info.tuple + right_offset, right_attrs[i].length);
-			      
-			      right_offset += right_attrs[i].length;
-			    }
-			  
-			  right_found = true;
-			}
-		      else
-			{
-			  if (right_attrs[i].type == TypeVarChar)
-			    {
-			      int attribute_size = 0;
-			      memcpy(&attribute_size, (char *)right_tuple_info.tuple + right_offset, sizeof(attribute_size));
-			      right_offset += sizeof(attribute_size) + attribute_size;
-			    }
-			  else
-			    {
-			      right_offset += right_attrs[i].length;
-			    }	  
-			}
-		    }
-		  
-		  if (left_tuple_info.size == right_tuple_info.size)
-		    {
-		      if (memcmp(left_tuple_info.tuple, right_tuple_info.tuple, right_tuple_info.size) == 0)
-			{
-			  memcpy(data, left_tuple_info.tuple, left_tuple_info.size);
-			  memcpy((char *)data + left_tuple_info.size, right_tuple, right_tuple_size);
-			  free(right_tuple);
-			  free(key);
-			  return 0;
-			}
-		    }
-		}
-	      else
-		{
-		  free(right_tuple);
 
-		  if (this->left_has_more == true)
-		    {
-		      this->right_has_more = false;
-		      free(key);
-		      return this->getNextTuple(data);
-		    }
-		}
+	  // Make sure that this is indded a valid tuple
+	  if (this->condition.op == NE_OP)
+	    {
+	      bool ne = true;
+	      void *left_key;
+	      void *right_key;
+	      void * left_tuple = tuple_info.tuple;
+	      vector<Attribute> l_attrs;
+	      vector<Attribute> r_attrs;
+
+	      int Loffset, Roffset;
+	      int Lindex, Rindex;
+
+	      leftIn->getAttributes(l_attrs);
+	      rightIn->getAttributes(r_attrs);
+
+	      if( getAttributeOffsetAndIndex(l_attrs, condition.lhsAttr, left_tuple, Loffset, Lindex) == -1 )
+		return error(__LINE__,-3);
+	      if( getAttributeOffsetAndIndex(r_attrs, condition.rhsAttr, right_tuple, Roffset, Rindex) == -1 )
+		return error(__LINE__,-3);
+
+	      left_key  = (char *) left_tuple + Loffset;
+	      right_key = (char *)right_tuple + Roffset;
+
+	    
+	      int l_length = l_attrs[Lindex].length;
+	      int r_length = r_attrs[Rindex].length;
+	      if(l_attrs[Lindex].type == TypeVarChar){
+		l_length = *(int *)left_key + 4;
+		r_length = *(int *)right_key + 4;
+	      }
+
+	      ne = (l_length == r_length && memcmp(right_key,left_key,l_length) == 0);
+
+	      free(right_tuple);
+	      free(key);
+
+	      if(ne)
+		return this->getNextTuple(data);
+	      else
+		return 0;
+	      
 	    }
+
+
+
+	  free(right_tuple);
+	  free(key);
+	  return 0;
 	}
       else
 	{
-	  void *right_tuple = malloc(this->max_right_record_size);
-	  memset(right_tuple, 0, this->max_right_record_size);
-	  if (this->rightIn->getNextTuple(right_tuple) == 0)
-	    {
-	      unsigned right_tuple_size = this->getTupleSize(this->rightIn, right_tuple);
-	      TupleInfo tuple_info = this->tuples_vector[this->tuples_vector_index];
-	      memcpy(data, tuple_info.tuple, tuple_info.size);
-	      memcpy((char *)data + tuple_info.size, right_tuple, right_tuple_size);
-	      free(right_tuple);
-	      free(key);
-	      return 0;
-	    }
-	  else
-	    {
-	      this->tuples_vector_index++;
-	      free(right_tuple);
+	  this->tuples_vector_index++;
+	  free(right_tuple);
 	      
-	      if (this->left_has_more == true)
-		{
-		  free(key);
-		  this->right_has_more = false;
-		  return this->getNextTuple(data);
-		}
-	      // else
-	      // 	{
-	      // 	  cout << "We probably shouldn't be seeing this" << endl;
-	      // 	}
+	  if (this->left_has_more == true)
+	    {
+	      free(key);
+	      this->right_has_more = false;
+	      return this->getNextTuple(data);
 	    }
+	  // else
+	  // 	{
+	  // 	  cout << "We probably shouldn't be seeing this" << endl;
+	  // 	}
 	}
     }
   else
@@ -906,9 +801,54 @@ RC INLJoin::getNextTuple(void *data)
 	  unsigned right_tuple_size = this->getTupleSize(this->rightIn, right_tuple);
 	  memcpy(data, tuple_info.tuple, tuple_info.size);
 	  memcpy((char *)data + tuple_info.size, right_tuple, right_tuple_size);
-	  free(right_tuple);
-	 
-	  break;
+	  
+	  // Make sure that this is indded a valid tuple
+	  if (this->condition.op == NE_OP)
+	    {
+	      bool ne = true;
+	      void *left_key;
+	      void *right_key;
+	      void * left_tuple = tuple_info.tuple;
+	      vector<Attribute> l_attrs;
+	      vector<Attribute> r_attrs;
+
+	      int Loffset, Roffset;
+	      int Lindex, Rindex;
+
+	      leftIn->getAttributes(l_attrs);
+	      rightIn->getAttributes(r_attrs);
+
+	      if( getAttributeOffsetAndIndex(l_attrs, condition.lhsAttr, left_tuple, Loffset, Lindex) == -1 )
+		return error(__LINE__,-3);
+	      if( getAttributeOffsetAndIndex(r_attrs, condition.rhsAttr, right_tuple, Roffset, Rindex) == -1 )
+		return error(__LINE__,-3);
+
+	      left_key  = (char *) left_tuple + Loffset;
+	      right_key = (char *)right_tuple + Roffset;
+
+	    
+	      int l_length = l_attrs[Lindex].length;
+	      int r_length = r_attrs[Rindex].length;
+	      if(l_attrs[Lindex].type == TypeVarChar){
+		l_length = *(int *)left_key + 4;
+		r_length = *(int *)right_key + 4;
+	      }
+
+	      ne = (l_length == r_length && memcmp(right_key,left_key,l_length) == 0);
+
+	      free(right_tuple);
+	      free(key);
+
+	      if(ne)
+		return this->getNextTuple(data);
+	      else
+		return 0;	      
+	    }
+
+	  	    
+	  free(right_tuple);	 
+	  free(key);
+	  return 0;
 	}
       else
 	{
@@ -920,8 +860,7 @@ RC INLJoin::getNextTuple(void *data)
 	}
     }
 
-  free(key);
-  return 0;
+  return error(__LINE__, -10);
 }
 
 // For attribute in vector<Attribute>, name it as rel.attr
