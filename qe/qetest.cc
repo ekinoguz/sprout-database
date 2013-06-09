@@ -2206,12 +2206,12 @@ void ourTests()
 
     ourTestCase_01(); // Filter Real
     ourTestCase_02(); // Filter VarChar
-    // ourTestCase_03(); // Test various join operators
-    // ourTestCase_04(); // Test various join operators
-    // ourTestCase_05(); // Test various join operators
-    // ourTestCase_06(); // Test various join operators
-    // ourTestCase_07(); // Test various join operators
-    // ourTestCase_08(); // Test various join operators
+    ourTestCase_03(); // Test various join operators
+    ourTestCase_04(); // Test various join operators
+    ourTestCase_05(); // Test various join operators
+    ourTestCase_06(); // Test various join operators
+    ourTestCase_07(); // Test various join operators
+    ourTestCase_08(); // Test various join operators
     // Project VarChar
     ourExtraTest_01();
     ourExtraTest_02();
