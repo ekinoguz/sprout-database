@@ -1,4 +1,3 @@
-
 #ifndef _cli_h_
 #define _cli_h_
 
@@ -91,7 +90,8 @@ private:
 
   // helper functions
   char * next();
-  bool expect(char * token, const string expected);
+  bool expect(const string token, const string expected);
+  bool expect(const char * token, const string expected);
   string toLower(string input);
   bool checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns=true);
   RC error(const string errorMessage);

@@ -590,27 +590,20 @@ Iterator * CLI::createBaseScanner(const string token) {
 }
 
 bool CLI::isIterator(const string token, int &code) {
-  if (token == "FILTER") {
+  if (expect(token, "FILTER"))
     code = FILTER;
-    return true;
-  }
-  else if (token == "PROJECT") {
+  else if (expect(token, "PROJECT"))
     code = PROJECT;
-    return true; 
-  }
-  else if (token == "NLJOIN") {
+  else if (expect(token, "NLJOIN"))
     code = NL;
-    return true;
-  }
-  else if (token == "INLJOIN") {
+  else if (expect(token, "INLJOIN"))
     code = INL;
-    return true;
-  }
-  else if (token == "AGG") {
+  else if (expect(token, "AGG"))
     code = AGG;
-    return true;
-  }
-  return false;
+  else
+    return false;
+
+  return true;
 }
 
 RC CLI::run(Iterator *it) {
@@ -1810,8 +1803,12 @@ char * CLI::next()
   return strtok (NULL, DELIMITERS);
 }
 
+bool CLI::expect(const string token, const string expected)
+{
+  return expect(token.c_str(), expected);
+}
 // return 0 if tokenizer is equal to expected string
-bool CLI::expect(char * token, const string expected)
+bool CLI::expect(const char * token, const string expected)
 {
   if (token == NULL) {
     error ("tokenizer is null, expecting: " + expected);
