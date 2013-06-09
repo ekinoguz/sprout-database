@@ -664,6 +664,8 @@ void Test23()
   exec("SELECT AGG NLJOIN employee, ages where Age = Age pages(10) GET SUM(Salary)");
   exec("SELECT AGG NLJOIN employee, ages where Age = Age pages(10) GET SUM(ages.Age)");
   exec("SELECT AGG NLJOIN employee, ages where Age = Age pages(10) GROUPBY(ages.Explanation) GET SUM(ages.Age)");
+
+  exec("SELECT PROJECT INLJOIN employee, ages where Age = Age PAGES(10) GET [ ages.Age ]");
   
   exec(("drop table employee"));
 
