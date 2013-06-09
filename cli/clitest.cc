@@ -15,6 +15,10 @@ using namespace std;
 
 CLI *cli;
 
+void exec(string command){
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+}
 
 void Test01()
 {
@@ -1133,6 +1137,36 @@ void Test23()
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
 }
+
+void Test24() {
+  cout << "*********** CLI 24 begins ******************" << endl;
+   
+  exec("create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int");
+  exec("create table ages Age = int, Explanation = varchar(50)");
+  exec("create table salary Salary = int, Explanation = varchar(50)");
+
+  exec("load employee employee_5");
+  exec("load ages ages_90");
+  exec("load salary salary_5");
+
+  exec("create index Age on employee");
+  exec("create index Age on ages");
+  exec("create index Salary on employee");
+  exec("create index Salary on salary");
+
+  exec("print cli_indexes");
+
+  exec("SELECT INLJOIN employee, ages WHERE Age = Age PAGES(10)");
+  exec("SELECT INLJOIN (INLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)");
+  exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)");
+  exec("SELECT INLJOIN (NLJOIN (FILTER employee WHERE Salary > 150000), salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)");
+  exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary < Salary PAGES(10)), salary WHERE Salary = Salary PAGES(10)");
+  exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary < Salary PAGES(10)), salary WHERE salary.Salary = Salary PAGES(10)");
+  exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary < Salary PAGES(10)), salary WHERE employee.Salary = Salary PAGES(10)");
+  exec("drop table employee");
+  exec("drop table ages");
+}
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -1140,6 +1174,9 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
+    Test24();
+    return 0;
+    
     Test01();
     Test02();
     Test03();
@@ -1163,6 +1200,7 @@ int main()
     Test21(); // Aggregate groupby
     Test22(); // INLJoin
     Test23(); // Index Scan
+    Test24();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
