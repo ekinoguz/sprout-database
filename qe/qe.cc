@@ -437,6 +437,10 @@ RC NLJoin::getNextTuple(void *data)
 	    case NO_OP:
 	      found = true;
 	      break;
+
+	    default:
+	      error(__LINE__, -10);
+	      break;
 	    } // end switch
 	    
 
@@ -687,7 +691,7 @@ RC INLJoin::getNextTuple(void *data)
 
   while(true)
     {
-      if (this->tuples_vector_index == this->tuples_vector.size())
+      if (this->tuples_vector_index == (int)this->tuples_vector.size())
 	{
 	  if (this->left_has_more == true)
 	    {
@@ -706,9 +710,7 @@ RC INLJoin::getNextTuple(void *data)
       this->leftIn->getAttributes(attrs);
       string attribute = this->condition.lhsAttr;
 
-      bool found = false;
       unsigned offset = 0;
-      unsigned key_size;
       TupleInfo tuple_info = this->tuples_vector[this->tuples_vector_index];
       for (uint i = 0; i < attrs.size(); i++)
 	{
@@ -720,8 +722,6 @@ RC INLJoin::getNextTuple(void *data)
 		  memcpy(&attribute_size, (char *)tuple_info.tuple + offset, sizeof(attribute_size));
 		  offset += sizeof(attribute_size);
 		  
-		  key_size = attribute_size;
-		  
 		  // key = malloc(attribute_size);
 		  memset(key, 0, attribute_size);
 		  memcpy(key, (char *)tuple_info.tuple + offset, attribute_size);
@@ -730,16 +730,12 @@ RC INLJoin::getNextTuple(void *data)
 		}
 	      else
 		{
-		  key_size = attrs[i].length;
-		  
 		  // key = malloc(attrs[i].length);
 		  memset(key, 0, attrs[i].length);
 		  memcpy(key, (char *)tuple_info.tuple + offset, attrs[i].length);
 		  
 		  offset += attrs[i].length;
 		}
-	      
-	      found = true;
 	    }
 	  else
 	    {
@@ -1251,7 +1247,6 @@ Filter::~Filter() {
 }
 
 RC Filter::getNextTuple(void *filteredData) {
-  RC rc;
   void *data = malloc(PF_PAGE_SIZE);
   void *lvalue = malloc(PF_PAGE_SIZE);
   void *value = malloc(PF_PAGE_SIZE);
