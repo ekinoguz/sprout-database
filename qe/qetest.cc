@@ -2160,8 +2160,8 @@ void ourTestCase_08()
       // cout << "left.A " << *(int *)((char *)data + offset) << endl;
       offset += sizeof(int);
         
-      int leftB = *(int *)((char *)data + offset);
-      int IleftB = *(int *)((char *)data1 + offset);
+      // int leftB = *(int *)((char *)data + offset);
+      // int IleftB = *(int *)((char *)data1 + offset);
       // cout << "left.B " << *(int *)((char *)data + offset) << endl;
       // cout << "Ileft.B " << *(int *)((char *)data1 + offset) << endl;
       offset += sizeof(int);
@@ -2169,8 +2169,8 @@ void ourTestCase_08()
       // cout << "left.C " << *(float *)((char *)data + offset) << endl;
       offset += sizeof(float);
         
-      int rightB = *(int *)((char *)data + offset);
-      int IrightB = *(int *)((char *)data1 + offset);
+      // int rightB = *(int *)((char *)data + offset);
+      // int IrightB = *(int *)((char *)data1 + offset);
       // cout << "right.B " << *(int *)((char *)data + offset) << endl;
       // cout << "Iright.B " << *(int *)((char *)data1 + offset) << endl;
       offset += sizeof(int);
