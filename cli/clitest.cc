@@ -590,45 +590,30 @@ void Test22()
   string command;
 
   exec("create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int");
-
   exec("create table ages Age = int, Explanation = varchar(50)");
-
   exec("create table salary Salary = int, Explanation = varchar(50)");
 
   exec("load employee employee_5");
-
   exec("load ages ages_90");
-
   exec("load salary salary_5");
 
   exec("create index Age on employee");
-
   exec("create index Age on ages");
-
   exec("create index Salary on employee");
-
   exec("create index Salary on salary");
 
   exec("print cli_indexes");
 
   exec("SELECT INLJOIN employee, ages WHERE Age = Age PAGES(10)");
-
   exec("SELECT INLJOIN (INLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)");
-
   exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)");
-
   exec("SELECT INLJOIN (NLJOIN (FILTER employee WHERE Salary > 150000), salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)");
-
   exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary < Salary PAGES(10)), salary WHERE Salary = Salary PAGES(10)");
-
   exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary < Salary PAGES(10)), salary WHERE salary.Salary = Salary PAGES(10)");
-
   exec("SELECT INLJOIN (NLJOIN employee, salary WHERE Salary < Salary PAGES(10)), salary WHERE employee.Salary = Salary PAGES(10)");
 
   exec(("drop table employee"));
-
   exec(("drop table ages"));
-
   exec(("drop table salary"));
 }
 
@@ -640,21 +625,20 @@ void Test23()
   string command;
 
   exec("create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int");
-
   exec("create table ages Age = int, Explanation = varchar(50)");
-
   exec("create table salary Salary = int, Explanation = varchar(50)");
 
   exec("load employee employee_5");
-
   exec("load ages ages_90");
-
   exec("load salary salary_5");
 
+  exec("create index Age on employee");
+  exec("create index Age on ages");
   exec("create index Salary on employee");
+  exec("create index Salary on salary");
+
 
   exec("SELECT PROJECT IS employee (Salary > 150000) GET [ * ]");
-
   exec("SELECT PROJECT IS employee (Salary < 150000) GET [ * ]");
 
   exec("SELECT FILTER employee Where Salary > 150000");
@@ -668,9 +652,7 @@ void Test23()
   exec("SELECT PROJECT INLJOIN employee, ages where Age = Age PAGES(10) GET [ ages.Age ]");
   
   exec(("drop table employee"));
-
   exec(("drop table ages"));
-
   exec(("drop table salary"));
 }
 
