@@ -294,7 +294,7 @@ RC CLI::process(const string input)
     ////////////////////////////////////////////
     // select...
     ////////////////////////////////////////////
-    else if (expect(tokenizer, "QUERY")) {
+    else if (expect(tokenizer, "SELECT")) {
       Iterator *it = NULL;
       code = run(query(it));
       cout << endl;
@@ -346,12 +346,51 @@ Iterator * CLI::query(Iterator *previous, int code)
       case NL:
         it = nestedloopjoin(previous);
         break;
+
+      case INL:
+        it = indexnestedloopjoin(previous);
+        break;
+
       case -1:
         error("dude, be carefuly with what you are writing as a query");
         break;
     }
   }
   return it;
+}
+
+Iterator * CLI::indexnestedloopjoin(Iterator *input) {
+  char *token = next();
+  int code = -2;
+  if (isIterator(string(token), code)){
+    input = query(input, code);
+  }
+
+  if (input == NULL) {
+    input = tableScan(string(token));
+  }
+
+  // get right table
+  token = next();
+  string rightTableName = string(token);
+  token = next(); // eat WHERE
+
+  // parse the join condition
+  Condition cond;
+  if (createCondition(getTableName(input), cond, true, rightTableName) != 0)
+    error(__LINE__);
+
+  IX_IndexHandle rightHandle;
+  ixManager->OpenIndex(rightTableName, getAttribute(cond.rhsAttr), rightHandle);
+  IndexScan *right = new IndexScan(*rm, rightHandle, rightTableName);
+  
+  token = next(); // eat PAGES
+  token = next(); // get page number
+
+  // Create Join 
+  INLJoin *join = new INLJoin(input, right, cond, (unsigned) atoi(string(token).c_str()));
+
+  return join;
 }
 
 // Create Aggregate
@@ -665,6 +704,13 @@ string CLI::getTableName(Iterator *it) {
   return attrs[0].name.substr(0, loc);
 }
 
+// input is like tableName.attributeName
+// returns attributeName
+string CLI::getAttribute(const string input) {
+  unsigned loc = input.find(".", 0);
+  return input.substr(loc+1, input.size()-loc);
+}
+
 ///////////////////////////////////
 ///////////////////////////////////
 ///////////////////////////////////
@@ -785,9 +831,30 @@ RC CLI::createIndex()
   if (ixManager->CreateIndex(tableName, columnName) != 0)
     return error("cannot create index, ixManager error");
 
+  if (ixManager->OpenIndex(tableName, columnName, ixHandle) != 0)
+    return error("cannot open the index");
+
   // add index to cli_indexes table
   if (this->addIndexToCatalog(tableName, columnName) != 0)
     return error("error in adding index to cli_indexes table");
+
+  // Scann the whole tableName file and project the attributeName only
+  // For each record found insert that record in indexHandle
+  // Check insert indexHandle for further details
+  vector<string> attributeNames;
+  attributeNames.push_back(columnName);
+  RM_ScanIterator rm_ScanIterator;
+  if (rm->scan(tableName, "", NO_OP, NULL, attributeNames, rm_ScanIterator) != 0)
+    return error(__LINE__);
+
+  void* data = malloc(PF_PAGE_SIZE);
+  while (rm_ScanIterator.getNextTuple(rid, data) != RM_EOF) {
+    if (ixHandle.InsertEntry(data, rid) != 0) {
+        free(data);
+        return error(__LINE__);
+    }
+  }
+  free(data);
 
   return 0;
 }
@@ -1291,6 +1358,7 @@ RC CLI::printIndex() {
   outputBuffer.push_back("PageNum");
   outputBuffer.push_back("SlotNum");
   while (ixScan.GetNextEntry(rid) == 0) {
+    cout << "HERE" << endl;
     outputBuffer.push_back(to_string(rid.pageNum));
     outputBuffer.push_back(to_string(rid.slotNum));
   }

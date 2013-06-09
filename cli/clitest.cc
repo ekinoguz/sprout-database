@@ -658,23 +658,23 @@ void Test13()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT tbl_employee GET [ * ]";
+  command = "SELECT PROJECT tbl_employee GET [ * ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (PROJECT tbl_employee GET [ * ]) GET [ EmpName ]";
+  command = "SELECT PROJECT (PROJECT tbl_employee GET [ * ]) GET [ EmpName ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (PROJECT tbl_employee GET [ EmpName, Age ]) GET [ Age ]";
+  command = "SELECT PROJECT (PROJECT tbl_employee GET [ EmpName, Age ]) GET [ Age ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (PROJECT (PROJECT tbl_employee GET [ * ]) GET [ EmpName, Age ]) GET [ Age ]";
+  command = "SELECT PROJECT (PROJECT (PROJECT tbl_employee GET [ * ]) GET [ EmpName, Age ]) GET [ Age ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT tbl_employee GET [ EmpName, Age ]";
+  command = "SELECT PROJECT tbl_employee GET [ EmpName, Age ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -703,47 +703,47 @@ void Test14()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Age = 45";
+  command = "SELECT FILTER tbl_employee WHERE Age = 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Age < 45";
+  command = "SELECT FILTER tbl_employee WHERE Age < 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Age > 45";
+  command = "SELECT FILTER tbl_employee WHERE Age > 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Age <= 45";
+  command = "SELECT FILTER tbl_employee WHERE Age <= 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Age >= 45";
+  command = "SELECT FILTER tbl_employee WHERE Age >= 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Age != 45";
+  command = "SELECT FILTER tbl_employee WHERE Age != 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Height < 6.3";
+  command = "SELECT FILTER tbl_employee WHERE Height < 6.3";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE EmpName < L";
+  command = "SELECT FILTER tbl_employee WHERE EmpName < L";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER (FILTER tbl_employee WHERE  Age < 67) WHERE EmpName < L";
+  command = "SELECT FILTER (FILTER tbl_employee WHERE  Age < 67) WHERE EmpName < L";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER (FILTER tbl_employee WHERE  Age <= 67) WHERE Height >= 6.4";
+  command = "SELECT FILTER (FILTER tbl_employee WHERE  Age <= 67) WHERE Height >= 6.4";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER (FILTER (FILTER tbl_employee WHERE EmpName > Ap) WHERE  Age <= 67) WHERE Height >= 6.4";
+  command = "SELECT FILTER (FILTER (FILTER tbl_employee WHERE EmpName > Ap) WHERE  Age <= 67) WHERE Height >= 6.4";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -771,35 +771,35 @@ void Test15()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER tbl_employee WHERE Age != 45";
+  command = "SELECT FILTER tbl_employee WHERE Age != 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ Age ]";
+  command = "SELECT PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ Age ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ EmpName, Age ]";
+  command = "SELECT PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ EmpName, Age ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ EmpName, Height ]";
+  command = "SELECT PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ EmpName, Height ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ * ]";
+  command = "SELECT PROJECT (FILTER tbl_employee WHERE Age != 45) GET [ * ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age != 45";
+  command = "SELECT FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age != 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age >= 45";
+  command = "SELECT FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age >= 45";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY PROJECT (FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age >= 45) GET [ EmpName ]";
+  command = "SELECT PROJECT (FILTER (PROJECT tbl_employee GET [ EmpName, Age ]) WHERE Age >= 45) GET [ EmpName ]";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -840,15 +840,15 @@ void Test16()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY NLJOIN employee, ages WHERE Age = Age PAGES(10)";
+  command = "SELECT NLJOIN employee, ages WHERE Age = Age PAGES(10)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY NLJOIN (NLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
+  command = "SELECT NLJOIN (NLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY NLJOIN (NLJOIN (NLJOIN employee, employee WHERE EmpName = EmpName PAGES(10)), salary) WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
+  command = "SELECT NLJOIN (NLJOIN (NLJOIN employee, employee WHERE EmpName = EmpName PAGES(10)), salary) WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -885,31 +885,31 @@ void Test20()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG employee GET MAX(Height)";
+  command = "SELECT AGG employee GET MAX(Height)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG employee GET MIN(Salary)";
+  command = "SELECT AGG employee GET MIN(Salary)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG (PROJECT employee GET [ * ]) GET MAX(Salary)";
+  command = "SELECT AGG (PROJECT employee GET [ * ]) GET MAX(Salary)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG (PROJECT employee GET [ Salary ]) GET SUM(Salary)";
+  command = "SELECT AGG (PROJECT employee GET [ Salary ]) GET SUM(Salary)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG (PROJECT employee GET [ Salary ]) GET COUNT(Salary)";
+  command = "SELECT AGG (PROJECT employee GET [ Salary ]) GET COUNT(Salary)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG (PROJECT employee GET [ Salary ]) GET AVG(Salary)";
+  command = "SELECT AGG (PROJECT employee GET [ Salary ]) GET AVG(Salary)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG (PROJECT employee GET [ * ]) GET COUNT(Height)";
+  command = "SELECT AGG (PROJECT employee GET [ * ]) GET COUNT(Height)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -949,19 +949,19 @@ void Test21()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG ages GROUPBY(Explanation) GET AVG(Age)";
+  command = "SELECT AGG ages GROUPBY(Explanation) GET AVG(Age)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG ages GROUPBY(Explanation) GET MIN(Age)";
+  command = "SELECT AGG ages GROUPBY(Explanation) GET MIN(Age)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG (PROJECT ages GET [ Age, Explanation ]) GROUPBY(Explanation) GET MIN(Age)";
+  command = "SELECT AGG (PROJECT ages GET [ Age, Explanation ]) GROUPBY(Explanation) GET MIN(Age)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "QUERY AGG (FILTER ages WHERE Age > 14) GROUPBY(Explanation) GET MIN(Age)";
+  command = "SELECT AGG (FILTER ages WHERE Age > 14) GROUPBY(Explanation) GET MIN(Age)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
@@ -970,6 +970,66 @@ void Test21()
   assert (cli->process(command) == SUCCESS);
 
   command = ("drop table salary");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table ages");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+}
+
+// INLJoin
+void Test22()
+{
+  cout << "*********** CLI 22 begins ******************" << endl;
+
+  string command;
+
+  command = "create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table ages Age = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table salary Salary = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load ages ages_90";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load salary salary_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Age on employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Age on ages";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "print cli_indexes";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT INLJOIN employee, ages WHERE Age = Age PAGES(10)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT NLJOIN employee, ages WHERE Age = Age PAGES(10)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table employee");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
 
@@ -1006,6 +1066,7 @@ int main()
     // TODO Test19(); // NLJoin + Filter + Projection
     Test20(); // Aggregate
     Test21(); // Aggregate groupby
+    Test22(); // INLJoin
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

@@ -64,8 +64,10 @@ private:
   Iterator * projection(Iterator *input);
   Iterator * filter(Iterator *input);
   Iterator * nestedloopjoin(Iterator *input);
+  Iterator * indexnestedloopjoin(Iterator *input);
   Iterator * aggregate(Iterator *input);
 
+  // run the query
   RC run(Iterator *);
   
   RC createProjectAttributes(const string tableName, vector<Attribute> &attrs);
@@ -76,6 +78,7 @@ private:
   void addTableNameToAttrs(const string tableName, vector<string> &attrs);
   bool isIterator(const string token, int &code);
   string getTableName(Iterator *it);
+  string getAttribute(const string input);
 
   // cli catalog functions
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
