@@ -1283,7 +1283,7 @@ RC CLI::insertTuple() {
   token = next();
   while (token != NULL) {
     attr = attributes[index];
-    if (!expect(token, attributes[index].name))
+    if (attributes[index].name.compare(string(token)) != 0)
       return error("this table does not have this attribute!");
     token = next(); // eat =
     token = next();
@@ -1817,7 +1817,14 @@ bool CLI::expect(char * token, const string expected)
     error ("tokenizer is null, expecting: " + expected);
     return -1;
   }
-  return expected.compare(string(token)) == 0;
+  string s1 = toLower(string(token));
+  string s2 = toLower(expected);
+  return s1.compare(s2) == 0;
+}
+
+string CLI::toLower(string data) {
+  std::transform(data.begin(), data.end(), data.begin(), ::tolower);
+  return data;
 }
 
 RC CLI::error(const string errorMessage)

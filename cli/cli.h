@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iomanip>
 #include <cmath>
+#include <algorithm>
 
 #include "../shared.h"
 #include "../pf/pf.h"
@@ -91,6 +92,7 @@ private:
   // helper functions
   char * next();
   bool expect(char * token, const string expected);
+  string toLower(string input);
   bool checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns=true);
   RC error(const string errorMessage);
   RC error(uint errorCode);
