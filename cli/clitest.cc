@@ -1064,6 +1064,10 @@ void Test22()
   command = ("drop table ages");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table salary");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
 }
 
 // IndexScan
@@ -1117,6 +1121,17 @@ void Test23()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
+  command = ("drop table employee");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table ages");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
+
+  command = ("drop table salary");
+  cout << ">>> " << command << endl;  
+  assert (cli->process(command) == SUCCESS);
 }
 int main()
 {
@@ -1125,28 +1140,28 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    // Test01();
-    // Test02();
-    // Test03();
-    // Test04();
-    // Test05();
-    // Test06();
-    // Test07();
-    // Test08();
-    // Test09();
-    // Test10();
-    // Test11();
-    // Test12();
+    Test01();
+    Test02();
+    Test03();
+    Test04();
+    Test05();
+    Test06();
+    Test07();
+    Test08();
+    Test09();
+    Test10();
+    Test11();
+    Test12();
     Test13(); // Projection
     Test14(); // Filter
-    // Test15(); // Projection + Filter
-    // Test16(); // NLJoin
+    Test15(); // Projection + Filter
+    Test16(); // NLJoin
     // // TODO Test17(); // NLJoin + Filter
     // // TODO Test18(); // NLJoin + Projection
     // // TODO Test19(); // NLJoin + Filter + Projection
-    // Test20(); // Aggregate
-    // Test21(); // Aggregate groupby
-    // Test22(); // INLJoin
+    Test20(); // Aggregate
+    Test21(); // Aggregate groupby
+    Test22(); // INLJoin
     Test23(); // Index Scan
   } if (MODE == 1 || MODE == 3) {
     cli->start();
