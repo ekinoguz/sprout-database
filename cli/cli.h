@@ -72,7 +72,7 @@ private:
   
   RC createProjectAttributes(const string tableName, vector<Attribute> &attrs);
   RC createCondition(const string tableName, Condition &condition, const bool join=false, const string joinTable="");
-  RC createAttribute(const string tableName, Attribute &attr);
+  RC createAttribute(Iterator *, Attribute &attr);
   RC createAggregateOp(const string operation, AggregateOp &op);
   
   void addTableNameToAttrs(const string tableName, vector<string> &attrs);

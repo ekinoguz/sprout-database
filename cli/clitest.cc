@@ -661,6 +661,10 @@ void Test23()
 
   exec("SELECT PROJECT IS employee (Salary > 150000) GET [ * ]");
 
+  exec("SELECT AGG NLJOIN employee, ages where Age = Age pages(10) GET SUM(Salary)");
+  exec("SELECT AGG NLJOIN employee, ages where Age = Age pages(10) GET SUM(ages.Age)");
+  exec("SELECT AGG NLJOIN employee, ages where Age = Age pages(10) GROUPBY(ages.Explanation) GET SUM(ages.Age)");
+  
   exec(("drop table employee"));
 
   exec(("drop table ages"));
@@ -675,30 +679,30 @@ int main()
   cli = CLI::Instance();
 
   if (MODE == 0 || MODE == 3) {
-    Test01();
-    Test02();
-    Test03();
-    Test04();
-    Test05();
-    Test06();
-    Test07();
-    Test08();
-    Test09();
-    Test10();
-    Test11();
-    Test12();
-    Test13(); // Projection
-    Test14(); // Filter
-    Test15(); // Projection + Filter
-    Test16(); // NLJoin
+    // Test01();
+    // Test02();
+    // Test03();
+    // Test04();
+    // Test05();
+    // Test06();
+    // Test07();
+    // Test08();
+    // Test09();
+    // Test10();
+    // Test11();
+    // Test12();
+    // Test13(); // Projection
+    // Test14(); // Filter
+    // Test15(); // Projection + Filter
+    // Test16(); // NLJoin
     // // TODO Test17(); // NLJoin + Filter
     // // TODO Test18(); // NLJoin + Projection
     // // TODO Test19(); // NLJoin + Filter + Projection
-    Test20(); // Aggregate
-    Test21(); // Aggregate groupby
-    Test22(); // INLJoin
+    // Test20(); // Aggregate
+    // Test21(); // Aggregate groupby
+    // Test22(); // INLJoin
     Test23(); // Index Scan
-    Test24();
+    //Test24();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

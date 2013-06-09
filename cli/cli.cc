@@ -413,8 +413,8 @@ Iterator * CLI::aggregate(Iterator *input) {
   Attribute gAttr;
   if (string(token) == "GROUPBY") {
     groupby = true;
-    if (createAttribute(getTableName(input), gAttr) != 0)
-      error(__LINE__);
+    if (createAttribute(input, gAttr) != 0)
+      error("CLI: " + __LINE__);
 
     token = next(); // eat GET
   }
@@ -423,10 +423,10 @@ Iterator * CLI::aggregate(Iterator *input) {
 
   AggregateOp op;
   if (createAggregateOp(operation, op) != 0)
-    error (__LINE__);
+    error ("CLI: " + __LINE__);
   Attribute aggAttr;
-  if (createAttribute(getTableName(input), aggAttr) != 0)
-    error(__LINE__);
+  if (createAttribute(input, aggAttr) != 0)
+    error("CLI: " + __LINE__);
 
   Aggregate *agg;
   if (groupby) {
@@ -711,12 +711,16 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
   return 0;
 }
 
-RC CLI::createAttribute(const string tableName, Attribute &attr) {
+RC CLI::createAttribute(Iterator *input, Attribute &attr) {
+  string tableName = getTableName(input);
   string attribute = string(next());
+  attribute = fullyQualify(attribute, tableName);
+
+  vector<Attribute> attrs;
+  input->getAttributes(attrs);
   // get attribute from catalog
-  if (this->getAttribute(tableName, attribute, attr) != 0)
+  if (getAttribute(attribute, attrs, attr) != 0)
     return error(__LINE__);
-  attr.name = tableName + "." + attr.name;
   return 0;
 }
 
@@ -1855,5 +1859,5 @@ RC CLI::getAttribute(const string tableName, const string attrName, Attribute &a
 
 void CLI::addTableNameToAttrs(const string tableName, vector<string> &attrs) {
   for (uint i=0; i < attrs.size(); i++)
-    attrs[i] = tableName + "." + attrs[i];
+    attrs[i] = fullyQualify(attrs[i], tableName);
 }
