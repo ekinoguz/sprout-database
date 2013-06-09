@@ -435,9 +435,7 @@ RC NLJoin::getNextTuple(void *data)
 	      break;
 		  
 	    case NO_OP:
-	      // TODO: implement this
-	      cout << "Bad operator" << endl;
-	      return QE_EOF;
+	      found = true;
 	      break;
 	    } // end switch
 	    
@@ -894,14 +892,11 @@ RC INLJoin::getNextTuple(void *data)
 
 	  break;
 	case NE_OP:
+	case NO_OP:
 	  this->rightIn->setIterator(NULL, NULL, false, false);
 	  this->right_has_more = true;
 	  
 	  break;
-	case NO_OP:
-	  // TODO: implement this
-	  cout << "Bad operator" << endl;
-	  return QE_EOF;
 	}
       
       void *right_tuple = malloc(this->max_right_record_size);
