@@ -359,6 +359,7 @@ Iterator * CLI::query(Iterator *previous, int code)
   return it;
 }
 
+// Create INLJoin
 Iterator * CLI::indexnestedloopjoin(Iterator *input) {
   char *token = next();
   int code = -2;
@@ -554,16 +555,6 @@ Iterator * CLI::createBaseScanner(const string token) {
   // otherwise, create create table scanner
   return new TableScan(*rm, token);
 }
-
-// Create TableScan
-Iterator * CLI::tableScan(const string tableName) {
-  TableScan *output = new TableScan(*rm, tableName);
-  return output;
-}
-
-
-
-// Create INLJoin
 
 bool CLI::isIterator(const string token, int &code) {
   if (token == "FILTER") {
