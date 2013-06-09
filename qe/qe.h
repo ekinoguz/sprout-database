@@ -1,3 +1,4 @@
+
 #ifndef _qe_h_
 #define _qe_h_
 
@@ -57,71 +58,67 @@ class Iterator {
 
 class TableScan : public Iterator
 {
-    // A wrapper inheriting Iterator over RM_ScanIterator
-    public:
-        RM &rm;
-        RM_ScanIterator *iter;
-        string tablename;
-        vector<Attribute> attrs;
-        vector<string> attrNames;
-
-        TableScan(RM &rm, const string tablename, const char *alias = NULL):rm(rm)
-        {
-            // Get Attributes from RM
-            rm.getAttributes(tablename, attrs);
-
-            // Get Attribute Names from RM
-            unsigned i;
-            for(i = 0; i < attrs.size(); ++i)
-            {
-                // convert to char *
-                attrNames.push_back(attrs[i].name);
-            }
-            // Call rm scan to get iterator
-            iter = new RM_ScanIterator();
-            rm.scan(tablename, "", NO_OP, NULL, attrNames, *iter);
-
-            // Store tablename
-            this->tablename = tablename;
-            if(alias) this->tablename = alias;
-        };
-
-        // Start a new iterator given the new compOp and value
-        void setIterator()
-        {
-            iter->close();
-            delete iter; // WARNING, add virtual to RM_ScanIterator destructor
-            iter = new RM_ScanIterator();
-            rm.scan(tablename, "", NO_OP, NULL, attrNames, *iter);
-        };
-
-        RC getNextTuple(void *data)
-        {
-            RID rid;
-            return iter->getNextTuple(rid, data);
-        };
-
-        void getAttributes(vector<Attribute> &attrs) const
-        {
-            attrs.clear();
-            attrs = this->attrs;
-            unsigned i;
-
-            // For attribute in vector<Attribute>, name it as rel.attr
-            for(i = 0; i < attrs.size(); ++i)
-            {
-                string tmp = tablename;
-                tmp += ".";
-                tmp += attrs[i].name;
-                attrs[i].name = tmp;
-            }
-        };
-
-        ~TableScan()
-        {
-            iter->close();
-	    delete iter;
-        };
+ // A wrapper inheriting Iterator over RM_ScanIterator
+public:
+ RM &rm;
+ RM_ScanIterator *iter;
+ string tablename;
+ string alias;
+ vector<Attribute> attrs;
+ vector<string> attrNames;
+ TableScan(RM &rm, const string tablename, const char *alias = NULL):rm(rm)
+ {
+  // Get Attributes from RM
+  rm.getAttributes(tablename, attrs);
+  // Get Attribute Names from RM
+  unsigned i;
+  for(i = 0; i < attrs.size(); ++i)
+  {
+   // convert to char *
+   attrNames.push_back(attrs[i].name);
+  }
+  // Call rm scan to get iterator
+  iter = new RM_ScanIterator();
+  rm.scan(tablename, "", NO_OP, NULL, attrNames, *iter);
+  // Store tablename
+  this->tablename = tablename;
+  if(alias)
+   this->alias = alias;
+  else
+   this->alias = tablename;
+ };
+ // Start a new iterator given the new compOp and value
+ void setIterator()
+ {
+  iter->close();
+  delete iter;
+  iter = new RM_ScanIterator();
+  rm.scan(tablename, "", NO_OP, NULL, attrNames, *iter);
+ };
+ RC getNextTuple(void *data)
+ {
+  RID rid;
+  return iter->getNextTuple(rid, data);
+ };
+ void getAttributes(vector<Attribute> &attrs) const
+ {
+  attrs.clear();
+  attrs = this->attrs;
+  unsigned i;
+  // For attribute in vector, name it as rel.attr
+  for(i = 0; i < attrs.size(); ++i)
+  {
+   string tmp = alias;
+   tmp += ".";
+   tmp += attrs[i].name;
+   attrs[i].name = tmp;
+  }
+ };
+ ~TableScan()
+ {
+  iter->close();
+  delete iter;
+ };
 };
 
 

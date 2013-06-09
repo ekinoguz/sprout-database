@@ -989,14 +989,13 @@ IX_IndexScan::IX_IndexScan()
   highKeyInclusive = false;
   offset = 0;
 
-  highKey = malloc(PF_PAGE_SIZE);
-  memset(highKey, 0, PF_PAGE_SIZE);
+  highKey = NULL;
 }
 
 IX_IndexScan::~IX_IndexScan()
 {
   free(page);
-  if(highKey == NULL)
+  if(highKey != NULL)
     free(highKey);
 }
 
@@ -1020,7 +1019,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle,
     int size = this->indexHandle->getKeySize(highKey);
     memcpy(this->highKey, highKey, size);
   } else{
-    free(highKey);
+    free(this->highKey);
     this->highKey = NULL;
   }
   
@@ -1142,7 +1141,10 @@ RC IX_IndexScan::GetNextEntry(RID &rid)
 RC IX_IndexScan::CloseScan()
 {
   // TODO: Add protection from reading from a closed scan
+  if(highKey != NULL)
+    free(highKey);
   highKey = NULL;
+
   indexHandle = NULL;
   offset = -1;
   memset(page, 0, PF_PAGE_SIZE);
