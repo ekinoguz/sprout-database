@@ -359,6 +359,7 @@ Iterator * CLI::query(Iterator *previous, int code)
   return it;
 }
 
+// Create INLJoin
 Iterator * CLI::indexnestedloopjoin(Iterator *input) {
   char *token = next();
   int code = -2;
@@ -367,7 +368,7 @@ Iterator * CLI::indexnestedloopjoin(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   // get right table
@@ -383,7 +384,7 @@ Iterator * CLI::indexnestedloopjoin(Iterator *input) {
   IX_IndexHandle rightHandle;
   ixManager->OpenIndex(rightTableName, getAttribute(cond.rhsAttr), rightHandle);
   IndexScan *right = new IndexScan(*rm, rightHandle, rightTableName);
-  
+
   token = next(); // eat PAGES
   token = next(); // get page number
 
@@ -402,7 +403,7 @@ Iterator * CLI::aggregate(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   token = next();
@@ -445,7 +446,7 @@ Iterator * CLI::nestedloopjoin(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   // get right table
@@ -478,7 +479,7 @@ Iterator * CLI::filter(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   token = next(); // eat WHERE
@@ -503,7 +504,7 @@ Iterator * CLI::projection(Iterator *input) {
   }
   
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   token = next(); // eat GET
@@ -536,16 +537,24 @@ Iterator * CLI::projection(Iterator *input) {
   return project;
 }
 
+Iterator * CLI::createBaseScanner(const string token) {
 
-// Create TableScan
-Iterator * CLI::tableScan(const string tableName) {
-  TableScan *output = new TableScan(*rm, tableName);
-  return output;
+  // if token is "IS" (index scanner), create index scanner
+  if (token.compare("IS") == 0) {
+    string tableName = string(next());
+    Condition cond;
+    if (createCondition(tableName, cond) != 0)
+      error(__LINE__);
+
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex(tableName, getAttribute(cond.lhsAttr), ixHandle);
+    IndexScan *is = new IndexScan(*rm, ixHandle, tableName);
+    is->setIterator(cond.rhsValue.data, NULL, true, true);
+    return is;
+  }
+  // otherwise, create create table scanner
+  return new TableScan(*rm, token);
 }
-
-
-
-// Create INLJoin
 
 bool CLI::isIterator(const string token, int &code) {
   if (token == "FILTER") {
@@ -611,7 +620,7 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
 
   string attribute = string(token);
   // concatenate left attribute with tableName
-  condition.lhsAttr = tableName + "." + attribute;
+  condition.lhsAttr = fullyQualify(attribute, tableName);
 
   // get operation
   token = next();
@@ -631,7 +640,7 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
   if (join) {
     condition.bRhsIsAttr = true;
     token = next();
-    condition.rhsAttr = joinTable + "." + string(token);
+    condition.rhsAttr = fullyQualify(string(token), joinTable);
     return 0;
   }
 
@@ -709,6 +718,14 @@ string CLI::getTableName(Iterator *it) {
 string CLI::getAttribute(const string input) {
   unsigned loc = input.find(".", 0);
   return input.substr(loc+1, input.size()-loc);
+}
+
+string CLI::fullyQualify(const string attribute, const string tableName) {
+  unsigned loc = attribute.find(".", 0);
+  if (loc >= 0 && loc < attribute.size())
+    return attribute;
+  else
+    return tableName + "." + attribute;
 }
 
 ///////////////////////////////////
