@@ -1017,6 +1017,14 @@ void Test22()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
+  command = "create index Salary on employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Salary on salary";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);  
+
   command = "print cli_indexes";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
@@ -1025,7 +1033,15 @@ void Test22()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "SELECT NLJOIN employee, ages WHERE Age = Age PAGES(10)";
+  command = "SELECT INLJOIN (INLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT INLJOIN (NLJOIN employee, salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT INLJOIN (NLJOIN (FILTER employee WHERE Salary > 150000), salary WHERE Salary = Salary PAGES(10)), ages WHERE Age = Age PAGES(10)";
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
