@@ -1,0 +1,26 @@
+Record Manager Report
+=====================
+Sky Faber	Ekin Oguz	Cesar Ghali
+
+Please use our make files. If you still encounter errors ensure that the static singletons are initialized from main.
+
+NLJoin:
+-------
+We implemented block nested loop join. Based on the number of buffer pages allowed, we estimate the number of data tuples that can fit in the buffer. Then, we read the tuples and fill them in the buffer in a vector. Now, we start joining as follows: for every buffer block, we scan the whole right table once and probe each of its tuples again the buffer and join. Once we finish scanning the right table, we load another block of data from the left table and scan the right table again. We keep on doing that until the whole left table is consumed.
+
+INLJoin:
+--------
+We also use the number of buffer pages allowed to load blocks of the left table. Once a block is loaded, we start processing its tuples one by one and perform an index lookup in the right table for each left table tuples.
+It is worth mentioning that not only equality-based join is implemented but also non-equality-based join operations are also implemented (i.e. <, >, <=, >=, != and NP_OP).
+
+Project:
+--------
+This functionality takes a list of attributes that need to be projected. Whenever getNextTuples of this class is called it returns a tuple containing only the projected attributes.
+
+Filter:
+-------
+getNextTuple in this class ensures that only the tuples that matches the condition are returned.
+
+Aggregation:
+------------
+We also implemented the extra credits tasks. We are using the hash-based aggregate heuristic. If a "group by" clause is provided, the hash map contains several entries each belongs to a group. The key of the hash map is the data itself and the value of the map is the aggregation state. If "group by" is not used, only one entry will exist in the hash map. 
