@@ -383,7 +383,7 @@ Iterator * CLI::indexnestedloopjoin(Iterator *input) {
   IX_IndexHandle rightHandle;
   ixManager->OpenIndex(rightTableName, getAttribute(cond.rhsAttr), rightHandle);
   IndexScan *right = new IndexScan(*rm, rightHandle, rightTableName);
-  
+
   token = next(); // eat PAGES
   token = next(); // get page number
 
@@ -611,7 +611,7 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
 
   string attribute = string(token);
   // concatenate left attribute with tableName
-  condition.lhsAttr = tableName + "." + attribute;
+  condition.lhsAttr = fullyQualify(attribute, tableName);
 
   // get operation
   token = next();
@@ -631,7 +631,7 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
   if (join) {
     condition.bRhsIsAttr = true;
     token = next();
-    condition.rhsAttr = joinTable + "." + string(token);
+    condition.rhsAttr = fullyQualify(string(token), joinTable);
     return 0;
   }
 
@@ -709,6 +709,14 @@ string CLI::getTableName(Iterator *it) {
 string CLI::getAttribute(const string input) {
   unsigned loc = input.find(".", 0);
   return input.substr(loc+1, input.size()-loc);
+}
+
+string CLI::fullyQualify(const string attribute, const string tableName) {
+  unsigned loc = attribute.find(".", 0);
+  if (loc >= 0 && loc < attribute.size())
+    return attribute;
+  else
+    return tableName + "." + attribute;
 }
 
 ///////////////////////////////////

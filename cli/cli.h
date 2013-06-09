@@ -79,6 +79,7 @@ private:
   bool isIterator(const string token, int &code);
   string getTableName(Iterator *it);
   string getAttribute(const string input);
+  string fullyQualify(const string attribute, const string tableName);
 
   // cli catalog functions
   RC getAttributesFromCatalog(const string tableName, vector<Attribute> &columns);
