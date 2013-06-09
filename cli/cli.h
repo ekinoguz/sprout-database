@@ -61,6 +61,7 @@ private:
   // code -2: don't call isIterator
   Iterator * query(Iterator *previous, int code=-1);
   Iterator * tableScan(const string tableName);
+  Iterator * createBaseScanner(const string token);
   Iterator * projection(Iterator *input);
   Iterator * filter(Iterator *input);
   Iterator * nestedloopjoin(Iterator *input);

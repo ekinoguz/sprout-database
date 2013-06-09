@@ -367,7 +367,7 @@ Iterator * CLI::indexnestedloopjoin(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   // get right table
@@ -402,7 +402,7 @@ Iterator * CLI::aggregate(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   token = next();
@@ -445,7 +445,7 @@ Iterator * CLI::nestedloopjoin(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   // get right table
@@ -478,7 +478,7 @@ Iterator * CLI::filter(Iterator *input) {
   }
 
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   token = next(); // eat WHERE
@@ -503,7 +503,7 @@ Iterator * CLI::projection(Iterator *input) {
   }
   
   if (input == NULL) {
-    input = tableScan(string(token));
+    input = createBaseScanner(string(token));
   }
 
   token = next(); // eat GET
@@ -536,6 +536,24 @@ Iterator * CLI::projection(Iterator *input) {
   return project;
 }
 
+Iterator * CLI::createBaseScanner(const string token) {
+
+  // if token is "IS" (index scanner), create index scanner
+  if (token.compare("IS") == 0) {
+    string tableName = string(next());
+    Condition cond;
+    if (createCondition(tableName, cond) != 0)
+      error(__LINE__);
+
+    IX_IndexHandle ixHandle;
+    ixManager->OpenIndex(tableName, getAttribute(cond.lhsAttr), ixHandle);
+    IndexScan *is = new IndexScan(*rm, ixHandle, tableName);
+    is->setIterator(cond.rhsValue.data, NULL, true, true);
+    return is;
+  }
+  // otherwise, create create table scanner
+  return new TableScan(*rm, token);
+}
 
 // Create TableScan
 Iterator * CLI::tableScan(const string tableName) {

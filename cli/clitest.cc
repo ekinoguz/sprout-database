@@ -678,6 +678,14 @@ void Test13()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
+  command = "create index Salary on tbl_employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT PROJECT IS tbl_employee (Salary > 150000) GET [ * ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
   command = ("drop table tbl_employee");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
@@ -1085,7 +1093,7 @@ int main()
     // Test10();
     // Test11();
     // Test12();
-    // Test13(); // Projection
+    Test13(); // Projection
     // Test14(); // Filter
     // Test15(); // Projection + Filter
     // Test16(); // NLJoin
@@ -1094,7 +1102,7 @@ int main()
     // // TODO Test19(); // NLJoin + Filter + Projection
     // Test20(); // Aggregate
     // Test21(); // Aggregate groupby
-    Test22(); // INLJoin
+    // Test22(); // INLJoin
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
