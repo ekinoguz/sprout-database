@@ -1205,11 +1205,8 @@ void extraTestCase_1()
     // MIN int
     while(agg1.getNextTuple(data) != QE_EOF)
     {
-        // TODO: this was like that:
-        // cout << "MIN(left.B) " << *(float *)data << endl;
-        // memset(data, 0, sizeof(float));
-        cout << "MIN(left.B) " << *(int *)data << endl;
-        assert (10 == *(int *) data);
+        cout << "MIN(left.B) " << *(float *)data << endl;
+        assert (10.0 == *(float *) data);
         memset(data, 0, sizeof(int));
     }
     
@@ -1225,11 +1222,8 @@ void extraTestCase_1()
     data = malloc(bufsize);
     while(agg2.getNextTuple(data) != QE_EOF)
     {
-        // TODO: this was like that:
-        // cout << "MIN(left.B) " << *(float *)data << endl;
-        // memset(data, 0, sizeof(float));
-        cout << "MAX(left.B) " << *(int *)data << endl;
-        assert (1009 == *(int *)data);
+        cout << "MIN(left.B) " << *(float *)data << endl;
+        assert (1009 == *(float *)data);
         memset(data, 0, sizeof(int));
     }
     
@@ -1305,10 +1299,8 @@ void extraTestCase_3()
         offset += sizeof(float);
 
         // Print left.B
-        // TODO: it was like that
-        //cout << "MIN(left.B) " << *(float *)((char *)data + offset) << endl;
-        cout << "MIN(left.B) " << *(int *)((char *)data + offset) << endl;
-        b = *(int *)((char *)data + offset);
+        cout << "MIN(left.B) " << *(float *)((char *)data + offset) << endl;
+        b = *(float *)((char *)data + offset);
         offset += sizeof(int);
 
         assert ( (c-b) == 40.0);
@@ -1356,12 +1348,11 @@ void extraTestCase_4()
         offset += sizeof(float);
         
         // Print right.B
-        // TODO: this was float
-        cout << "SUM(right.B) " << *(int *)((char *)data + offset) << endl;
-        int b = *(int *)((char *)data + offset);
+        cout << "SUM(right.B) " << *(float *)((char *)data + offset) << endl;
+        int b = *(float *)((char *)data + offset);
         offset += sizeof(int);
         memset(data, 0, bufsize);
-        assert ( (c-b) == 5);
+        assert ( (c-b) == 5.0);
         i += 1;
     }
     assert (i == 1000);
@@ -1436,8 +1427,8 @@ void ourExtraTest_02()
     void *data = malloc(bufsize);
     while(agg1.getNextTuple(data) != QE_EOF)
     {
-        cout << "COUNT(left.C) " << *(int *)data << endl;
-        assert (1000 == *(int *) data);
+        cout << "COUNT(left.C) " << *(float *)data << endl;
+        assert (1000.0 == *(float *) data);
         memset(data, 0, sizeof(int));
     }
     
@@ -1465,8 +1456,8 @@ void ourExtraTest_03()
     void *data = malloc(bufsize);
     while(agg1.getNextTuple(data) != QE_EOF)
     {
-        cout << "SUM(left.A) " << *(int *)data << endl;
-        assert (499500 == *(int *) data);
+        cout << "SUM(left.A) " << *(float *)data << endl;
+        assert (499500.0 == *(float *) data);
         memset(data, 0, sizeof(int));
     }
     

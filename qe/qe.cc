@@ -960,12 +960,9 @@ Aggregate::Aggregate( Iterator *input,
   init();
   input->getAttributes(this->attrs);
   this->aggAttr = aggAttr;
-  RC rc = this->doOp(input, op);
-  if (rc != 0)
-    error(__LINE__, rc);
+  if (this->doOp(input, op) != 0)
+    error(__LINE__, -1);
 }
-
-
 
 
 // Extra Credit
@@ -994,7 +991,6 @@ Aggregate::~Aggregate(){
 
 void Aggregate::init() {
   this->isGroupBy = false;
-  this->outputInt = false;
   this->groupByOffset = 0;
   this->groupByIndex = -1;
 }
@@ -1003,21 +999,14 @@ RC Aggregate::doOp(Iterator *input, AggregateOp op) {
   RC rc;
   switch(op) {
   case 0:
-    if (aggAttr.type == TypeInt)
-      this->outputInt = true;
     return rc = MIN(input);
   case 1:
-  if (aggAttr.type == TypeInt)
-      this->outputInt = true;
     return rc = MAX(input);
   case 2:
-  if (aggAttr.type == TypeInt)
-      this->outputInt = true;
     return rc = SUM(input);
   case 3:
     return rc = AVG(input);
   case 4:
-    this->outputInt = true;
     return rc = COUNT(input);
   default:
     cout << "do not support this aggreate operation" << endl;
@@ -1210,9 +1199,6 @@ RC Aggregate::AVG(Iterator *input) {
     sum = sum / it->second;
     this->updateResultMap(it->first, sum, false);
   }
-
-  // AVG always returns real
-  aggAttr.type = TypeReal;
   free(data);
   free(val);
   return 0;
@@ -1231,9 +1217,6 @@ RC Aggregate::COUNT(Iterator *input) {
     }
     this->updateResultMap(str, 1, true);
   }
-
-  // COUNT always returns int
-  aggAttr.type = TypeInt;
   free(data);
   return 0;
 }
@@ -1271,17 +1254,11 @@ RC Aggregate::Aggregate::getNextTuple(void *data) {
     }
   }
   // now add the result to output
-  if (this->outputInt){
-    intVal = (int)it->second;
-    memcpy((char *)data+offset, &intVal, sizeof(int));
-    offset += sizeof(int);
-  } else {
-    floatVal = it->second;
-    memcpy((char *)data+offset, &(floatVal), sizeof(float));
-    offset += sizeof(int);
-  }
+  floatVal = it->second;
+  memcpy((char *)data+offset, &(floatVal), sizeof(float));
+  offset += sizeof(int);
   results.erase(it->first);
-    
+  
   return 0;
 }
 
@@ -1293,7 +1270,10 @@ void Aggregate::getAttributes(vector<Attribute> &attrs) const {
   if (isGroupBy) {
     attrs.push_back(groupByAttr);
   }
-  attrs.push_back(aggAttr);
+  // aggAttr always returns as real
+  Attribute attr = aggAttr;
+  attr.type = TypeReal;
+  attrs.push_back(attr);
 }
 
 // if cumulative = true, add the result to previous result

@@ -342,7 +342,6 @@ class Aggregate : public Iterator {
         Attribute groupByAttr;
         Attribute aggAttr;
         bool isGroupBy;
-        bool outputInt;
         int groupByOffset;
         int groupByIndex;
 
