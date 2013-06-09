@@ -2127,7 +2127,7 @@ void ourTestCase_08()
     
     Condition cond;
     cond.lhsAttr = "left.B";
-    cond.op= LT_OP;
+    cond.op= NO_OP;
     cond.bRhsIsAttr = true;
     cond.rhsAttr = "right.B";
     
@@ -2181,9 +2181,6 @@ void ourTestCase_08()
       // cout << "right.D " << *(int *)((char *)data + offset) << endl;
       offset += sizeof(int);
         
-      assert(leftB < rightB);
-      assert(IleftB < IrightB);
-
       i++;
       memset(data, 0, bufsize);
       memset(data1,0,bufsize);
@@ -2246,6 +2243,9 @@ int main()
     createIndexforRightB(rightRIDs);
     createIndexforRightC(rightRIDs);   
    
+    // ourTestCase_08(); // Test various join operators
+    // return 0;
+
     // Test Cases
     testCase_1();
     testCase_2();
