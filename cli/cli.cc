@@ -549,7 +549,40 @@ Iterator * CLI::createBaseScanner(const string token) {
     IX_IndexHandle ixHandle;
     ixManager->OpenIndex(tableName, getAttribute(cond.lhsAttr), ixHandle);
     IndexScan *is = new IndexScan(*rm, ixHandle, tableName);
-    is->setIterator(cond.rhsValue.data, NULL, true, true);
+
+    switch(cond.op) {
+      case EQ_OP:
+      is->setIterator(cond.rhsValue.data, cond.rhsValue.data, true, true);
+      break;
+      
+      case LT_OP:
+      is->setIterator(NULL, cond.rhsValue.data, true, false);
+      break;
+
+      case GT_OP:
+      is->setIterator(cond.rhsValue.data, NULL, false, true);
+      break;
+
+      case LE_OP:
+      is->setIterator(NULL, cond.rhsValue.data, true, true);
+      break;
+      
+      case GE_OP:
+      is->setIterator(cond.rhsValue.data, NULL, true, true);
+      break;
+      
+      // case NE_OP:
+      // is->setIterator(cond.rhsValue.data, NULL, true, true);
+      // break;
+      
+      case NO_OP:
+      is->setIterator(NULL, NULL, true, true);
+      break;
+
+      default:
+      break;
+    }
+    
     return is;
   }
   // otherwise, create create table scanner
@@ -636,6 +669,11 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
     condition.op = GE_OP;
   else if (string(token) == "!=")
     condition.op = NE_OP;
+  else if (string(token) == "NOOP") 
+  {
+    condition.op = NO_OP;
+    return 0;
+  }
 
   if (join) {
     condition.bRhsIsAttr = true;

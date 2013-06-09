@@ -678,14 +678,6 @@ void Test13()
   cout << ">>> " << command << endl;
   assert (cli->process(command) == SUCCESS);
 
-  command = "create index Salary on tbl_employee";
-  cout << ">>> " << command << endl;
-  assert (cli->process(command) == SUCCESS);
-
-  command = "SELECT PROJECT IS tbl_employee (Salary > 150000) GET [ * ]";
-  cout << ">>> " << command << endl;
-  assert (cli->process(command) == SUCCESS);
-
   command = ("drop table tbl_employee");
   cout << ">>> " << command << endl;  
   assert (cli->process(command) == SUCCESS);
@@ -1074,6 +1066,58 @@ void Test22()
   assert (cli->process(command) == SUCCESS);
 }
 
+// IndexScan
+void Test23() 
+{
+  cout << "*********** CLI 23 begins ******************" << endl;
+
+  string command;
+
+  command = "create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table ages Age = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create table salary Salary = int, Explanation = varchar(50)";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load employee employee_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load ages ages_90";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "load salary salary_5";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "create index Salary on employee";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT PROJECT IS employee (Salary > 150000) GET [ * ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT PROJECT IS employee (Salary < 150000) GET [ * ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT FILTER employee Where Salary > 150000";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+  command = "SELECT PROJECT IS employee (Salary > 150000) GET [ * ]";
+  cout << ">>> " << command << endl;
+  assert (cli->process(command) == SUCCESS);
+
+}
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -1094,7 +1138,7 @@ int main()
     // Test11();
     // Test12();
     Test13(); // Projection
-    // Test14(); // Filter
+    Test14(); // Filter
     // Test15(); // Projection + Filter
     // Test16(); // NLJoin
     // // TODO Test17(); // NLJoin + Filter
@@ -1103,6 +1147,7 @@ int main()
     // Test20(); // Aggregate
     // Test21(); // Aggregate groupby
     // Test22(); // INLJoin
+    Test23(); // Index Scan
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
