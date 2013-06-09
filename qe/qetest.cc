@@ -2242,9 +2242,6 @@ int main()
     // Create index for attribute B and C of the right table
     createIndexforRightB(rightRIDs);
     createIndexforRightC(rightRIDs);   
-   
-    // ourTestCase_08(); // Test various join operators
-    // return 0;
 
     // Test Cases
     testCase_1();
