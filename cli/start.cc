@@ -30,7 +30,7 @@ int main()
   exec("load employee employee_5");
   exec("load ages ages_90");
   exec("load salary salary_5");
-  exec("load company salary_7");
+  exec("load company company_7");
 
   exec("create index Age on employee");
   exec("create index Age on ages");
