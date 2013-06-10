@@ -1,4 +1,3 @@
-
 #ifndef _cli_h_
 #define _cli_h_
 
@@ -6,6 +5,7 @@
 #include <cstring>
 #include <iomanip>
 #include <cmath>
+#include <algorithm>
 
 #include "../shared.h"
 #include "../pf/pf.h"
@@ -15,7 +15,7 @@
 
 using namespace std;
 
-typedef enum{ FILTER = 0, PROJECT, NL, INL, AGG } QUERY_OP;
+typedef enum{ FILTER = 0, PROJECT, NL, INL, AGG, INDEXSCAN, TABLESCAN } QUERY_OP;
 
 // Return code
 typedef int RC;
@@ -72,7 +72,7 @@ private:
   
   RC createProjectAttributes(const string tableName, vector<Attribute> &attrs);
   RC createCondition(const string tableName, Condition &condition, const bool join=false, const string joinTable="");
-  RC createAttribute(const string tableName, Attribute &attr);
+  RC createAttribute(Iterator *, Attribute &attr);
   RC createAggregateOp(const string operation, AggregateOp &op);
   
   void addTableNameToAttrs(const string tableName, vector<string> &attrs);
@@ -90,7 +90,9 @@ private:
 
   // helper functions
   char * next();
-  bool expect(char * token, const string expected);
+  bool expect(const string token, const string expected);
+  bool expect(const char * token, const string expected);
+  string toLower(string input);
   bool checkAttribute(const string tableName, const string columnName, RID &rid, bool searchColumns=true);
   RC error(const string errorMessage);
   RC error(uint errorCode);

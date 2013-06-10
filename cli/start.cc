@@ -10,12 +10,33 @@ using namespace std;
 
 CLI *cli;
 
+void exec(string command){
+  cout << ">>> " << command << endl;
+  cli->process(command);
+}
+
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
   
   cli = CLI::Instance();
-  cli->start();
 
+  exec("create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int");
+  exec("create table ages Age = int, Explanation = varchar(50)");
+  exec("create table salary Salary = int, Explanation = varchar(50)");
+
+  exec("load employee employee_5");
+  exec("load ages ages_90");
+  exec("load salary salary_5");
+
+  exec("create index Age on employee");
+  exec("create index Age on ages");
+  exec("create index Salary on employee");
+  exec("create index Salary on salary");
+
+
+  cli->start();
+  
   return 0;
 }

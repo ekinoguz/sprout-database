@@ -351,6 +351,14 @@ Iterator * CLI::query(Iterator *previous, int code)
         it = indexnestedloopjoin(previous);
         break;
 
+      case INDEXSCAN:
+        it = createBaseScanner("IS");
+        break;
+
+      case TABLESCAN:
+        it = createBaseScanner(string(next()));
+        break;
+
       case -1:
         error("dude, be carefuly with what you are writing as a query");
         break;
@@ -413,8 +421,8 @@ Iterator * CLI::aggregate(Iterator *input) {
   Attribute gAttr;
   if (string(token) == "GROUPBY") {
     groupby = true;
-    if (createAttribute(getTableName(input), gAttr) != 0)
-      error(__LINE__);
+    if (createAttribute(input, gAttr) != 0)
+      error("CLI: " + __LINE__);
 
     token = next(); // eat GET
   }
@@ -423,10 +431,10 @@ Iterator * CLI::aggregate(Iterator *input) {
 
   AggregateOp op;
   if (createAggregateOp(operation, op) != 0)
-    error (__LINE__);
+    error ("CLI: " + __LINE__);
   Attribute aggAttr;
-  if (createAttribute(getTableName(input), aggAttr) != 0)
-    error(__LINE__);
+  if (createAttribute(input, aggAttr) != 0)
+    error("CLI: " + __LINE__);
 
   Aggregate *agg;
   if (groupby) {
@@ -549,7 +557,40 @@ Iterator * CLI::createBaseScanner(const string token) {
     IX_IndexHandle ixHandle;
     ixManager->OpenIndex(tableName, getAttribute(cond.lhsAttr), ixHandle);
     IndexScan *is = new IndexScan(*rm, ixHandle, tableName);
-    is->setIterator(cond.rhsValue.data, NULL, true, true);
+
+    switch(cond.op) {
+      case EQ_OP:
+      is->setIterator(cond.rhsValue.data, cond.rhsValue.data, true, true);
+      break;
+      
+      case LT_OP:
+      is->setIterator(NULL, cond.rhsValue.data, true, false);
+      break;
+
+      case GT_OP:
+      is->setIterator(cond.rhsValue.data, NULL, false, true);
+      break;
+
+      case LE_OP:
+      is->setIterator(NULL, cond.rhsValue.data, true, true);
+      break;
+      
+      case GE_OP:
+      is->setIterator(cond.rhsValue.data, NULL, true, true);
+      break;
+      
+      // case NE_OP:
+      // is->setIterator(cond.rhsValue.data, NULL, true, true);
+      // break;
+      
+      case NO_OP:
+      is->setIterator(NULL, NULL, true, true);
+      break;
+
+      default:
+      break;
+    }
+    
     return is;
   }
   // otherwise, create create table scanner
@@ -557,27 +598,24 @@ Iterator * CLI::createBaseScanner(const string token) {
 }
 
 bool CLI::isIterator(const string token, int &code) {
-  if (token == "FILTER") {
+  if (expect(token, "FILTER"))
     code = FILTER;
-    return true;
-  }
-  else if (token == "PROJECT") {
+  else if (expect(token, "PROJECT"))
     code = PROJECT;
-    return true; 
-  }
-  else if (token == "NLJOIN") {
+  else if (expect(token, "NLJOIN"))
     code = NL;
-    return true;
-  }
-  else if (token == "INLJOIN") {
+  else if (expect(token, "INLJOIN"))
     code = INL;
-    return true;
-  }
-  else if (token == "AGG") {
+  else if (expect(token, "AGG"))
     code = AGG;
-    return true;
-  }
-  return false;
+  else if (expect(token, "IS"))
+    code = INDEXSCAN;
+  else if (expect(token, "TS"))
+    code = TABLESCAN;
+  else
+    return false;
+
+  return true;
 }
 
 RC CLI::run(Iterator *it) {
@@ -636,6 +674,11 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
     condition.op = GE_OP;
   else if (string(token) == "!=")
     condition.op = NE_OP;
+  else if (string(token) == "NOOP") 
+  {
+    condition.op = NO_OP;
+    return 0;
+  }
 
   if (join) {
     condition.bRhsIsAttr = true;
@@ -680,12 +723,16 @@ RC CLI::createCondition(const string tableName, Condition &condition, const bool
   return 0;
 }
 
-RC CLI::createAttribute(const string tableName, Attribute &attr) {
+RC CLI::createAttribute(Iterator *input, Attribute &attr) {
+  string tableName = getTableName(input);
   string attribute = string(next());
+  attribute = fullyQualify(attribute, tableName);
+
+  vector<Attribute> attrs;
+  input->getAttributes(attrs);
   // get attribute from catalog
-  if (this->getAttribute(tableName, attribute, attr) != 0)
+  if (getAttribute(attribute, attrs, attr) != 0)
     return error(__LINE__);
-  attr.name = tableName + "." + attr.name;
   return 0;
 }
 
@@ -1245,7 +1292,7 @@ RC CLI::insertTuple() {
   token = next();
   while (token != NULL) {
     attr = attributes[index];
-    if (!expect(token, attributes[index].name))
+    if (attributes[index].name.compare(string(token)) != 0)
       return error("this table does not have this attribute!");
     token = next(); // eat =
     token = next();
@@ -1772,14 +1819,25 @@ char * CLI::next()
   return strtok (NULL, DELIMITERS);
 }
 
+bool CLI::expect(const string token, const string expected)
+{
+  return expect(token.c_str(), expected);
+}
 // return 0 if tokenizer is equal to expected string
-bool CLI::expect(char * token, const string expected)
+bool CLI::expect(const char * token, const string expected)
 {
   if (token == NULL) {
     error ("tokenizer is null, expecting: " + expected);
     return -1;
   }
-  return expected.compare(string(token)) == 0;
+  string s1 = toLower(string(token));
+  string s2 = toLower(expected);
+  return s1.compare(s2) == 0;
+}
+
+string CLI::toLower(string data) {
+  std::transform(data.begin(), data.end(), data.begin(), ::tolower);
+  return data;
 }
 
 RC CLI::error(const string errorMessage)
@@ -1813,5 +1871,5 @@ RC CLI::getAttribute(const string tableName, const string attrName, Attribute &a
 
 void CLI::addTableNameToAttrs(const string tableName, vector<string> &attrs) {
   for (uint i=0; i < attrs.size(); i++)
-    attrs[i] = tableName + "." + attrs[i];
+    attrs[i] = fullyQualify(attrs[i], tableName);
 }
