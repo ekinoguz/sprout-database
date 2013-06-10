@@ -1,0 +1,252 @@
+Project 4: Implementing a Query Engine
+
+Deadline: Friday, June 7, 2013 at 12:00 am, on EEE.
+Full Credit: 100 points Extra Credit: 15 points
+
+Index
+
+Introduction
+Iterator Interface
+Filter Interface
+Project Interface
+Nested-Loop Join Interface
+Index Nested-Loop Join Interface Graduate students only 
+Aggregate Interface
+An Example
+Appendix
+Introduction
+
+In this project you will implement a Query Engine (QE) component. The QE component provides classes and methods for answering SQL queries. For simplicity, you only need to implement several basic relational operators. All operators are iterator-based. To give you a jumpstart, we've implemented two wrapper operators around the RM and IX layers that provide file and index scanning. See the appendix for more details.
+See also the public test cases for in-depth examples of how the operators are used.
+
+Iterator Interface
+
+All the operators you will implement inherit the following "Iterator" interface.
+
+class Iterator {
+    // All the relational operators and access methods are iterators
+    // This class is the super class of all the following operator classes
+    public:
+        virtual RC getNextTuple(void *data) = 0;
+        // For each attribute in vector<Attribute>, name it rel.attr
+        virtual void getAttributes(vector<Attribute> &attrs) const = 0;
+        virtual ~Iterator() {};
+};
+virtual RC getNextTuple(void *data)
+
+This method should set the output parameter "data" of the next record. The format of the "data" parameter, which refers to the next record of the operator's output, is the same as that used in projects 2 and 3.  That is, the record value is a sequence of binary attribute values, in which each value is represented as follows: (1) For INT and REAL: use 4 bytes; (2) For VARCHAR: use 4 bytes for the length followed by the characters.
+
+virtual void getAttributes(vector<Attribute> &attrs)
+
+This method returns a vector of attributes in the intermediate relation resulted from this iterator.  That is, while the previous method returns the data records from the operator, this method makes the associated schema information for the returned record stream available in the query plan. The names of the attributes in vector<Attribute> should be of the form relation.attribute to clearly specify the relation from which each attribute comes.
+
+Filter Interface
+
+class Filter : public Iterator {
+    // Filter operator
+    public:
+        Filter(Iterator *input,                         // Iterator of input R
+               const Condition &condition               // Selection condition
+        );
+        ~Filter();
+        
+        RC getNextTuple(void *data) { return QE_EOF; };
+        // For each attribute in vector<Attribute>, name it rel.attr
+        void getAttributes(vector<Attribute> &attrs) const;
+};
+This filter class is initialized by an input iterator and a selection condition. It filters the tuples from the input iterator by applying the filter predicate "condition" on them. For simplicity, we assume this filter only has a single selection condition. Using this iterator, you can do a selection query such as "SELECT * FROM EMP WHERE sal > 600000". The schema of the returned tuples should be the same as the input tuples from the iterator.
+
+Project Interface
+
+class Project : public Iterator {
+    // Projection operator
+    public:
+        Project(Iterator *input,                            // Iterator of input R
+                const vector<string> &attrNames);           // vector containing attribute names
+        ~Project();
+        
+        RC getNextTuple(void *data) {return QE_EOF;};
+        // For each attribute in vector<Attribute>, name it rel.attr
+        void getAttributes(vector<Attribute> &attrs) const;
+};
+This project class takes an iterator and a vector of attribute names as input. It projects out the values of the attributes in the "attrNames". The schema of the returned tuples should be the attributes in attrNames, in the order of attributes in the vector.
+
+Nested-Loop Join Interface
+
+class NLJoin : public Iterator {
+    // Nested-Loop join operator
+public:
+    NLJoin(Iterator *leftIn,                             // Iterator of left input relation R
+           TableScan *rightIn,                           // TableScan Iterator of right input relation S
+           const Condition &condition,                   // Join condition
+           const unsigned numPages                       // Number of pages can be used to do join (decided by the optimizer)
+    );
+    ~NLJoin();
+    
+    RC getNextTuple(void *data) {return QE_EOF;};
+    // For each attribute in vector<Attribute>, name it rel.attr
+    void getAttributes(vector<Attribute> &attrs) const;
+};
+The NLJoin takes two iterators as input. The "leftIn" iterator works as the outer relation, and the "rightIn" iterator is the inner relation. The "rightIn" is an object of the TableScan Iterator. We have already implemented the TableScan class for you, which is a wrapper on your project 1 implementation of RM_ScanIterator. Using this iterator you can do a join query such as "SELECT * FROM EMP, PROJECT WHERE EMP.PID = PROJECT.PID". The returned schema should be the attributes of tuples from leftIn concatenated with the attributes of tuples from rightIn. You don't need to remove any duplicate attributes.
+
+Index Nested-Loop Join Interface
+
+Graduate students only
+
+class INLJoin : public Iterator {
+    // Index Nested-Loop join operator
+public:
+    INLJoin(Iterator *leftIn,                               // Iterator of input R
+            IndexScan *rightIn,                             // IndexScan Iterator of input S
+            const Condition &condition,                     // Join condition
+            const unsigned numPages                         // Number of pages can be used to do join (decided by the optimizer)
+    );
+    
+    ~INLJoin();
+
+    RC getNextTuple(void *data) {return QE_EOF;};
+    // For each attribute in vector<Attribute>, name it rel.attr
+    void getAttributes(vector<Attribute> &attrs) const;
+};
+The INLJoin iterator takes two iterators as input. The "leftIn" iterator works as the outer relation, and the "rightIn" iterator is the inner relation. The "rightIn" is an object of IndexScan Iterator. Again, we have already implemented the IndexScan class for you, which is a wrapper on your project 2 implementation of IX_IndexScan. The returned schema should be the attributes of tuples from leftIn concatenated with the attributes of tuples from rightIn. You don't need to remove any duplicate attributes.
+
+Aggregate Interface (extra credit, 15 pts)
+
+class Aggregate : public Iterator {
+    // Aggregation operator
+public:
+    // Extra Credits: 5 points
+    Aggregate(Iterator *input,                              // Iterator of input R
+              Attribute aggAttr,                            // The attribute over which we are computing an aggregate
+              AggregateOp op                                // Aggregate operation
+    );
+
+    // Extra Credits: 15 points
+    Aggregate(Iterator *input,                              // Iterator of input R
+              Attribute aggAttr,                            // The attribute over which we are computing an aggregate
+              Attribute gAttr,                              // The attribute over which we are grouping the tuples
+              AggregateOp op                                // Aggregate operation
+    );       
+
+    ~Aggregate();
+    
+    RC getNextTuple(void *data) {return QE_EOF;};
+    
+    // Please name the output attribute as aggregateOp(aggAttr)
+    // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
+    // output attrname = "MAX(rel.attr)"
+    void getAttributes(vector<Attribute> &attrs) const;
+};
+The basic aggregate method takes an input iterator, an aggregated attribute, and an aggregate function (MIN, MAX, SUM, AVG, COUNT) as the arguments. You can assume we do the aggregation on a numeric attribute (INT or REAL). The returned value is just a single real value (4 bytes). Using this operator, you can do a query such as "SELECT MAX(sal) FROM EMP". The schema of the (single) returned tuple should be "AggregateOp(relation.attribute)", such as "MAX(emp.sal)". Credit: 5 points.
+
+You can implement a "group-by" feature, where we add one more argument "group attribute" to the argument list. An example query is "SELECT MAX(sal) FROM emp GROUP BY city". Each returned record should include the group-by attribute value followed by the aggregation value. The group-by attribute can be INT, REAL, and VARCHAR. The aggregated attribute can be INT or REAL. The schema of the returned tuples should be the group-by attribute and the aggregation attribute, such as "emp.city MAX(emp.sal)". It is acceptable to assume that all of the groups and their intermediate aggregation values will fit in a hash table in memory while the operation is executing. Credit: 10 points
+
+(Additional extra credit may be given to adventurers who choose to reject this simplification and handle large aggregate results by GRACE-fully partitioning the aggregation problem.)
+
+An Example
+
+Here is an example on how to assemble the operators to form query plans. Example: "SELECT Employee.name, Employee.age, Employee.DeptID, Department.Name FROM Employee JOIN Department ON Employee.DeptID = Department.ID WHERE Employee.salary > 50000"
+
+/****** ****** ****** ****** ******
+ *    TABLE SCANS
+ ****** ****** ****** ****** ******/
+
+TableScan *emp_ts = new TableScan(rm, "Employee");
+TableScan *dept_ts = new TableScan(rm, "Department");
+
+/****** ****** ****** ****** ******
+ *    FILTER Employee Table
+ ****** ****** ****** ****** ******/
+
+Condition cond_f;
+cond_f.lhsAttr = "Salary";
+cond_f.op = GT_OP;
+cond_f.bRhsIsAttr = false;
+Value value;
+value.type = TypeInt;
+value.data = malloc(bufsize);
+*(int *)value.data = 50000;
+cond_f.rhsValue = value;
+
+Filter *filter = new Filter(emp_ts, cond_f);
+
+/****** ****** ****** ****** ******
+ *    PROJECT Employee Table
+ ****** ****** ****** ****** ******/
+
+vector<string> attrNames;
+attrNames.push_back("Employee.name");
+attrNames.push_back("Employee.age");
+attrNames.push_back("Employee.DeptID");
+
+Project project(filter, attrNames);
+
+/****** ****** ****** ****** ******
+ *   NESTEDLOOP JOIN Employee with Dept
+ ****** ****** ****** ****** ******/
+
+Condition cond_j;
+cond_j.lhsAttr = "Employee.DeptID";
+cond_j.op = EQ_OP;
+cond_j.bRhsIsAttr = true;
+cond_j.rhsAttr = "Department.ID";
+
+NLJoin *nlJoin = new NLJoin(project, dept_ts, cond_j, 10000);
+
+
+
+void *data = malloc(bufsize);
+while(nlJoin.getNextTuple(data) != QE_EOF)
+{
+  printAttributes(data);
+}
+Submission Instructions
+
+The following are requirements on your submission. Points may be deducted if they are not followed.
+
+Write a report to briefly describe the design and implementation of your query engine module.
+You need to submit the source code under the "pf" ,"rm" ,"ix" and "qe" folder. Make sure you do a "make clean" first, and do NOT include any useless files (such as binary files and data files). Your makefile should make sure the file "qetest.cc" compile and run properly. We will use our own qetest.cc to test your module.
+Please organize your project in the following directory hierarchy: project4-groupID / codebase / {rm, pf, ix, qe, makefile.inc, readme.txt, project4-report} where rm ,pf, ix, qe folders include your source code and the makefile.
+Compress project4-groupID into a SINGLE zip file. Each group only submits one file, with the name "project4-groupID.zip".
+Put this script​ and the zip file under the same directory. Run it to check whether your project can be properly unzipped and tested (use your own makefile.inc and the qetest.cc when you are testing the script). If the script doesn't work correctly, it's most likely that your folder organization doesn't meet the requirement. Our grading will be automatically done by running script. The usage of the script is:
+    ./test.sh ''project4-groupID''
+Upload the zip file "project4-groupID.zip" to EEE.
+Appendix
+
+We list down the APIs for the three classes used in the operators. For detailed implementation, please refer to the qe.h header file in the code base. Note that in the TableScan and IndexScan class, the argument "alias" is used to rename the input relation. In the case of self-joining, at least one of the relations should be renamed to differentiate with each other.
+
+struct Condition {
+    string lhsAttr;         // left-hand side attribute                     
+    CompOp  op;             // comparison operator                          
+    bool    bRhsIsAttr;     // TRUE if right-hand side is an attribute and not a value; FALSE, otherwise
+    string rhsAttr;         // right-hand side attribute if bRhsIsAttr = TRUE
+    Value   rhsValue;       // right-hand side value if bRhsIsAttr = FALSE
+};
+class TableScan : public Iterator
+{
+TableScan(RM &rm, const char *tablename, const char *alias = NULL):rm(rm);  // constructor
+void setIterator();                                                         // Start a new iterator
+RC getNextTuple(void *data);                                                // Return the next tuple from the iterator
+void getAttributes(vector<Attribute> &attrs) const;                         // Return the attributes from this iterator
+~TableScan();                                                               // destructor
+};
+class IndexScan : public Iterator
+{
+IndexScan(RM &rm, const IX_IndexHandle &indexHandle, const char *tablename, const char *alias = NULL):rm(rm); // constructor
+void setIterator(void* lowKey, void* highKey, bool lowKeyInclusive, bool highKeyInclusive); // Start a new iterator given the new compOp and value
+RC getNextTuple(void *data);                                                                                  // Return the next tuple from the iterator
+void getAttributes(vector<Attribute> &attrs) const;                                                           // Return the attributes from this iterator
+~IndexScan();                                                                                                 // destructor
+};
+Test Cases
+
+Please share your test cases on this page!
+
+Grading Rubrics
+
+The grading rubrics is at this page!?
+
+FAQ
+
+Q: What sort of file are we using for holding the partitions? (PF? RM? Linux?)
+A: We don't mind how you implement the files to hold partitions.

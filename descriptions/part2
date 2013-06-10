@@ -1,0 +1,66 @@
+Introduction
+
+In this project, you will implement a record manager (tuple-oriented file system) on top of the basic paged file system in project 1. The manager should meet the following basic requirements. Advanced features are not required in your submission, and will be treated as extra credit work. (Extra credit points will be tracked separately and used when considering effort as a factor when assigning final grades.) Full credit: 100 points Extra Credit: 10 points
+
+Basic Requirements (100 points)
+
+Catalog
+
+Create a catalog to hold all information about your database. This includes atleast the following:
+
+Table info (name).
+For each table, the columns, and for each of these columns: the column name, type and length
+The name of the paged file in which the data corresponding to each table is stored.
+There are two ways of implementing this. The first is to stored all the catalog information in a paged file using your own binary format. You can design classes to serialize/deserialize catalog information and store it using the PF_Manager. Alternatively, you can store this information using the record manager. Create a table for storing all the information of a table (table-id, table-name, file-name). And create another table to hold the column information (table-id, column-name, column-type, column-length). Implementing it this way will also help you test your project better, and requires no additional serialization/deserialization implementation.
+
+Record Representation
+
+You need to support basic attribute types, including integers, reals, variable-length character strings. Other types are optional.
+Tuples within file pages should be represented using a record format that nicely handles mixes of binary data and variable-length data. "Nicely" here refers to both space and efficiency, e.g., you should not waste 70 bytes of space to store "abcdefghij" in a VARCHAR(80) field.
+Your record representation should allow direct addressibility of data fields - finding the nth field should be an O(1) operation, not an (n) operation.
+Your chosen format should be clearly documented in your project code.
+Functions
+
+Your record-oriented file system must support the following operations.
+Create a record manager that initializes catalog information you may need to store. It also creates a paged file manager using the implementation in Project 1.
+Create a table T with the following information.
+Name of the table.
+A vector of attributes
+Delete a table T.
+Get attributes in a given table.
+Insert a tuple into a given table. You can assume that the input is always correct and free of error. That is, you do not need to check if the input record has the right number of attributes and if the attribute types match. Furthermore, you may use system-sequenced file organization. That is, find the first page with free space large enough to store the tuple and store the tuple at that location.
+Delete all tuples. This command should result in an empty table.
+Delete tuple with a given tid.
+Update tuple identified by a given tid. If the tuple grows and there is no space in the page to store the tuple, the tuple is migrated to a new page with enough free space. Since you will soon be implementing a B-tree structure or any indexing mechanism, assume that tuples are identified by their tids and when they migrate, they leave a tombstone behind pointing to the new location of the tuple.
+Read tuple identified by a given tid.
+Read a specific attribute of a tuple identified by a given tid.
+Reorganize a page, i.e., push the free space towards the end of the page.
+Scan a table, i.e., sequentially read all the entries in the table. A scan has a filter condition associated with it, e.g., it consists of a list of attributes to project out as well as a predicate on an attribute (“Sal > 40000”).
+You can make the following simplifying assumptions:
+Tuples never grow to more that a file page (that is, you only need to deal with short tuples, and can simply throw an error rather than trying to perform the offending operation if its tuple would violate this assumption).
+A table maps to a single file, and a single file contains only one table.
+Advanced Requirements (10 points, 5 points for each function)
+
+Drop an attribute from a table. Add a new attribute to the table. These operations will update the catalogs but should not involve touching the data itself. (Hint: They will affect the way that operations that access records' fields work when accessing a record that was created before such a schema change.")
+Reorganize a table that causes reorganization of the tuples such that the tuples are collected towards the beginning of the file. Also, tuple redirection is eliminated. (In this case, and only this case, it is okay for tids to change.)
+Explanation
+
+The commands listed above are by no means complete, but they do capture the essence of the tuple-oriented file system.
+
+You have a lot of freedom in designing your specific algorithms and building your system. You should spend a significant amount of time in coming up with a design of your system before you start coding. A principal challenge will be the design of the catalog storage that stores information about tables.
+
+For the endianess, it should matter only if the binary files are copied to a different machine. We didn't do that. We advise you to use memcpy to copy the int/real/char* values into the tuple byte array and vice-versa. So, as long as the same machine does the reading and writing, things should be fine.
+
+Grading will be based on the correctness of the implementation.
+
+For graduate students only
+
+Page Caching: You will first be modifiying your PF layer from Project 1 to include a page caching mechanism. You are welcome to use any page replacement policy that you wish (e.g. clock, LRU).
+
+You will notice, now, that the PF_Manager has an additional parameter being passed to its constructor: cacheNumPages. This parameter indicates the size of the cache to be used. The rest of the interface remains unchanged.
+
+Calls to read a page should cause the page to be cached, potentially causing the eviction of other cached pages (up to your page replacement policy). And of course, reads to pages in the cache should not lead to file page reads.
+
+Calls to write new contents into a page should flush the page to disk only when the page is evicted from the buffer cache or the file is to-be-closed.
+
+Please be sure to include some notes on the implementation of the caching mechanism in your report.

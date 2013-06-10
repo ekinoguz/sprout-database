@@ -1,0 +1,139 @@
+Project 3: Implementing an Index Manager
+
+Deadline: May 24, 2013, Friday, 11:45 pm, on EEE. 
+Full Credit: 100 points Extra Credit: 10 points
+
+Introduction ¶
+
+In this project you will implement an Indexing (IX) component. The IX component provides classes and methods for managing persistent indexes over unordered data records stored in files. Each data file may have any number of (single-attribute) indexes associated with it. The indexes ultimately will be used to speed up processing of relational selections, joins, and condition-based update and delete operations. Like the data records themselves, the indexes are also stored in files. Hence, in implementing the IX component, you will use the file system that you implemented in project 1, similarly to the way you used it for project 1. In this database system architecture, you can think of the IX component and the record manager as sitting side by side above the file system.
+
+B+Trees with Top-Down Splitting
+
+You will implement a basic B+ tree that has support for range predicates. To add a little quarter-to-quarter variety to the project, this quarter we require that you implement top-down splitting, which is a bit different from the method that was discussed in the lecture. (It's actually easier to code.)
+
+Top-down splitting is a conservative splitting strategy. When encountering a full node during the traversal of the tree towards the leaves, the node is split immediately and then the traversal continues. Thus, splitting is performed preemptively "on the way" down, rather than "on the way back up"; no backing up is required as a result. For more information about this method, you can see the paper titled "Concurrency Control in B+-trees Databases Using Preparatory Operations" from VLDB 1985. (then if it's still not clear, inquire within :-)).
+
+All class names, return codes, constants, etc. in this component should begin with the prefix IX. Each B+ tree index can be stored in one file in the paged file system. Some specific implementation suggestions are given later in Implementation Details.
+
+You can download the source code​.
+
+Note: You can certainly find pseudo-code and perhaps even software packages for B+ trees available publicly. You are welcome to use anything you happen to find as a reference, as long as you provide proper acknowledgment in your readme file when you turn in this part of the project. However, you are not welcome to reuse code that you find elsewhere; the purpose of the project is for you to gain experience and understanding by actually writing the B+ tree code.
+
+IX Interface
+
+The IX interface you will implement consists of three classes: the IX_Manager class, the IX_IndexHandle class, and the IX_IndexScan class. In addition, there is an IX_PrintError routine for printing messages associated with nonzero IX return codes. As usual, all IX component public methods (except constructors and destructors) should return 0 if they complete normally and a nonzero return code otherwise.
+
+1. IX_Manager Class
+
+The IX_Manager class handles the creation, deletion, opening, and closing of indexes. Your program should create exactly one instance of this class. All necessary initialization of the IX component should take place within the constructor for the IX_Manager class. Any necessary clean-up in the IX component should take place within the destructor for the IX_Manager class.
+
+class IX_Manager {
+ public:
+  static IX_Manager* Instance();
+
+  RC CreateIndex(const string tableName,       // create new index
+         const string attributeName);
+  RC DestroyIndex(const string tableName,      // destroy an index
+          const string attributeName);
+  RC OpenIndex(const string tableName,         // open an index
+           const string attributeName,
+           IX_IndexHandle &indexHandle);
+  RC CloseIndex(IX_IndexHandle &indexHandle);  // close index
+  
+ protected:
+  IX_Manager   ();                             // Constructor
+  ~IX_Manager  ();                             // Destructor
+ 
+ private:
+  static IX_Manager *_ix_manager;
+};
+
+RC CreateIndex(const string tableName, const string attributeName) This method creates an index on a given attribute of a given table. The index should be stored in a file with a unique name for this attribute.
+
+RC DestroyIndex(const string tableName, const string attributeName) This method should destroy the index on the attribute of the table (if any).
+
+RC OpenIndex(const string tableName, const string attributeName, IX_IndexHandle &indexHandle) This method should open the index on the specified attribute. If the method is successful, the indexHandle object should become a handle for the open index. The index handle is used to insert into and delete entries from the index (see the IX_IndexHandle methods below), and it can be passed into an IX_IndexScan constructor (see below) for performing a scan using the index. As with RM component files, clients should be able to open an index more than once for reading using a different indexHandle object each time. However, you may make the assumption (without checking it) that if a client is modifying an index, then no other clients are using an indexHandle to read or modify that index.
+
+2. IX_IndexHandle Class
+
+The IX_IndexHandle class is used to insert and delete index entries and to initiate index scans. To perform these operations, a client first creates an instance of this class and passes it to the IX_Manager::OpenIndex method described above. In the following, "RID" is a type defined for record ids.
+
+class IX_IndexHandle {
+  public:
+       IX_IndexHandle();                               // Constructor
+       ~IX_IndexHandle();                              // Destructor
+
+       RC InsertEntry(void *key, const RID &rid);      // Insert new index entry
+       RC DeleteEntry(void *key, const RID &rid);      // Delete index entry
+ };
+RC InsertEntry(void *key, const RID &rid) For this and the following two methods, it is incorrect if the IX_IndexHandle object for which the method is called does not refer to an open index. This method should insert a new entry into the index associated with IX_IndexHandle. Parameter key points to the attribute value to be inserted into the index, and parameter rid identifies the record with that value to be added to the index. Hence, this method effectively inserts an entry for the pair (*key,rid) into the index. (The index should contain only the record's RID, not the record itself.) The format for the passed key value is the following: (1) For INT and REAL: use 4 bytes; (2) For VARCHAR: use 4 bytes for the length followed by the characters. This method should return a nonzero code if there is already an entry for (*key,rid) in the index.
+
+Notice this function and the following one only deal with the index; they do NOT modify the record in the record manager. They should not change the record id.
+
+RC DeleteEntry (void *key, const RID &rid) This method should delete the entry for the (*key,rid) pair from the index associated with IX_IndexHandle. Although clients of the IX Component typically will ensure that DeleteEntry is not called for entries that are not in the index, for debugging purposes you may want to return a (positive) error code if such a call is made.
+
+3. IX_IndexScan Class
+
+The IX_IndexScan class is used to perform condition-based scans over the entries of an index.
+
+class IX_IndexScan {
+ public:
+  IX_IndexScan();  // Constructor
+  ~IX_IndexScan(); // Destructor
+
+  RC OpenScan(const IX_IndexHandle &indexHandle, void* lowKey, void* highKey, bool lowKeyInclusive, bool highKeyInclusive);  // Initialize index scan
+  RC GetNextEntry(RID &rid);                                                   // Get next matching entry
+  RC CloseScan();                                                              // Terminate index scan
+};
+
+RC OpenScan(const IX_IndexHandle &indexHandle, void* lowKey, void* highKey, bool lowKeyInclusive, bool highKeyInclusive) This method should initialize a condition-based scan over the entries in the open index referred to by parameter indexHandle. Once underway, the scan should produce the RIDs of all records whose indexed attribute value compares falls into the range specified by the lowKey, highKey, and inclusive flags. If lowKey is NULL, it can be interpreted as -infinity. If highKey is NULL, it can be interpreted as +infinity. The format of the parameter value is the same as that in IX_IndexHandle::InsertEntry().
+
+RC GetNextEntry (RID &rid) This method should set output parameter rid to be the RID of the next record in the index scan. This method should return IX_EOF (a positive return code that you define) if there are no index entries left satisfying the scan condition. You may assume that IX component clients will not close the corresponding open index while a scan is underway.
+
+RC CloseScan () This method should terminate the index scan.
+
+4. IX_PrintError
+
+void IX_PrintError (RC rc) This routine should write a message associated with the nonzero IX return code rc onto the stderr output stream. This routine has no return value.
+
+Implementation Details
+
+The data types for the index attribute that must be supported by the Index Manager are: Int, Real, (and VarChar if you are doing the graduate version).
+You are free to use alternative design ideas to those suggested here if you believe your ideas will improve the structure or performance of your code. The only thing that you must not alter is the interface itself, although you are free to extend it.
+The three fundamental B+ tree operations -- search (which extends to scan), insertion, and deletion -- vary quite a bit in their implementation complexity. We suggest that you get search and insertion running first, and then worry about deletion. In fact, implementing a completely correct delete operation in B+ trees turns out to be quite difficult.
+Simplification: You may implement lazy deletion. In this approach, when an entry is deleted, even if it causes a leaf page to become less than half full, no redistribution or node merging takes place -- the underfull page remains in the tree.
+Extra Credit (+5 points): Implementing fully correct (i.e., re-balancing) deletion is quite complex, with a number of tricky end cases. A correct implementation of the deletion with re-balancing function will be given extra credit.
+Regardless of which approach you use, deletion must work: once an IX component client asks for an entry to be deleted, that entry should never appear in a subsequent index scan.
+
+Extra Credit (+5 points): Support for arbitrary number of entries that share the same key and may span multiple pages is not required. However, a correct implementation of this function will be awarded extra credit.
+Index scans will be used by higher-level components when executing selection, join, and delete operations, as well as update operations on attributes other than the indexed attribute. Thus, each index entry scanned will either be used to fetch (and possibly update) a record, or to delete a record. (The insert operation inserts one record at a time.) While making an index scan work correctly for selection, join, and non-index-key update operations is relatively straightforward, deletion operations are more complicated, even when using the simplified approaches to deletion described above. You must ensure that it is possible to use an index scan to find and then delete all index entries satisfying a condition. That is, the following client code segment should work:
+   IX_IndexScan scan;
+   scan.OpenScan(indexHandle, ...)
+   while ((rc = scan.GetNextEntry(rid)) != IX_EOF) 
+   {
+      error checking;
+      delete record;
+      // attrValue is value of indexed attribute
+      indexHandle.DeleteEntry(attrValue, rid); 
+    }
+
+Depending on your design, which simplifications you make, and how you manage deletions, making sure this code will work may require a varying amount of effort. You may assume that during a deletion scan, no other index records will be inserted or deleted, and no other retrieval scans will be underway.
+
+Submission Instructions
+
+The following are requirements on your submission. Points may be deducted if they are not followed.
+
+Write a report to briefly describe the design and implementation of your index module.
+You need to submit the source code under the "pf" ,"rm" and "ix" folder. Make sure you do a "make clean" first, and do NOT include any useless files (such as binary files and data files). Your makefile should make sure the file "ixtest.cc" compile and run properly.
+Please organize your project in the following directory hierarchy: project3-groupID / codebase / {rm, pf, ix, makefile.inc, readme.txt, project3-report} where rm ,pf, ix folders include your source code and makefiles.
+Compress project3-groupID into a SINGLE zip file. Each group only submits one file, with the name "project3-groupID.zip".
+Put [this​ script and the zip file under the same directory. Run it to check whether your project can be properly unzipped and tested (use your own makefile.inc and the ixtest.cc when you are testing the script). If the script doesn't work correctly, it's most likely that your folder organization doesn't meet the requirement. Our grading will be automatically done by running script. The usage of the script is:
+    ./test.sh ''project3-groupID''
+Q & A
+
+Q: Can an index node span multiple pages? If we are storing the key in a node and the key is of type char, are we guaranteed that all keys will fit into a single node? 
+A: An index node should occupy exactly one page (including its free space). You can assume each key value is smaller than the page size, and in fact that d >= 1 will always be possible. (Throw an error if not; feel free to throw a create-time error if this assumption is at risk of being violated.)
+Q: What is the value of d? Shall we assume d = 2? 
+A: Sadly, like the Easter Bunny and unicorns, d is a myth, and d = 2 is only for white boards (or indexes in main memory). The notion of d depends on the size of each page (currently 4KB) and the type/size of the key value; with variable-length data, there is no actual "constant" d.
+Q: We're expected to deal with multiple entries having the same key. How should we deal with the fact that we may need to split a leaf node full of entries all with the same key? I don't see any easy solution to this problem (we would end up with two entries in the parent node having the same key). Should we just assume that this will not happen? 
+A: Yes, assume that this won't happen, but please do detect it and throw an error if it does. Feel free to come up with an overflow strategy for extra credit (+5 points) if you are so inclined.
