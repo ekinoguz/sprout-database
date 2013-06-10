@@ -1390,7 +1390,7 @@ RC CLI::printIndex() {
   string columnName = string(tokenizer);
 
   tokenizer = next();
-  if (!expect(tokenizer, "on")) {
+  if (tokenizer == NULL || !expect(tokenizer, "on")) {
     return error ("syntax error: expecting \"on\"");
   }
 
@@ -1411,7 +1411,6 @@ RC CLI::printIndex() {
   outputBuffer.push_back("PageNum");
   outputBuffer.push_back("SlotNum");
   while (ixScan.GetNextEntry(rid) == 0) {
-    cout << "HERE" << endl;
     outputBuffer.push_back(to_string(rid.pageNum));
     outputBuffer.push_back(to_string(rid.slotNum));
   }
