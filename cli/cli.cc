@@ -314,18 +314,7 @@ RC CLI::process(const string input)
   return code;
 }
 
-// query =
-// FILTER FROM <query> WHERE <attr> <op> <value>
-// PROJECT FROM <query> GET <attrs>
-// JOIN <lattr> <op> <rattr> FROM {"INL" <query1>, <query2-Index> | "NL" <query1>, <query2>}
-// AGG <OP>(query) OF <attr> [GROUPBY <attr>]
-// TABLE tableName
-// INDEX indexName
-
-// QUERY = 
-// TABLE <query>
-
-// HEREHERE
+// query
 Iterator * CLI::query(Iterator *previous, int code)
 {
   Iterator *it = NULL;
