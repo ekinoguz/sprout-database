@@ -715,7 +715,6 @@ int main()
     Test22(); // INLJoin
     Test23(); // Index Scan
     Test24(); // base Iterators: TableScan and IndexScan
-    Test24();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }
