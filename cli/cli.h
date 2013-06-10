@@ -15,7 +15,7 @@
 
 using namespace std;
 
-typedef enum{ FILTER = 0, PROJECT, NL, INL, AGG } QUERY_OP;
+typedef enum{ FILTER = 0, PROJECT, NL, INL, AGG, INDEXSCAN, TABLESCAN } QUERY_OP;
 
 // Return code
 typedef int RC;

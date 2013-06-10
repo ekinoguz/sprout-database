@@ -674,6 +674,30 @@ void Test23()
   exec(("drop table salary"));
 }
 
+void Test24() {
+  cout << "*********** CLI 24 begins ******************" << endl;
+
+  string command;
+
+  exec("create table employee EmpName = varchar(30), Age = int, Height = real, Salary = int");
+
+  exec("create table ages Age = int, Explanation = varchar(50)");
+
+  exec("create table salary Salary = int, Explanation = varchar(50)");
+
+  exec("load employee employee_5");
+
+  exec("load ages ages_90");
+
+  exec("load salary salary_5");
+
+  exec("create index Salary on employee");
+
+  exec("SELECT IS employee (Salary > 150000)");
+
+  exec("SELECT TS employee");
+}
+
 int main()
 {
   system("rm -r \"" DATABASE_FOLDER "\" 2> /dev/null");
@@ -703,7 +727,8 @@ int main()
     // Test20(); // Aggregate
     // Test21(); // Aggregate groupby
     // Test22(); // INLJoin
-    Test23(); // Index Scan
+    // Test23(); // Index Scan
+    Test24(); // base Iterators: TableScan and IndexScan
     //Test24();
   } if (MODE == 1 || MODE == 3) {
     cli->start();

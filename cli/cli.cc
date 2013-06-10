@@ -351,6 +351,14 @@ Iterator * CLI::query(Iterator *previous, int code)
         it = indexnestedloopjoin(previous);
         break;
 
+      case INDEXSCAN:
+        it = createBaseScanner("IS");
+        break;
+
+      case TABLESCAN:
+        it = createBaseScanner(string(next()));
+        break;
+
       case -1:
         error("dude, be carefuly with what you are writing as a query");
         break;
@@ -600,6 +608,10 @@ bool CLI::isIterator(const string token, int &code) {
     code = INL;
   else if (expect(token, "AGG"))
     code = AGG;
+  else if (expect(token, "IS"))
+    code = INDEXSCAN;
+  else if (expect(token, "TS"))
+    code = TABLESCAN;
   else
     return false;
 
