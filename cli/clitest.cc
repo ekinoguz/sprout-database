@@ -678,6 +678,10 @@ void Test24() {
   exec("SELECT IS employee (Salary > 150000)");
 
   exec("SELECT TS employee");
+
+  exec(("drop table employee"));
+  exec(("drop table ages"));
+  exec(("drop table salary"));
 }
 
 int main()
@@ -711,7 +715,6 @@ int main()
     Test22(); // INLJoin
     Test23(); // Index Scan
     Test24(); // base Iterators: TableScan and IndexScan
-    //Test24();
   } if (MODE == 1 || MODE == 3) {
     cli->start();
   }

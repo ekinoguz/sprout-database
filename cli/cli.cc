@@ -314,18 +314,7 @@ RC CLI::process(const string input)
   return code;
 }
 
-// query =
-// FILTER FROM <query> WHERE <attr> <op> <value>
-// PROJECT FROM <query> GET <attrs>
-// JOIN <lattr> <op> <rattr> FROM {"INL" <query1>, <query2-Index> | "NL" <query1>, <query2>}
-// AGG <OP>(query) OF <attr> [GROUPBY <attr>]
-// TABLE tableName
-// INDEX indexName
-
-// QUERY = 
-// TABLE <query>
-
-// HEREHERE
+// query
 Iterator * CLI::query(Iterator *previous, int code)
 {
   Iterator *it = NULL;
@@ -1401,7 +1390,7 @@ RC CLI::printIndex() {
   string columnName = string(tokenizer);
 
   tokenizer = next();
-  if (!expect(tokenizer, "on")) {
+  if (tokenizer == NULL || !expect(tokenizer, "on")) {
     return error ("syntax error: expecting \"on\"");
   }
 
@@ -1422,7 +1411,6 @@ RC CLI::printIndex() {
   outputBuffer.push_back("PageNum");
   outputBuffer.push_back("SlotNum");
   while (ixScan.GetNextEntry(rid) == 0) {
-    cout << "HERE" << endl;
     outputBuffer.push_back(to_string(rid.pageNum));
     outputBuffer.push_back(to_string(rid.slotNum));
   }
@@ -1479,7 +1467,7 @@ RC CLI::printTable(const string tableName)
 RC CLI::help(const string input)
 {
   if (input.compare("create") == 0) {
-    cout << "\tcreate table <tableName> (col1=type1, col2=type2, ...): creates table with given properties" << endl;
+    cout << "\tcreate table <tableName> (col1 = type1, col2 = type2, ...): creates table with given properties" << endl;
     cout << "\tcreate index <columnName> on <tableName>: creates index for <columnName> in table <tableName>" << endl;
   }
   else if (input.compare("add") == 0) {
@@ -1487,20 +1475,21 @@ RC CLI::help(const string input)
   }
   else if (input.compare("drop") == 0) {
     cout << "\tdrop table <tableName>: drops given table" << endl;
-    cout << "\tdrop index \"indexName\": drops given index" << endl;
-    cout << "\tdrop attribute \"attributeName\" from \"tableName\": drops attributeName from tableName" << endl;
-  }
-  else if (input.compare("load") == 0) {
-    cout << "\tload <tableName> \"fileName\"";
-    cout << ": loads given filName to given table" << endl;
+    cout << "\tdrop index <attributeName> on <tableName>: drops given index" << endl;
+    cout << "\tdrop attribute <attributeName> from <tableName>: drops attributeName from tableName" << endl;
   }
   else if (input.compare("insert") == 0) {
-    cout << "\tinsert into <tableName> tuple(attr1=val1, attr2=value2, ...)";
+    cout << "\tinsert into <tableName> tuple(attr1 = val1, attr2 = value2, ...)";
     cout << ": inserts given tuple to given tableName" << endl;
   }
   else if (input.compare("print") == 0) {
     cout << "\tprint <tableName>: print every record in tableName" << endl;
     cout << "\tprint attributes <tableName>: print columns of given tableName" << endl;
+    cout << "\tprint index <attributeName> on <tableName>: print columns of given tableName" << endl;
+  }
+  else if (input.compare("load") == 0) {
+    cout << "\tload <tableName> \"fileName\"";
+    cout << ": loads given filName to given table" << endl;
   }
   else if (input.compare("help") == 0) {
     cout << "\thelp <commandName>: print help for given command" << endl;
@@ -1509,13 +1498,33 @@ RC CLI::help(const string input)
   else if (input.compare("quit") == 0) {
     cout << "\tquit or exit: quit SecSQL. But remember, love never ends!" << endl;
   }
+  else if (input.compare("query") == 0) {
+    cout << endl;
+    cout << "\tAll queries start with \"SELECT\"" << endl;
+
+    cout << "\t\t<query> = " << endl;
+    cout << "\t\t\tPROJECT <query> GET \"[\" <attrs> \"]\"" << endl;
+    cout << "\t\t\tFILTER <query> WHERE <attr> <op> <value>" << endl;
+    cout << "\t\t\tINLJOIN <query>, <query> WHERE <attr> <op> <attr> PAGES(<pageNum>)" << endl;
+    cout << "\t\t\tNLJOIN <query>, <query> WHERE <attr> <op> <attr> PAGES(<pageNum>)" << endl;
+    cout << "\t\t\tAGG <query> [ GROUPBY(<attr>) ] GET <agg-op>(<attr>)" << endl;
+    cout << "\t\t\tIS <query> <attr> <op> <value>" << endl;
+    cout << "\t\t\t<tableName>" << endl;
+    
+    cout << "\t\t<agg-op> = MIN | MAX | SUM | AVG | COUNT" << endl;
+    cout << "\t\t<op> = < | > | = | != | >= | <= | NOOP" << endl;
+    cout << "\t\t<attrs> = <attr> { \",\" <attr> }" << endl;
+    cout << "\t\t<pageNum> = is a number bigger than 0, usually 10" << endl;
+    cout << endl;
+  }
   else if (input.compare("all") == 0) {
     help("create");
     help("drop");
-    help("load");
     help("print");
     help("insert");
+    help("load");
     help("help");
+    help("query");
     help("quit");
   }
   else {

@@ -67,6 +67,34 @@ print indexes
 
 history
 
-What will we done?
-------------------
-* We will add all the functionalies in query engine to CLI
+Demo-3
+======
+print indexes
+print index Age on employee
+
+print company
+insert into company tuple(CompName = Amazon, Age = 30)
+print company
+
+print employee
+select IS employee (Age NOOP)
+select IS employee (Age > 49)
+select filter employee where Age > 49
+
+select project employee get [ * ]
+select project employee get [ Age, Height ]
+select project employee get [ Height, Age ]
+select project (filter employee where Salary >= 250000) get [ * ]
+select project (filter employee where Salary >= 250000) get [ EmpName, Age ]
+
+# Names can be qualified or not.
+select nljoin employee, ages where Age = Age Pages(10)
+select project (nljoin employee, ages where Age = Age Pages(10)) get [ EmpName, employee.Salary, ages.Age, ages.Explanation ]
+
+select nljoin (inljoin employee, ages where Age = Age Pages(10)), company where ages.Age = company.Age Pages(10)
+
+print employee
+SELECT agg employee GET SUM(Salary)
+SELECT agg employee GET AVG(Salary)
+select agg ages GROUPBY(Explanation) GET AVG(Age)
+select agg (filter ages WHERE Age < 26) GROUPBY(Explanation) GET AVG(Age)
