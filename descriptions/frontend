@@ -1,20 +1,3 @@
-Commands Working so Far
-=======================
-
-create table <tableName> (col1=type1, col2=type2, ...)
-create index <columnName> on <tableName>
-drop table <tableName>
-drop index <indexName> on <tableName>
-drop attribute <attributeName> from <tableName>
-load <tableName> <fileName>
-print <tableName>
-print attributes <tableName>
-help <commandName>
-help
-quit or exit
-
-
-
 Language for Query Engine
 =========================  
 [] means 0 or 1
