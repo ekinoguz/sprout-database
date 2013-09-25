@@ -14,7 +14,7 @@ processing of relational selections, joins, and condition-based update and delet
 themselves, the indexes are also stored in files. In this database system architecture, IX component and the record 
 manager as sitting side by side above the file system.  
 <b>4) Query engine:</b> classes and methods for answering SQL queries.  
-<b>5) Command line interface:</b> 1-to-1 mapping of public interface to command line commands.  
+<b>5) Command line interface:</b> 1-to-1 mapping of public interface to command line interface.  
 
 Command Line Interface
 ----------------------
