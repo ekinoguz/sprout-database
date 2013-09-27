@@ -1,7 +1,7 @@
-cs222-database
-==============
+sprout-database
+===============
 
-Database Project of CS222 - Principles of Data Management class @UCIrvine. This is the Spring 2013 version of the project which was given by Prof. Michael Carey.
+Database project of a graduate class.
 
 Overview
 --------
